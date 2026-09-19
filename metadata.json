@@ -1,0 +1,6 @@
+{
+  "name": "Preventive Maintenance",
+  "description": "Preventive maintenance application imported from GitHub repository deptech-3D/Preventive-Maintenance.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

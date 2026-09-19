@@ -1,0 +1,227 @@
+import React, { createContext, useContext, useState, ReactNode } from "react";
+
+export type Lang = "id" | "en";
+
+export const dict: Record<Lang, Record<string, string>> = {
+  id: {
+    welcome: "Selamat datang",
+    safety_first: "Safety First",
+    dashboard: "Dashboard",
+    log: "Catat Maintenance",
+    history: "Riwayat AC",
+    admin: "Admin",
+    settings: "Pengaturan",
+    login: "Masuk",
+    email: "Email",
+    username: "Username",
+    username_or_email: "Username",
+    password: "Kata Sandi",
+    login_google: "Lanjutkan dengan Google",
+    logout: "Keluar",
+    total_used: "Total Unit Dirawat",
+    no_data: "Belum ada data",
+    select_meter: "Pilih Unit AC",
+    awal: "Kondisi Awal",
+    akhir: "Kondisi Akhir",
+    total: "Total AC",
+    photo: "Foto Unit / Sebelum Cuci",
+    take_photo: "Ambil Foto / Upload",
+    seal_photo: "Foto Setelah Cuci",
+    submit: "Simpan Maintenance",
+    // Kolom input baru khusus AC menggantikan parameter PLN lama
+    ac_location: "Nama / Lokasi AC",
+    ac_filter: "Kondisi Filter",
+    ac_freon: "Tekanan Freon (PSI)",
+    ac_ampere: "Arus Listrik (Ampere)",
+    notes: "Catatan Tambahan",
+    filter: "Filter Data",
+    date_range: "Rentang Tanggal",
+    shift: "Shift Kerja",
+    pagi: "Pagi",
+    sore: "Sore",
+    malam: "Malam",
+    export_excel: "Ekspor Excel",
+    users: "Pengguna",
+    menus: "Daftar Unit AC",
+    thresholds: "Batas Alarm PSI/Ampere",
+    shifts: "Jam Shift",
+    appearance: "Tampilan",
+    add_user: "Tambah Teknisi",
+    add_menu: "Tambah Unit AC",
+    name: "Nama AC / Merk",
+    unit: "Lokasi Ruangan",
+    save: "Simpan",
+    cancel: "Batal",
+    delete: "Hapus",
+    edit: "Edit",
+    today: "Hari Ini",
+    last_7: "7 Hari",
+    last_30: "30 Hari",
+    daily: "Harian",
+    monthly: "Bulanan",
+    yearly: "Tahunan",
+    month_to_date: "Month to Date (MTD)",
+    daily_title: "Daily (Harian)",
+    mtd_title: "Month to Date (MTD)",
+    property_name: "Nama Property / Hotel",
+    ocr_scan: "Scan Termometer AI",
+    ocr_processing: "Memproses foto dengan AI...",
+    previous_reading: "Maintenance Sebelumnya",
+    alarm_triggered: "Peringatan: Ampere AC terlalu tinggi!",
+    change_admin_creds: "Ganti Kredensial Admin",
+    current_password: "Password Saat Ini",
+    new_password: "Password Baru",
+    role: "Peran",
+    role_user: "Teknisi",
+    role_admin: "Admin",
+    threshold_percent: "Batas Lonjakan Ampere (%)",
+    dashboard_bg: "Foto Background (Dashboard & Login)",
+    alert_emails: "Email Notifikasi Alarm",
+    report_emails: "Email Laporan Bulanan",
+    reset_emails: "Email Verifikasi Reset Password",
+    permission_required: "Izin Kamera Diperlukan",
+    grant_permission: "Berikan Izin",
+    all: "Semua",
+    apply: "Terapkan",
+    reset: "Reset",
+    hi_admin: "Anda login sebagai Admin PM",
+    property_placeholder: "Contoh: Grand Hotel Jakarta",
+    upload_success: "Foto berhasil diunggah",
+    submit_success: "Data maintenance berhasil disimpan",
+    kind_pln: "AC Split / Central (Filter/Freon/Ampere)",
+    kind_simple: "Kondisi Sederhana",
+    apps_title: "PM AC System",
+    tagline_sub: "Sistem preventive maintenance AC hotel",
+    consumption_trend: "Tren Unit Dirawat per Shift",
+    last_recorded: "Terakhir diservis",
+  },
+  en: {
+    welcome: "Welcome",
+    safety_first: "Safety First",
+    dashboard: "Dashboard",
+    log: "Log Maintenance",
+    history: "AC History",
+    admin: "Admin",
+    settings: "Settings",
+    login: "Sign In",
+    email: "Email",
+    username: "Username",
+    username_or_email: "Username",
+    password: "Password",
+    login_google: "Continue with Google",
+    logout: "Logout",
+    total_used: "Total Units Serviced",
+    no_data: "No data yet",
+    select_meter: "Select AC Unit",
+    awal: "Initial Condition",
+    akhir: "Final Condition",
+    total: "Total ACs",
+    photo: "Before Service Photo",
+    take_photo: "Take Photo / Upload",
+    seal_photo: "After Service Photo",
+    submit: "Save Maintenance",
+    ac_location: "AC Name / Location",
+    ac_filter: "Filter Condition",
+    ac_freon: "Freon Pressure (PSI)",
+    ac_ampere: "Electrical Current (Ampere)",
+    notes: "Additional Notes",
+    filter: "Filter Data",
+    date_range: "Date Range",
+    shift: "Shift Hours",
+    pagi: "Morning",
+    sore: "Evening",
+    malam: "Night",
+    export_excel: "Export Excel",
+    users: "Users",
+    menus: "AC Units List",
+    thresholds: "PSI/Ampere Alarm Threshold",
+    shifts: "Shift Hours",
+    appearance: "Appearance",
+    add_user: "Add Technician",
+    add_menu: "Add AC Unit",
+    name: "AC Name / Brand",
+    unit: "Room Location",
+    save: "Save",
+    cancel: "Cancel",
+    delete: "Delete",
+    edit: "Edit",
+    today: "Today",
+    last_7: "7 Days",
+    last_30: "30 Days",
+    daily: "Daily",
+    monthly: "Monthly",
+    yearly: "Yearly",
+    month_to_date: "Month to Date (MTD)",
+    daily_title: "Daily",
+    mtd_title: "Month to Date (MTD)",
+    property_name: "Property / Hotel Name",
+    ocr_scan: "AI Thermometer Scan",
+    ocr_processing: "Processing photo with AI...",
+    previous_reading: "Previous Maintenance",
+    alarm_triggered: "Warning: High AC Ampere draw!",
+    change_admin_creds: "Change Admin Credentials",
+    current_password: "Current Password",
+    new_password: "New Password",
+    role: "Role",
+    role_user: "Technician",
+    role_admin: "Admin",
+    threshold_percent: "Ampere Spike Threshold (%)",
+    dashboard_bg: "Dashboard Background (Gallery Photo / URL)",
+    alert_emails: "Alert Emails",
+    report_emails: "Monthly Report Emails",
+    reset_emails: "Password Reset Emails",
+    permission_required: "Camera Permission Needed",
+    grant_permission: "Grant Permission",
+    all: "All",
+    apply: "Apply",
+    reset: "Reset",
+    hi_admin: "You are logged in as PM Admin",
+    property_placeholder: "e.g. Grand Hotel Jakarta",
+    upload_success: "Photo uploaded",
+    submit_success: "Maintenance data saved",
+    kind_pln: "AC Split / Central (Filter/Freon/Ampere)",
+    kind_simple: "Simple Condition",
+    apps_title: "PM AC System",
+    tagline_sub: "Hotel AC preventive maintenance tracking",
+    consumption_trend: "Serviced Units Trend by Shift",
+    last_recorded: "Last serviced",
+  },
+};
+
+interface I18nContextType {
+  lang: Lang;
+  setLang: (l: Lang) => void;
+  t: (key: string) => string;
+}
+
+const I18nContext = createContext<I18nContextType>({
+  lang: "id",
+  setLang: () => {},
+  t: (k) => k,
+});
+
+export function I18nProvider({ children }: { children: ReactNode }) {
+  const [lang, setLangState] = useState<Lang>(() => {
+    try {
+      const saved = localStorage.getItem("ac_maintenance_lang");
+      return (saved === "en" ? "en" : "id") as Lang;
+    } catch {
+      return "id";
+    }
+  });
+
+  const setLang = (l: Lang) => {
+    setLangState(l);
+    try {
+      localStorage.setItem("ac_maintenance_lang", l);
+    } catch {}
+  };
+
+  const t = (k: string) => dict[lang][k] || k;
+
+  return React.createElement(I18nContext.Provider, { value: { lang, setLang, t } }, children);
+}
+
+export function useI18n() {
+  return useContext(I18nContext);
+}

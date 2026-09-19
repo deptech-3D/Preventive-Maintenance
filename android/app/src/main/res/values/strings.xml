@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Preventive Maintenance</string>
+    <string name="title_activity_main">Preventive Maintenance</string>
+    <string name="package_name">com.deptech.preventivemaintenance</string>
+    <string name="custom_url_scheme">com.deptech.preventivemaintenance</string>
+</resources>

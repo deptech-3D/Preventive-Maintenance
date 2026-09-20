@@ -173,7 +173,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (identifier: string, pass: string) => {
     const cleanId = (identifier || "").trim();
-    // 1. Try direct Supabase login (Works anywhere: Netlify, APK Android offline/online, etc.)
+    if (!cleanId || !pass) {
+      throw new Error("Silakan masukkan username/email dan kata sandi.");
+    }
+
+    // 1. Try direct Supabase login (with offline/local fallback)
     try {
       const sbUser = await supabaseLogin(cleanId, pass);
       if (sbUser) {
@@ -192,7 +196,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
     } catch (e) {
-      console.warn("Supabase direct login attempt failed, trying backend server fallback:", e);
+      console.warn("Supabase direct login attempt failed:", e);
     }
 
     // 2. Fallback to Express backend /api/auth/login if backend is reachable
@@ -201,11 +205,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         method: "POST",
         body: JSON.stringify({ username: cleanId, email: cleanId, password: pass }),
       });
-      await apiSetToken(res.token);
-      setUser(res.user);
-    } catch (err: any) {
-      throw new Error(err?.message || "Username atau password salah");
-    }
+      if (res?.user) {
+        await apiSetToken(res.token);
+        setUser(res.user);
+        return;
+      }
+    } catch {}
+
+    throw new Error("Username atau password salah. Untuk login default, gunakan username 'admin' dan password 'admin'.");
   };
 
   const logout = async () => {

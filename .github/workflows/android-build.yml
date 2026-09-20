@@ -34,6 +34,9 @@ jobs:
       - name: Sync Capacitor Android
         run: npx cap sync android
 
+      - name: Give Gradle Execute Permission
+        run: chmod +x android/gradlew
+
       - name: Build Android Release APK
         run: |
           cd android
@@ -43,5 +46,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: Preventive-Maintenance-APK
-
           path: android/app/build/outputs/apk/release/app-release-unsigned.apk

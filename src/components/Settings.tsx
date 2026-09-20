@@ -42,7 +42,10 @@ import {
   Droplets,
   Activity,
   Flame,
+  CalendarClock,
 } from "lucide-react";
+import { ACMasterUnitsManager } from "./ACMasterUnitsManager";
+import { ACMaintenanceCycleSettings } from "./ACMaintenanceCycleSettings";
 import { User, MeterMenu, AppSettings } from "../types";
 import { useAuth } from "../auth";
 import { useI18n, Lang } from "../i18n";
@@ -148,6 +151,9 @@ export function Settings() {
   const [copiedPlantFormula, setCopiedPlantFormula] = useState(false);
   const [copiedPlantTsv, setCopiedPlantTsv] = useState(false);
   const [sendingPlantReport, setSendingPlantReport] = useState(false);
+
+  // Admin AC Management Submenu State
+  const [adminSubmenu, setAdminSubmenu] = useState<"master_ac" | "cycle_ac" | "users" | "general">("master_ac");
 
   const [updatingApp, setUpdatingApp] = useState(false);
 
@@ -817,13 +823,79 @@ export function Settings() {
         </div>
       )}
 
-      {/* Admin Settings Form */}
+      {/* Admin Settings Navigation */}
       {user?.role === "admin" && (
         <>
-          <form
-            onSubmit={handleSaveSettings}
-            className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4"
-          >
+          <div className="bg-white p-2 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-1.5 overflow-x-auto scrollbar-none text-xs">
+            <button
+              id="tab-admin-master-ac"
+              type="button"
+              onClick={() => setAdminSubmenu("master_ac")}
+              className={`px-3.5 py-2.5 rounded-xl font-bold transition flex items-center gap-2 shrink-0 border cursor-pointer ${
+                adminSubmenu === "master_ac"
+                  ? "bg-blue-600 text-white border-blue-600 shadow-xs"
+                  : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
+              }`}
+            >
+              <Building2 className="w-4 h-4" />
+              <span>A. Master Lokasi/Unit</span>
+            </button>
+
+            <button
+              id="tab-admin-cycle-ac"
+              type="button"
+              onClick={() => setAdminSubmenu("cycle_ac")}
+              className={`px-3.5 py-2.5 rounded-xl font-bold transition flex items-center gap-2 shrink-0 border cursor-pointer ${
+                adminSubmenu === "cycle_ac"
+                  ? "bg-blue-600 text-white border-blue-600 shadow-xs"
+                  : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
+              }`}
+            >
+              <CalendarClock className="w-4 h-4" />
+              <span>B. Durasi Siklus Perawatan</span>
+            </button>
+
+            <button
+              id="tab-admin-users"
+              type="button"
+              onClick={() => setAdminSubmenu("users")}
+              className={`px-3.5 py-2.5 rounded-xl font-bold transition flex items-center gap-2 shrink-0 border cursor-pointer ${
+                adminSubmenu === "users"
+                  ? "bg-blue-600 text-white border-blue-600 shadow-xs"
+                  : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
+              }`}
+            >
+              <Users className="w-4 h-4" />
+              <span>C. Kelola Pengguna</span>
+            </button>
+
+            <button
+              id="tab-admin-general"
+              type="button"
+              onClick={() => setAdminSubmenu("general")}
+              className={`px-3.5 py-2.5 rounded-xl font-bold transition flex items-center gap-2 shrink-0 border cursor-pointer ${
+                adminSubmenu === "general"
+                  ? "bg-blue-600 text-white border-blue-600 shadow-xs"
+                  : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
+              }`}
+            >
+              <SettingsIcon className="w-4 h-4" />
+              <span>D. Konfigurasi Property & Integrasi</span>
+            </button>
+          </div>
+
+          {/* Submenu A: Master Lokasi/Unit */}
+          {adminSubmenu === "master_ac" && <ACMasterUnitsManager />}
+
+          {/* Submenu B: Durasi Siklus Perawatan */}
+          {adminSubmenu === "cycle_ac" && <ACMaintenanceCycleSettings />}
+
+          {/* Submenu D: Konfigurasi Property & Operasional */}
+          {adminSubmenu === "general" && (
+            <form
+              onSubmit={handleSaveSettings}
+              className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4"
+            >
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
                 <Building2 className="w-4 h-4 text-blue-600" />
@@ -1302,9 +1374,12 @@ export function Settings() {
               </div>
             </div>
           </form>
+          )}
 
-          {/* User Management Section */}
-          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+          {/* Submenu C: User Management Section */}
+          {adminSubmenu === "users" && (
+            <>
+              <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
                 <Users className="w-4 h-4 text-blue-600" />
@@ -1579,8 +1654,11 @@ export function Settings() {
               </button>
             </div>
           </form>
+          </>
+          )}
 
-          {/* Integrasi Google Sheets & Email Laporan (Meteran & Ruang Mesin Terpisah) */}
+          {/* Submenu D (Part 2): Integrasi Google Sheets & Email Laporan */}
+          {adminSubmenu === "general" && (
           <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
             {/* Tab Selector: Meter vs Ruang Mesin */}
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
@@ -2320,6 +2398,7 @@ export function Settings() {
               </div>
             )}
           </div>
+          )}
         </>
       )}
 

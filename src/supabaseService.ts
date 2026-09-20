@@ -1,6 +1,21 @@
 import { supabase } from "./supabase";
 export { supabase };
-import { User, MeterMenu, Reading, DashboardStat, ChartSeries, AppSettings, PlantLog } from "./types";
+import {
+  User,
+  MeterMenu,
+  Reading,
+  DashboardStat,
+  ChartSeries,
+  AppSettings,
+  PlantLog,
+  ACCategory,
+  AC_CATEGORIES,
+  ACUnitLocation,
+  ACMaintenanceLog,
+  ACUnitScheduleStatus,
+  RealFloor,
+  REAL_FLOORS,
+} from "./types";
 import * as XLSX from "xlsx";
 
 // Default fallback settings
@@ -19,6 +34,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   chart_days_count: 2,
   chart_months_count: 2,
   chart_years_count: 2,
+  ac_maintenance_cycle: "1 Bulan Sekali",
+  ac_maintenance_cycle_months: 1,
 };
 
 // Default initial menus
@@ -331,6 +348,8 @@ export async function fetchAppSettings(): Promise<AppSettings> {
       chart_days_count: Number(data.chart_days_count ?? cached?.chart_days_count ?? 2),
       chart_months_count: Number(data.chart_months_count ?? cached?.chart_months_count ?? 2),
       chart_years_count: Number(data.chart_years_count ?? cached?.chart_years_count ?? 2),
+      ac_maintenance_cycle: (data.ac_maintenance_cycle || cached?.ac_maintenance_cycle || "1 Bulan Sekali") as any,
+      ac_maintenance_cycle_months: Number(data.ac_maintenance_cycle_months ?? cached?.ac_maintenance_cycle_months ?? 1),
     };
 
     if (typeof localStorage !== "undefined") {
@@ -351,10 +370,18 @@ export async function updateAppSettings(patch: Partial<AppSettings>): Promise<Ap
     ? normalizeShiftTime(patch.shift_malam_start, "22:00", true)
     : current.shift_malam_start;
 
+  let cycleMonths = patch.ac_maintenance_cycle_months ?? current.ac_maintenance_cycle_months ?? 1;
+  if (patch.ac_maintenance_cycle) {
+    if (patch.ac_maintenance_cycle === "1 Bulan Sekali") cycleMonths = 1;
+    else if (patch.ac_maintenance_cycle === "2 Bulan Sekali") cycleMonths = 2;
+    else if (patch.ac_maintenance_cycle === "3 Bulan Sekali") cycleMonths = 3;
+  }
+
   const updated: AppSettings = {
     ...current,
     ...patch,
     shift_malam_start: cleanMalam,
+    ac_maintenance_cycle_months: cycleMonths,
   };
 
   if (typeof localStorage !== "undefined") {
@@ -2668,3 +2695,520 @@ export async function restoreSystemFromJSON(jsonData: any): Promise<{ ok: boolea
 
   return await res.json();
 }
+
+// ============================================================================
+// AC PREVENTIVE MAINTENANCE MODULE (UNITS MASTER, LOGS, & SCHEDULING)
+// ============================================================================
+
+export const DEFAULT_AC_UNITS: ACUnitLocation[] = [
+  // 1. Kamar Hotel
+  { id: "unit_km_101", category: "Kamar Hotel", name: "Kamar 101", code: "KM-101", order: 1 },
+  { id: "unit_km_102", category: "Kamar Hotel", name: "Kamar 102", code: "KM-102", order: 2 },
+  { id: "unit_km_103", category: "Kamar Hotel", name: "Kamar 103", code: "KM-103", order: 3 },
+  { id: "unit_km_201", category: "Kamar Hotel", name: "Kamar 201", code: "KM-201", order: 4 },
+  { id: "unit_km_202", category: "Kamar Hotel", name: "Kamar 202", code: "KM-202", order: 5 },
+  { id: "unit_km_203", category: "Kamar Hotel", name: "Kamar 203", code: "KM-203", order: 6 },
+  { id: "unit_km_301", category: "Kamar Hotel", name: "Kamar 301", code: "KM-301", order: 7 },
+  { id: "unit_km_302", category: "Kamar Hotel", name: "Kamar 302", code: "KM-302", order: 8 },
+  { id: "unit_km_501", category: "Kamar Hotel", name: "Suite Room 501", code: "STE-501", order: 9 },
+
+  // 2. Ruang Meeting
+  { id: "unit_rm_singhasari", category: "Ruang Meeting", name: "Ballroom Singhasari", code: "BLR-01", order: 1 },
+  { id: "unit_rm_aster1", category: "Ruang Meeting", name: "Meeting Room Aster 1", code: "MR-AST1", order: 2 },
+  { id: "unit_rm_aster2", category: "Ruang Meeting", name: "Meeting Room Aster 2", code: "MR-AST2", order: 3 },
+  { id: "unit_rm_tulip", category: "Ruang Meeting", name: "Meeting Room Tulip", code: "MR-TLP", order: 4 },
+  { id: "unit_rm_vip", category: "Ruang Meeting", name: "VIP Boardroom", code: "MR-VIP", order: 5 },
+
+  // 3. Office
+  { id: "unit_off_gm", category: "Office", name: "Office General Manager", code: "OFF-GM", order: 1 },
+  { id: "unit_off_hrd", category: "Office", name: "Office HRD & GA", code: "OFF-HRD", order: 2 },
+  { id: "unit_off_acc", category: "Office", name: "Office Accounting & Finance", code: "OFF-ACC", order: 3 },
+  { id: "unit_off_sales", category: "Office", name: "Office Sales & Marketing", code: "OFF-SLS", order: 4 },
+  { id: "unit_off_eng", category: "Office", name: "Office Engineering", code: "OFF-ENG", order: 5 },
+
+  // 4. Ruangan Peralatan Hotel
+  { id: "unit_eq_server", category: "Ruangan Peralatan Hotel", name: "Ruang Server IT & CCTV", code: "EQ-SRV", order: 1 },
+  { id: "unit_eq_lvmdp", category: "Ruangan Peralatan Hotel", name: "Ruang Panel Utama LVMDP", code: "EQ-LVMDP", order: 2 },
+  { id: "unit_eq_genset", category: "Ruangan Peralatan Hotel", name: "Ruang Genset", code: "EQ-GEN", order: 3 },
+  { id: "unit_eq_pompa", category: "Ruangan Peralatan Hotel", name: "Ruang Pompa & Chiller", code: "EQ-PMP", order: 4 },
+  { id: "unit_eq_laundry", category: "Ruangan Peralatan Hotel", name: "Ruang Laundry & Linen", code: "EQ-LND", order: 5 },
+
+  // 5. Outdoor VRV per Lantai
+  { id: "unit_vrv_rf", category: "Outdoor VRV per Lantai", name: "Outdoor VRV Rooftop (Lantai 8)", code: "VRV-LT8", order: 1 },
+  { id: "unit_vrv_lt6", category: "Outdoor VRV per Lantai", name: "Outdoor VRV Lantai 6", code: "VRV-LT6", order: 2 },
+  { id: "unit_vrv_lt4", category: "Outdoor VRV per Lantai", name: "Outdoor VRV Lantai 4", code: "VRV-LT4", order: 3 },
+  { id: "unit_vrv_lt2", category: "Outdoor VRV per Lantai", name: "Outdoor VRV Lantai 2", code: "VRV-LT2", order: 4 },
+  { id: "unit_vrv_podium", category: "Outdoor VRV per Lantai", name: "Outdoor VRV Podium Barat", code: "VRV-POD", order: 5 },
+];
+
+export function getLocalACUnits(): ACUnitLocation[] {
+  if (typeof localStorage === "undefined") return DEFAULT_AC_UNITS;
+  try {
+    const raw = localStorage.getItem("ac_pm_units_master");
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+  } catch {}
+  return DEFAULT_AC_UNITS;
+}
+
+export function saveLocalACUnits(units: ACUnitLocation[]) {
+  if (typeof localStorage === "undefined") return;
+  try {
+    localStorage.setItem("ac_pm_units_master", JSON.stringify(units));
+  } catch {}
+}
+
+export async function fetchACUnits(): Promise<ACUnitLocation[]> {
+  try {
+    const { data, error } = await supabase
+      .from("ac_unit_locations")
+      .select("*")
+      .order("order", { ascending: true });
+
+    if (!error && data && data.length > 0) {
+      saveLocalACUnits(data);
+      return data;
+    }
+  } catch {}
+
+  const cached = getLocalACUnits();
+  return cached;
+}
+
+export async function createACUnit(item: Omit<ACUnitLocation, "id">): Promise<ACUnitLocation> {
+  const newUnit: ACUnitLocation = {
+    ...item,
+    id: `unit_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+    created_at: new Date().toISOString(),
+  };
+
+  const current = getLocalACUnits();
+  const updated = [...current, newUnit];
+  saveLocalACUnits(updated);
+
+  try {
+    await supabase.from("ac_unit_locations").insert({
+      id: newUnit.id,
+      category: newUnit.category,
+      name: newUnit.name,
+      code: newUnit.code || null,
+      notes: newUnit.notes || null,
+      order: newUnit.order || updated.length,
+      created_at: newUnit.created_at,
+    });
+  } catch {}
+
+  return newUnit;
+}
+
+export async function updateACUnit(id: string, updates: Partial<ACUnitLocation>): Promise<ACUnitLocation> {
+  const current = getLocalACUnits();
+  const idx = current.findIndex((u) => u.id === id);
+  if (idx === -1) throw new Error("Unit tidak ditemukan");
+
+  const updatedItem: ACUnitLocation = { ...current[idx], ...updates };
+  current[idx] = updatedItem;
+  saveLocalACUnits(current);
+
+  try {
+    await supabase.from("ac_unit_locations").update(updates).eq("id", id);
+  } catch {}
+
+  return updatedItem;
+}
+
+export async function deleteACUnit(id: string): Promise<void> {
+  const current = getLocalACUnits();
+  const filtered = current.filter((u) => u.id !== id);
+  saveLocalACUnits(filtered);
+
+  try {
+    await supabase.from("ac_unit_locations").delete().eq("id", id);
+  } catch {}
+}
+
+// ------------------- AC MAINTENANCE LOGS -------------------
+
+export function getLocalACLogs(): ACMaintenanceLog[] {
+  if (typeof localStorage === "undefined") return [];
+  try {
+    const raw = localStorage.getItem("ac_pm_maintenance_logs");
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed;
+    }
+  } catch {}
+  return [];
+}
+
+export function saveLocalACLogs(logs: ACMaintenanceLog[]) {
+  if (typeof localStorage === "undefined") return;
+  try {
+    localStorage.setItem("ac_pm_maintenance_logs", JSON.stringify(logs));
+  } catch {}
+}
+
+// Generate default realistic logs if empty so the schedule calculation immediately works
+export function initializeSampleACLogsIfEmpty(): ACMaintenanceLog[] {
+  const current = getLocalACLogs();
+  if (current.length > 0) return current;
+
+  const now = new Date();
+  const dayMs = 24 * 60 * 60 * 1000;
+
+  // 1 unit cleaned 35 days ago (Overdue when cycle is 1 month / 30 days)
+  const d35 = new Date(now.getTime() - 35 * dayMs).toISOString();
+  // 1 unit cleaned 26 days ago (Approaching deadline)
+  const d26 = new Date(now.getTime() - 26 * dayMs).toISOString();
+  // 1 unit cleaned 5 days ago (Optimal / Safe)
+  const d5 = new Date(now.getTime() - 5 * dayMs).toISOString();
+  // 1 unit cleaned 12 days ago (Optimal / Safe)
+  const d12 = new Date(now.getTime() - 12 * dayMs).toISOString();
+
+  const samples: ACMaintenanceLog[] = [
+    {
+      log_id: `aclog_sample_1`,
+      recorded_at: d5,
+      user_id: "usr_technician_1",
+      user_name: "Budi Santoso",
+      category: "Kamar Hotel",
+      unit_id: "unit_km_101",
+      unit_name: "Kamar 101",
+      temp_before: 25.8,
+      temp_after: 20.4,
+      anemo_before: 1.6,
+      anemo_after: 3.4,
+      notes: "Filter kotor berdebu tebal, drain dibersihkan, evaporator dicuci bersih dan wangi.",
+      created_at: d5,
+    },
+    {
+      log_id: `aclog_sample_2`,
+      recorded_at: d26,
+      user_id: "usr_technician_1",
+      user_name: "Budi Santoso",
+      category: "Ruang Meeting",
+      unit_id: "unit_rm_aster1",
+      unit_name: "Meeting Room Aster 1",
+      temp_before: 26.2,
+      temp_after: 21.0,
+      anemo_before: 1.8,
+      anemo_after: 3.6,
+      notes: "Cuci rutin, cek tekanan freon normal, blower sudah dibersihkan.",
+      created_at: d26,
+    },
+    {
+      log_id: `aclog_sample_3`,
+      recorded_at: d35,
+      user_id: "usr_admin_default",
+      user_name: "Chief Engineer",
+      category: "Kamar Hotel",
+      unit_id: "unit_km_501",
+      unit_name: "Suite Room 501",
+      temp_before: 27.1,
+      temp_after: 19.8,
+      anemo_before: 1.2,
+      anemo_after: 3.8,
+      notes: "Kondisi sebelum cleaning sirip kotor sekali, sesudah cleaning hembusan maksimal.",
+      created_at: d35,
+    },
+    {
+      log_id: `aclog_sample_4`,
+      recorded_at: d12,
+      user_id: "usr_technician_1",
+      user_name: "Budi Santoso",
+      category: "Ruangan Peralatan Hotel",
+      unit_id: "unit_eq_server",
+      unit_name: "Ruang Server IT & CCTV",
+      temp_before: 24.5,
+      temp_after: 19.2,
+      anemo_before: 2.1,
+      anemo_after: 4.1,
+      notes: "Unit presisi ruang server, filter ganti baru dan dicuci sirip pendingin.",
+      created_at: d12,
+    },
+  ];
+
+  saveLocalACLogs(samples);
+  return samples;
+}
+
+export async function fetchACMaintenanceLogs(): Promise<ACMaintenanceLog[]> {
+  try {
+    const { data, error } = await supabase
+      .from("ac_maintenance_logs")
+      .select("*")
+      .order("recorded_at", { ascending: false });
+
+    if (!error && data && data.length > 0) {
+      saveLocalACLogs(data);
+      return data;
+    }
+  } catch {}
+
+  const cached = initializeSampleACLogsIfEmpty();
+  return cached.sort((a, b) => new Date(b.recorded_at).getTime() - new Date(a.recorded_at).getTime());
+}
+
+export async function createACMaintenanceLog(
+  logData: Omit<ACMaintenanceLog, "log_id" | "created_at">
+): Promise<ACMaintenanceLog> {
+  const log_id = `aclog_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+  const created_at = new Date().toISOString();
+
+  const record: ACMaintenanceLog = {
+    ...logData,
+    log_id,
+    created_at,
+  };
+
+  const current = getLocalACLogs();
+  const updated = [record, ...current];
+  saveLocalACLogs(updated);
+
+  try {
+    await supabase.from("ac_maintenance_logs").insert({
+      log_id: record.log_id,
+      recorded_at: record.recorded_at,
+      user_id: record.user_id,
+      user_name: record.user_name,
+      category: record.category,
+      unit_id: record.unit_id,
+      unit_name: record.unit_name,
+      temp_before: record.temp_before,
+      temp_after: record.temp_after,
+      anemo_before: record.anemo_before,
+      anemo_after: record.anemo_after,
+      notes: record.notes || "",
+      photo_url: record.photo_url || null,
+      created_at: record.created_at,
+    });
+  } catch (err) {
+    console.warn("Supabase insert ac_maintenance_logs error (falling back to local resilient storage):", err);
+  }
+
+  return record;
+}
+
+export async function updateACMaintenanceLog(
+  log_id: string,
+  updates: Partial<ACMaintenanceLog>
+): Promise<ACMaintenanceLog> {
+  const current = getLocalACLogs();
+  const idx = current.findIndex((l) => l.log_id === log_id);
+  if (idx === -1) throw new Error("Log perawatan tidak ditemukan");
+
+  const updatedItem: ACMaintenanceLog = { ...current[idx], ...updates };
+  current[idx] = updatedItem;
+  saveLocalACLogs(current);
+
+  try {
+    await supabase.from("ac_maintenance_logs").update(updates).eq("log_id", log_id);
+  } catch {}
+
+  return updatedItem;
+}
+
+export async function deleteACMaintenanceLog(log_id: string): Promise<void> {
+  const current = getLocalACLogs();
+  const filtered = current.filter((l) => l.log_id !== log_id);
+  saveLocalACLogs(filtered);
+
+  try {
+    await supabase.from("ac_maintenance_logs").delete().eq("log_id", log_id);
+  } catch {}
+}
+
+// ------------------- CALCULATION OF MAINTENANCE SCHEDULE STATUS -------------------
+
+export function calculateACScheduleStatus(
+  units: ACUnitLocation[],
+  logs: ACMaintenanceLog[],
+  cycleMonths: number = 1
+): ACUnitScheduleStatus[] {
+  const now = new Date();
+  const validCycle = cycleMonths >= 1 && cycleMonths <= 3 ? cycleMonths : 1;
+
+  return units.map((unit) => {
+    // Find all logs for this unit, sorted by recorded_at desc
+    const unitLogs = logs
+      .filter((l) => l.unit_id === unit.id || l.unit_name.toLowerCase().trim() === unit.name.toLowerCase().trim())
+      .sort((a, b) => new Date(b.recorded_at).getTime() - new Date(a.recorded_at).getTime());
+
+    const lastLog = unitLogs.length > 0 ? unitLogs[0] : null;
+
+    if (!lastLog) {
+      return {
+        unit,
+        last_log: null,
+        last_cleaned_date: null,
+        next_due_date: null,
+        days_remaining: -9999,
+        status: "never" as const,
+        status_label: "Belum Pernah Dicuci",
+      };
+    }
+
+    const lastDate = new Date(lastLog.recorded_at);
+    const nextDueDate = new Date(lastDate);
+    // Add cycleMonths to lastDate
+    nextDueDate.setMonth(nextDueDate.getMonth() + validCycle);
+
+    // Calculate calendar days difference
+    const diffMs = nextDueDate.getTime() - now.getTime();
+    const daysRemaining = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+
+    let status: "overdue" | "approaching" | "safe";
+    let status_label: string;
+
+    if (daysRemaining < 0) {
+      status = "overdue";
+      status_label = `Terlambat ${Math.abs(daysRemaining)} Hari`;
+    } else if (daysRemaining <= 7) {
+      status = "approaching";
+      status_label = daysRemaining === 0 ? "Jatuh Tempo Hari Ini" : `Mendekati (${daysRemaining} Hari Lagi)`;
+    } else {
+      status = "safe";
+      status_label = `Aman (${daysRemaining} Hari Lagi)`;
+    }
+
+    return {
+      unit,
+      last_log: lastLog,
+      last_cleaned_date: lastLog.recorded_at,
+      next_due_date: nextDueDate.toISOString(),
+      days_remaining: daysRemaining,
+      status,
+      status_label,
+    };
+  });
+}
+
+export async function getACScheduleOverview(): Promise<ACUnitScheduleStatus[]> {
+  const [units, logs, settings] = await Promise.all([
+    fetchACUnits(),
+    fetchACMaintenanceLogs(),
+    fetchAppSettings(),
+  ]);
+  const cycle = settings?.ac_maintenance_cycle_months || 1;
+  return calculateACScheduleStatus(units, logs, cycle);
+}
+
+// ------------------- EXCEL & TSV EXPORT FOR AC LOGS -------------------
+
+export function exportACLogsToExcel(logs: ACMaintenanceLog[], propertyName = "Engineering Hotel") {
+  const rows = logs.map((l, index) => {
+    const d = new Date(l.recorded_at);
+    const dateStr = d.toLocaleDateString("id-ID", { day: "2-digit", month: "long", year: "numeric" });
+    const timeStr = d.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
+    const tempDiff = Number((l.temp_before - l.temp_after).toFixed(1));
+    const anemoDiff = Number((l.anemo_after - l.anemo_before).toFixed(2));
+
+    return {
+      "No": index + 1,
+      "Tanggal": dateStr,
+      "Jam": timeStr,
+      "Kategori": l.category,
+      "Ruangan / Unit": l.unit_name,
+      "Nama Teknisi": l.user_name,
+      "Suhu Before (°C)": l.temp_before,
+      "Suhu After (°C)": l.temp_after,
+      "Penurunan Suhu (°C)": tempDiff > 0 ? `-${tempDiff} °C` : `${tempDiff} °C`,
+      "Anemometer Before (m/s)": l.anemo_before,
+      "Anemometer After (m/s)": l.anemo_after,
+      "Peningkatan Hembusan (m/s)": anemoDiff > 0 ? `+${anemoDiff} m/s` : `${anemoDiff} m/s`,
+      "Catatan Kondisi": l.notes || "-",
+    };
+  });
+
+  const worksheet = XLSX.utils.json_to_sheet(rows);
+  // Auto column widths
+  worksheet["!cols"] = [
+    { wch: 5 },  // No
+    { wch: 18 }, // Tanggal
+    { wch: 10 }, // Jam
+    { wch: 22 }, // Kategori
+    { wch: 26 }, // Ruangan / Unit
+    { wch: 20 }, // Teknisi
+    { wch: 16 }, // Suhu Before
+    { wch: 16 }, // Suhu After
+    { wch: 18 }, // Penurunan Suhu
+    { wch: 22 }, // Anemo Before
+    { wch: 22 }, // Anemo After
+    { wch: 24 }, // Peningkatan Hembusan
+    { wch: 38 }, // Catatan
+  ];
+
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, "Riwayat AC Maintenance");
+
+  const today = new Date().toISOString().slice(0, 10);
+  const cleanHotel = propertyName.replace(/[^a-zA-Z0-9_-]/g, "_");
+  XLSX.writeFile(workbook, `Laporan_Perawatan_AC_${cleanHotel}_${today}.xlsx`);
+}
+
+export async function copyACLogsToClipboardAsTsv(logs: ACMaintenanceLog[]): Promise<{ success: boolean; rowCount: number; message: string }> {
+  if (logs.length === 0) {
+    return { success: false, rowCount: 0, message: "Tidak ada data riwayat perawatan AC untuk disalin." };
+  }
+
+  const headers = [
+    "No",
+    "Tanggal",
+    "Jam",
+    "Kategori",
+    "Ruangan / Unit",
+    "Teknisi",
+    "Suhu Before (°C)",
+    "Suhu After (°C)",
+    "Penurunan Suhu (°C)",
+    "Anemometer Before (m/s)",
+    "Anemometer After (m/s)",
+    "Peningkatan Angin (m/s)",
+    "Catatan Kondisi",
+  ];
+
+  const tsvLines: string[] = [headers.join("\t")];
+
+  logs.forEach((l, index) => {
+    const d = new Date(l.recorded_at);
+    const dateStr = d.toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" });
+    const timeStr = d.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
+    const tempDiff = (l.temp_before - l.temp_after).toFixed(1);
+    const anemoDiff = (l.anemo_after - l.anemo_before).toFixed(2);
+
+    const row = [
+      String(index + 1),
+      dateStr,
+      timeStr,
+      l.category,
+      l.unit_name,
+      l.user_name,
+      String(l.temp_before),
+      String(l.temp_after),
+      `${tempDiff} °C`,
+      String(l.anemo_before),
+      String(l.anemo_after),
+      `${anemoDiff} m/s`,
+      (l.notes || "").replace(/\t|\r|\n/g, " "),
+    ];
+    tsvLines.push(row.join("\t"));
+  });
+
+  const tsvText = tsvLines.join("\r\n");
+
+  try {
+    await navigator.clipboard.writeText(tsvText);
+  } catch {
+    const textarea = document.createElement("textarea");
+    textarea.value = tsvText;
+    document.body.appendChild(textarea);
+    textarea.select();
+    document.execCommand("copy");
+    document.body.removeChild(textarea);
+  }
+
+  return { success: true, rowCount: logs.length, message: "Data riwayat AC berhasil disalin ke clipboard! Tekan Ctrl+V di Excel/Google Sheets." };
+}
+

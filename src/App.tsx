@@ -7,25 +7,25 @@ import {
   Loader2,
   Building2,
   User as UserIcon,
-  Gauge,
+  Plus,
+  Thermometer,
 } from "lucide-react";
 import { useAuth } from "./auth";
 import { useI18n } from "./i18n";
 import { fetchAppSettings } from "./supabaseService";
 import { Login } from "./components/Login";
 import { Dashboard } from "./components/Dashboard";
-import { LogList } from "./components/LogList";
 import { History } from "./components/History";
 import { Settings } from "./components/Settings";
-import { LogEntryModal } from "./components/LogEntryModal";
-import { PlantLogSheet } from "./components/PlantLogSheet";
+import { ACLogEntryModal } from "./components/ACLogEntryModal";
+import { ACMaintenanceLog } from "./types";
 
 export function App() {
   const { user, loading } = useAuth();
   const { t } = useI18n();
 
-  const [activeTab, setActiveTab] = useState<"dashboard" | "log" | "plant" | "history" | "settings">("dashboard");
-  const [selectedMeterId, setSelectedMeterId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<"dashboard" | "history" | "settings">("dashboard");
+  const [showACLogModal, setShowACLogModal] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [propertyTitle, setPropertyTitle] = useState(user?.property_name || "Engineering Hotel");
 
@@ -43,7 +43,7 @@ export function App() {
     return (
       <div className="min-h-screen bg-[#F8FAFC] flex flex-col items-center justify-center">
         <Loader2 className="w-8 h-8 text-blue-600 animate-spin mb-2" />
-        <p className="text-xs font-semibold text-slate-500">Memuat Hotel Meter Checklist...</p>
+        <p className="text-xs font-semibold text-slate-500">Memuat Preventive Maintenance AC...</p>
       </div>
     );
   }
@@ -52,12 +52,8 @@ export function App() {
     return <Login />;
   }
 
-  const handleSelectMeter = (meterId: string) => {
-    setSelectedMeterId(meterId);
-  };
-
-  const handleEntrySuccess = () => {
-    setSelectedMeterId(null);
+  const handleACEntrySuccess = (_newLog: ACMaintenanceLog) => {
+    setShowACLogModal(false);
     setRefreshKey((k) => k + 1);
     setActiveTab("history");
   };
@@ -89,7 +85,7 @@ export function App() {
               <button
                 id="header-tab-dashboard"
                 onClick={() => setActiveTab("dashboard")}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
                   activeTab === "dashboard"
                     ? "bg-white text-blue-600 shadow-xs"
                     : "text-slate-600 hover:text-slate-900"
@@ -98,46 +94,33 @@ export function App() {
                 <LayoutDashboard className="w-3.5 h-3.5" />
                 <span>{t("dashboard")}</span>
               </button>
+
               <button
-                id="header-tab-log"
-                onClick={() => setActiveTab("log")}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
-                  activeTab === "log"
-                    ? "bg-white text-blue-600 shadow-xs"
-                    : "text-slate-600 hover:text-slate-900"
-                }`}
+                id="header-tab-catat-ac"
+                onClick={() => setShowACLogModal(true)}
+                className="px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer bg-blue-600 text-white hover:bg-blue-700 shadow-xs"
               >
-                <ClipboardEdit className="w-3.5 h-3.5" />
-                <span>{t("log")}</span>
+                <Plus className="w-3.5 h-3.5" />
+                <span>Catat Cuci AC</span>
               </button>
-              <button
-                id="header-tab-plant"
-                onClick={() => setActiveTab("plant")}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
-                  activeTab === "plant"
-                    ? "bg-white text-blue-600 shadow-xs"
-                    : "text-slate-600 hover:text-slate-900"
-                }`}
-              >
-                <Gauge className="w-3.5 h-3.5" />
-                <span>Ruang Mesin</span>
-              </button>
+
               <button
                 id="header-tab-history"
                 onClick={() => setActiveTab("history")}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
                   activeTab === "history"
                     ? "bg-white text-blue-600 shadow-xs"
                     : "text-slate-600 hover:text-slate-900"
                 }`}
               >
                 <HistoryIcon className="w-3.5 h-3.5" />
-                <span>{t("history")}</span>
+                <span>Riwayat Perawatan</span>
               </button>
+
               <button
                 id="header-tab-settings"
                 onClick={() => setActiveTab("settings")}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
                   activeTab === "settings"
                     ? "bg-white text-blue-600 shadow-xs"
                     : "text-slate-600 hover:text-slate-900"
@@ -162,34 +145,28 @@ export function App() {
       {/* Main Content Area */}
       <main className="flex-1 max-w-6xl w-full mx-auto px-4 pt-4 sm:pt-6">
         {activeTab === "dashboard" && (
-          <Dashboard key={refreshKey} onSelectMeter={handleSelectMeter} />
-        )}
-        {activeTab === "log" && (
-          <LogList key={refreshKey} onSelectMeter={handleSelectMeter} />
-        )}
-        {activeTab === "plant" && (
-          <PlantLogSheet key={refreshKey} />
+          <Dashboard key={refreshKey} onOpenACLog={() => setShowACLogModal(true)} />
         )}
         {activeTab === "history" && <History key={refreshKey} />}
         {activeTab === "settings" && <Settings key={refreshKey} />}
       </main>
 
-      {/* Modal for Log Entry */}
-      {selectedMeterId && (
-        <LogEntryModal
-          meterId={selectedMeterId}
-          onClose={() => setSelectedMeterId(null)}
-          onSuccess={handleEntrySuccess}
+      {/* Modal Form Pencatatan Perawatan AC */}
+      {showACLogModal && (
+        <ACLogEntryModal
+          initialUnitId={null}
+          onClose={() => setShowACLogModal(false)}
+          onSuccess={handleACEntrySuccess}
         />
       )}
 
       {/* Bottom Tab Bar (iOS Native Style) */}
       <nav className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-lg border-t border-slate-200/80 shadow-[0_-4px_16px_rgba(0,0,0,0.04)]">
-        <div className="max-w-lg mx-auto flex items-center justify-around h-16 px-1">
+        <div className="max-w-lg mx-auto flex items-center justify-around h-16 px-2">
           <button
             id="tab-dashboard"
             onClick={() => setActiveTab("dashboard")}
-            className={`flex-1 flex flex-col items-center justify-center py-1 transition ${
+            className={`flex-1 flex flex-col items-center justify-center py-1 transition cursor-pointer ${
               activeTab === "dashboard"
                 ? "text-blue-600 font-bold"
                 : "text-slate-500 hover:text-slate-800 font-medium"
@@ -199,49 +176,35 @@ export function App() {
             <span className="text-[10px]">{t("dashboard")}</span>
           </button>
 
+          {/* Special Action Button: Catat Cuci AC */}
           <button
-            id="tab-log"
-            onClick={() => setActiveTab("log")}
-            className={`flex-1 flex flex-col items-center justify-center py-1 transition ${
-              activeTab === "log"
-                ? "text-blue-600 font-bold"
-                : "text-slate-500 hover:text-slate-800 font-medium"
-            }`}
+            id="tab-catat-ac"
+            onClick={() => setShowACLogModal(true)}
+            className="flex flex-col items-center justify-center -mt-5 cursor-pointer group"
           >
-            <ClipboardEdit className="w-5 h-5 mb-0.5" />
-            <span className="text-[10px] whitespace-nowrap">{t("log")}</span>
-          </button>
-
-          <button
-            id="tab-plant"
-            onClick={() => setActiveTab("plant")}
-            className={`flex-1 flex flex-col items-center justify-center py-1 transition ${
-              activeTab === "plant"
-                ? "text-blue-600 font-bold"
-                : "text-slate-500 hover:text-slate-800 font-medium"
-            }`}
-          >
-            <Gauge className="w-5 h-5 mb-0.5" />
-            <span className="text-[10px] whitespace-nowrap">Ruang Mesin</span>
+            <div className="w-12 h-12 rounded-full bg-blue-600 group-hover:bg-blue-700 text-white flex items-center justify-center shadow-lg shadow-blue-500/30 transition transform group-active:scale-95 border-2 border-white">
+              <Plus className="w-6 h-6 stroke-[2.5]" />
+            </div>
+            <span className="text-[10px] font-bold text-blue-600 mt-0.5">Catat AC</span>
           </button>
 
           <button
             id="tab-history"
             onClick={() => setActiveTab("history")}
-            className={`flex-1 flex flex-col items-center justify-center py-1 transition ${
+            className={`flex-1 flex flex-col items-center justify-center py-1 transition cursor-pointer ${
               activeTab === "history"
                 ? "text-blue-600 font-bold"
                 : "text-slate-500 hover:text-slate-800 font-medium"
             }`}
           >
             <HistoryIcon className="w-5 h-5 mb-0.5" />
-            <span className="text-[10px]">{t("history")}</span>
+            <span className="text-[10px]">Riwayat</span>
           </button>
 
           <button
             id="tab-settings"
             onClick={() => setActiveTab("settings")}
-            className={`flex-1 flex flex-col items-center justify-center py-1 transition ${
+            className={`flex-1 flex flex-col items-center justify-center py-1 transition cursor-pointer ${
               activeTab === "settings"
                 ? "text-blue-600 font-bold"
                 : "text-slate-500 hover:text-slate-800 font-medium"

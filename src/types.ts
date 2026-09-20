@@ -95,6 +95,76 @@ export interface AppSettings {
   genset_min_battery_volt?: number; // default: 24.0 V
   hydrant_min_battery_volt?: number; // default: 24.0 V
   lvmdp_max_room_temp?: number; // default: 32.0 °C
+  ac_maintenance_cycle?: "1 Bulan Sekali" | "2 Bulan Sekali" | "3 Bulan Sekali";
+  ac_maintenance_cycle_months?: number; // 1, 2, or 3
+}
+
+export type ACCategory =
+  | "Kamar Hotel"
+  | "Ruang Meeting"
+  | "Office"
+  | "Ruangan Peralatan Hotel"
+  | "Outdoor VRV per Lantai";
+
+export const AC_CATEGORIES: ACCategory[] = [
+  "Kamar Hotel",
+  "Ruang Meeting",
+  "Office",
+  "Ruangan Peralatan Hotel",
+  "Outdoor VRV per Lantai",
+];
+
+export const REAL_FLOORS = [
+  "Lantai 3",
+  "Lantai 5",
+  "Lantai 6",
+  "Lantai 7",
+  "Lantai 8",
+  "Lantai 9",
+  "Lantai 10",
+  "Lantai 11",
+  "Lantai 12",
+  "Lantai Lain / VRV",
+] as const;
+
+export type RealFloor = (typeof REAL_FLOORS)[number];
+
+export interface ACUnitLocation {
+  id: string;
+  category: ACCategory;
+  floor?: RealFloor | string; // Penanda lantai riil: Lantai 3, Lantai 5, dst.
+  name: string; // contoh: "Kamar 301", "Kamar 502", "Meeting Aster 1", "Office HRD", "Outdoor VRV Lt. 5"
+  code?: string;
+  notes?: string;
+  order?: number;
+  created_at?: string;
+}
+
+export interface ACMaintenanceLog {
+  log_id: string;
+  recorded_at: string; // ISO string otomatis waktu pengisian
+  user_id: string;
+  user_name: string; // Nama Teknisi yang login
+  category: ACCategory;
+  unit_id: string;
+  unit_name: string; // Nama/Nomor Ruangan / Identifikasi Lantai Outdoor VRV
+  temp_before: number; // Suhu Sebelum Cleaning (°C)
+  temp_after: number; // Suhu Sesudah Cleaning (°C)
+  anemo_before: number; // Anemometer Sebelum Cleaning (m/s)
+  anemo_after: number; // Anemometer Sesudah Cleaning (m/s)
+  notes: string; // Catatan Tambahan kondisi sebelum dan sesudah
+  photo_url?: string;
+  created_at?: string;
+}
+
+export interface ACUnitScheduleStatus {
+  unit: ACUnitLocation;
+  last_log: ACMaintenanceLog | null;
+  last_cleaned_date: string | null;
+  next_due_date: string | null;
+  days_remaining: number; // < 0 is overdue, 0..7 is approaching, > 7 is safe
+  status: "overdue" | "approaching" | "safe" | "never";
+  status_label: string;
 }
 
 export interface PlantLog {

@@ -195,12 +195,21 @@ export function Login() {
           />
           <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/60 to-transparent" />
           <div className="absolute bottom-4 left-6 right-6">
-            <div className="flex items-center gap-2 text-blue-300 text-xs font-semibold uppercase tracking-wider mb-1">
-              <Building2 className="w-4 h-4 text-blue-400" />
-              <span className="truncate max-w-[280px]">{hotelTitle || t("apps_title")}</span>
+            <div className="flex items-center gap-3">
+              <img
+                src="/app-icon.png"
+                alt="Preventive Maintenance Icon"
+                className="w-13 h-13 rounded-xl shadow-lg border border-white/25 object-cover shrink-0"
+              />
+              <div>
+                <div className="flex items-center gap-1.5 text-blue-300 text-xs font-semibold uppercase tracking-wider mb-0.5">
+                  <Building2 className="w-3.5 h-3.5 text-blue-400" />
+                  <span className="truncate max-w-[240px]">{hotelTitle || t("apps_title")}</span>
+                </div>
+                <h1 className="text-xl font-extrabold text-white">{t("login")}</h1>
+                <p className="text-xs text-slate-300">{t("tagline_sub")}</p>
+              </div>
             </div>
-            <h1 className="text-2xl font-extrabold text-white">{t("login")}</h1>
-            <p className="text-xs text-slate-300 mt-0.5">{t("tagline_sub")}</p>
           </div>
         </div>
 

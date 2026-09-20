@@ -68,9 +68,11 @@ export function App() {
       <header className="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-slate-200">
         <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center font-black text-sm shadow-sm">
-              MC
-            </div>
+            <img
+              src="/favicon.png"
+              alt="Preventive Maintenance Logo"
+              className="w-8 h-8 rounded-lg object-cover shadow-xs border border-slate-200/60"
+            />
             <div>
               <span className="font-extrabold text-sm text-slate-900 tracking-tight block">
                 {t("apps_title")}

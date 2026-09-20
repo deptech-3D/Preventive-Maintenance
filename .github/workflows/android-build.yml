@@ -16,7 +16,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: 'npm'
 
       - name: Install Dependencies
@@ -43,4 +43,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: Preventive-Maintenance-APK
+
           path: android/app/build/outputs/apk/release/app-release-unsigned.apk

@@ -4,10 +4,9 @@ import { Preferences } from '@capacitor/preferences'
 // ============================================================================
 // Konfigurasi URL & Key Supabase
 // ============================================================================
-export const RAW_URL = import.meta.env.VITE_SUPABASE_URL || 'https://rxovpvxkgocorypesyjv.supabase.co'
-// Supabase Client membutuhkan base project URL (menghapus akhiran /rest/v1 jika ada)
+export const RAW_URL = import.meta.env.VITE_SUPABASE_URL || 'https://supabase.co'
 export const SUPABASE_URL = RAW_URL.replace(/\/rest\/v1\/?$/, '')
-export const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || 'sb_secret_2V0Crt5G4CfX90J0xxAMKw_glBOqSmi'
+export const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || 'sb_secret_atau_anon_key_kamu_yang_asli_tanpa_tanda_kurung_siku'
 // ============================================================================
 
 // Custom storage adapter menggunakan Capacitor Preferences

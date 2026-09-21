@@ -23,6 +23,7 @@ import {
   RealFloor,
   resolveFloorFromUnit,
   ACMaintenanceLog,
+  normalizeACCategory,
 } from "../types";
 import { getACScheduleOverview } from "../supabaseService";
 
@@ -72,7 +73,7 @@ export function ACSearchMode({ onOpenACLog }: ACSearchModeProps) {
       }
 
       // Category Filter
-      if (selectedCategory !== "all" && unit.category !== selectedCategory) {
+      if (selectedCategory !== "all" && normalizeACCategory(unit.category) !== selectedCategory) {
         return false;
       }
 
@@ -88,7 +89,9 @@ export function ACSearchMode({ onOpenACLog }: ACSearchModeProps) {
         const q = query.toLowerCase().trim();
         const matchName = unit.name.toLowerCase().includes(q);
         const matchCode = unit.code ? unit.code.toLowerCase().includes(q) : false;
-        const matchCat = unit.category.toLowerCase().includes(q);
+        const matchCat =
+          normalizeACCategory(unit.category).toLowerCase().includes(q) ||
+          unit.category.toLowerCase().includes(q);
         const matchFloor = unitFloor.toLowerCase().includes(q);
         const matchNotes = unit.notes ? unit.notes.toLowerCase().includes(q) : false;
         if (!matchName && !matchCode && !matchCat && !matchFloor && !matchNotes) return false;

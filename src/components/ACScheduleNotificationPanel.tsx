@@ -25,6 +25,7 @@ import {
   AppSettings,
   ACMaintenanceLog,
   resolveFloorFromUnit,
+  normalizeACCategory,
 } from "../types";
 import {
   getACScheduleOverview,
@@ -107,7 +108,7 @@ export function ACScheduleNotificationPanel({
     }
 
     // Category Filter
-    if (categoryFilter !== "all" && item.unit.category !== categoryFilter) {
+    if (categoryFilter !== "all" && normalizeACCategory(item.unit.category) !== categoryFilter) {
       return false;
     }
 
@@ -118,7 +119,9 @@ export function ACScheduleNotificationPanel({
       const resolvedFloor = resolveFloorFromUnit(unit).toLowerCase();
       const matchName = unit.name.toLowerCase().includes(q);
       const matchCode = unit.code ? unit.code.toLowerCase().includes(q) : false;
-      const matchCat = unit.category.toLowerCase().includes(q);
+      const matchCat =
+        normalizeACCategory(unit.category).toLowerCase().includes(q) ||
+        unit.category.toLowerCase().includes(q);
       const matchFloor = (unit.floor ? unit.floor.toLowerCase() : "").includes(q) || resolvedFloor.includes(q);
       const matchNotes = unit.notes ? unit.notes.toLowerCase().includes(q) : false;
       if (!matchName && !matchCode && !matchCat && !matchFloor && !matchNotes) return false;

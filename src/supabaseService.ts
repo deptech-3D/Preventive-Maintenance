@@ -16,6 +16,7 @@ import {
   RealFloor,
   REAL_FLOORS,
   resolveFloorFromUnit,
+  normalizeACCategory,
 } from "./types";
 import * as XLSX from "xlsx";
 
@@ -2703,104 +2704,104 @@ export async function restoreSystemFromJSON(jsonData: any): Promise<{ ok: boolea
 
 export const DEFAULT_AC_UNITS: ACUnitLocation[] = [
   // Basement
-  { id: "unit_b_lvmdp", category: "Ruangan Peralatan Hotel", floor: "Basement", name: "Ruang Panel Utama LVMDP (Basement)", code: "EQ-LVMDP", order: 1 },
-  { id: "unit_b_genset", category: "Ruangan Peralatan Hotel", floor: "Basement", name: "Ruang Genset & Solar (Basement)", code: "EQ-GEN", order: 2 },
-  { id: "unit_b_laundry", category: "Ruangan Peralatan Hotel", floor: "Basement", name: "Ruang Laundry & Linen (Basement)", code: "EQ-LND", order: 3 },
-  { id: "unit_b_loading", category: "Office", floor: "Basement", name: "Office Loading Dock & Security (Basement)", code: "OFF-B", order: 4 },
-  { id: "unit_b_pompa", category: "Ruangan Peralatan Hotel", floor: "Basement", name: "Ruang Pompa & Chiller (Basement)", code: "EQ-PMP", order: 5 },
-  { id: "unit_b_stp", category: "Ruangan Peralatan Hotel", floor: "Basement", name: "Ruang STP & GWT (Basement)", code: "EQ-STP", order: 6 },
-  { id: "unit_b_fan", category: "Ruangan Peralatan Hotel", floor: "Basement", name: "Ruang Exhaust Fan Parkir (Basement)", code: "EQ-EXH", order: 7 },
+  { id: "unit_b_lvmdp", category: "Ruang Teknis & Utilitas", floor: "Basement", name: "Ruang Panel Utama LVMDP (Basement)", code: "EQ-LVMDP", order: 1 },
+  { id: "unit_b_genset", category: "Ruang Teknis & Utilitas", floor: "Basement", name: "Ruang Genset & Solar (Basement)", code: "EQ-GEN", order: 2 },
+  { id: "unit_b_laundry", category: "Area Operasional & Servis", floor: "Basement", name: "Ruang Laundry & Linen (Basement)", code: "EQ-LND", order: 3 },
+  { id: "unit_b_loading", category: "Area Operasional & Servis", floor: "Basement", name: "Office Loading Dock & Security (Basement)", code: "OFF-B", order: 4 },
+  { id: "unit_b_pompa", category: "Ruang Teknis & Utilitas", floor: "Basement", name: "Ruang Pompa & Chiller (Basement)", code: "EQ-PMP", order: 5 },
+  { id: "unit_b_stp", category: "Ruang Teknis & Utilitas", floor: "Basement", name: "Ruang STP & GWT (Basement)", code: "EQ-STP", order: 6 },
+  { id: "unit_b_fan", category: "Ruang Teknis & Utilitas", floor: "Basement", name: "Ruang Exhaust Fan Parkir (Basement)", code: "EQ-EXH", order: 7 },
 
   // Lobby / Lantai 1
-  { id: "unit_l1_lobby", category: "Ruangan Peralatan Hotel", floor: "Lobby / Lantai 1", name: "Lobby & Reception Area", code: "LOB-01", order: 8 },
-  { id: "unit_l1_resto", category: "Ruangan Peralatan Hotel", floor: "Lobby / Lantai 1", name: "Restoran / Coffee Shop", code: "RST-01", order: 9 },
-  { id: "unit_l1_fo", category: "Office", floor: "Lobby / Lantai 1", name: "Office Front Desk & Back Office", code: "OFF-FO", order: 10 },
+  { id: "unit_l1_lobby", category: "Area Publik & Komersial", floor: "Lobby / Lantai 1", name: "Lobby & Reception Area", code: "LOB-01", order: 8 },
+  { id: "unit_l1_resto", category: "Area Publik & Komersial", floor: "Lobby / Lantai 1", name: "Restoran / Coffee Shop", code: "RST-01", order: 9 },
+  { id: "unit_l1_fo", category: "Area Operasional & Servis", floor: "Lobby / Lantai 1", name: "Office Front Desk & Back Office", code: "OFF-FO", order: 10 },
 
   // Lantai 2
-  { id: "unit_l2_ballroom", category: "Ruang Meeting", floor: "Lantai 2", name: "Grand Ballroom Aster (Lantai 2)", code: "BLR-L2", order: 11 },
-  { id: "unit_l2_meeting", category: "Ruang Meeting", floor: "Lantai 2", name: "Ruang Meeting Tulip (Lantai 2)", code: "MR-TLP", order: 12 },
-  { id: "unit_l2_office", category: "Office", floor: "Lantai 2", name: "Office Management & Sales (Lantai 2)", code: "OFF-L2", order: 13 },
+  { id: "unit_l2_ballroom", category: "Area Publik & Komersial", floor: "Lantai 2", name: "Grand Ballroom Aster (Lantai 2)", code: "BLR-L2", order: 11 },
+  { id: "unit_l2_meeting", category: "Area Publik & Komersial", floor: "Lantai 2", name: "Ruang Meeting Tulip (Lantai 2)", code: "MR-TLP", order: 12 },
+  { id: "unit_l2_office", category: "Area Operasional & Servis", floor: "Lantai 2", name: "Office Management & Sales (Lantai 2)", code: "OFF-L2", order: 13 },
 
   // Lantai 3 (Kamar Hotel)
-  { id: "unit_km_301", category: "Kamar Hotel", floor: "Lantai 3", name: "Kamar 301", code: "KM-301", order: 8 },
-  { id: "unit_km_302", category: "Kamar Hotel", floor: "Lantai 3", name: "Kamar 302", code: "KM-302", order: 9 },
-  { id: "unit_km_303", category: "Kamar Hotel", floor: "Lantai 3", name: "Kamar 303", code: "KM-303", order: 10 },
-  { id: "unit_km_304", category: "Kamar Hotel", floor: "Lantai 3", name: "Kamar 304", code: "KM-304", order: 11 },
-  { id: "unit_km_305", category: "Kamar Hotel", floor: "Lantai 3", name: "Kamar 305", code: "KM-305", order: 12 },
-  { id: "unit_km_306", category: "Kamar Hotel", floor: "Lantai 3", name: "Kamar 306", code: "KM-306", order: 13 },
-  { id: "unit_km_307", category: "Kamar Hotel", floor: "Lantai 3", name: "Kamar 307", code: "KM-307", order: 14 },
-  { id: "unit_km_308", category: "Kamar Hotel", floor: "Lantai 3", name: "Kamar 308", code: "KM-308", order: 15 },
+  { id: "unit_km_301", category: "Area Privat / Kamar Hotel", floor: "Lantai 3", name: "Kamar 301", code: "KM-301", order: 8 },
+  { id: "unit_km_302", category: "Area Privat / Kamar Hotel", floor: "Lantai 3", name: "Kamar 302", code: "KM-302", order: 9 },
+  { id: "unit_km_303", category: "Area Privat / Kamar Hotel", floor: "Lantai 3", name: "Kamar 303", code: "KM-303", order: 10 },
+  { id: "unit_km_304", category: "Area Privat / Kamar Hotel", floor: "Lantai 3", name: "Kamar 304", code: "KM-304", order: 11 },
+  { id: "unit_km_305", category: "Area Privat / Kamar Hotel", floor: "Lantai 3", name: "Kamar 305", code: "KM-305", order: 12 },
+  { id: "unit_km_306", category: "Area Privat / Kamar Hotel", floor: "Lantai 3", name: "Kamar 306", code: "KM-306", order: 13 },
+  { id: "unit_km_307", category: "Area Privat / Kamar Hotel", floor: "Lantai 3", name: "Kamar 307", code: "KM-307", order: 14 },
+  { id: "unit_km_308", category: "Area Privat / Kamar Hotel", floor: "Lantai 3", name: "Kamar 308", code: "KM-308", order: 15 },
 
   // Lantai 5 (Kamar Hotel)
-  { id: "unit_km_501", category: "Kamar Hotel", floor: "Lantai 5", name: "Suite Room 501", code: "STE-501", order: 16 },
-  { id: "unit_km_502", category: "Kamar Hotel", floor: "Lantai 5", name: "Kamar 502", code: "KM-502", order: 17 },
-  { id: "unit_km_503", category: "Kamar Hotel", floor: "Lantai 5", name: "Kamar 503", code: "KM-503", order: 18 },
-  { id: "unit_km_504", category: "Kamar Hotel", floor: "Lantai 5", name: "Kamar 504", code: "KM-504", order: 19 },
-  { id: "unit_km_505", category: "Kamar Hotel", floor: "Lantai 5", name: "Kamar 505", code: "KM-505", order: 20 },
-  { id: "unit_km_506", category: "Kamar Hotel", floor: "Lantai 5", name: "Kamar 506", code: "KM-506", order: 21 },
+  { id: "unit_km_501", category: "Area Privat / Kamar Hotel", floor: "Lantai 5", name: "Suite Room 501", code: "STE-501", order: 16 },
+  { id: "unit_km_502", category: "Area Privat / Kamar Hotel", floor: "Lantai 5", name: "Kamar 502", code: "KM-502", order: 17 },
+  { id: "unit_km_503", category: "Area Privat / Kamar Hotel", floor: "Lantai 5", name: "Kamar 503", code: "KM-503", order: 18 },
+  { id: "unit_km_504", category: "Area Privat / Kamar Hotel", floor: "Lantai 5", name: "Kamar 504", code: "KM-504", order: 19 },
+  { id: "unit_km_505", category: "Area Privat / Kamar Hotel", floor: "Lantai 5", name: "Kamar 505", code: "KM-505", order: 20 },
+  { id: "unit_km_506", category: "Area Privat / Kamar Hotel", floor: "Lantai 5", name: "Kamar 506", code: "KM-506", order: 21 },
 
   // Lantai 6 (Kamar Hotel)
-  { id: "unit_km_601", category: "Kamar Hotel", floor: "Lantai 6", name: "Kamar 601", code: "KM-601", order: 22 },
-  { id: "unit_km_602", category: "Kamar Hotel", floor: "Lantai 6", name: "Kamar 602", code: "KM-602", order: 23 },
-  { id: "unit_km_603", category: "Kamar Hotel", floor: "Lantai 6", name: "Kamar 603", code: "KM-603", order: 24 },
-  { id: "unit_km_604", category: "Kamar Hotel", floor: "Lantai 6", name: "Kamar 604", code: "KM-604", order: 25 },
+  { id: "unit_km_601", category: "Area Privat / Kamar Hotel", floor: "Lantai 6", name: "Kamar 601", code: "KM-601", order: 22 },
+  { id: "unit_km_602", category: "Area Privat / Kamar Hotel", floor: "Lantai 6", name: "Kamar 602", code: "KM-602", order: 23 },
+  { id: "unit_km_603", category: "Area Privat / Kamar Hotel", floor: "Lantai 6", name: "Kamar 603", code: "KM-603", order: 24 },
+  { id: "unit_km_604", category: "Area Privat / Kamar Hotel", floor: "Lantai 6", name: "Kamar 604", code: "KM-604", order: 25 },
 
   // Lantai 7 (Kamar Hotel)
-  { id: "unit_km_701", category: "Kamar Hotel", floor: "Lantai 7", name: "Kamar 701", code: "KM-701", order: 26 },
-  { id: "unit_km_702", category: "Kamar Hotel", floor: "Lantai 7", name: "Kamar 702", code: "KM-702", order: 27 },
-  { id: "unit_km_703", category: "Kamar Hotel", floor: "Lantai 7", name: "Kamar 703", code: "KM-703", order: 28 },
-  { id: "unit_km_704", category: "Kamar Hotel", floor: "Lantai 7", name: "Kamar 704", code: "KM-704", order: 29 },
+  { id: "unit_km_701", category: "Area Privat / Kamar Hotel", floor: "Lantai 7", name: "Kamar 701", code: "KM-701", order: 26 },
+  { id: "unit_km_702", category: "Area Privat / Kamar Hotel", floor: "Lantai 7", name: "Kamar 702", code: "KM-702", order: 27 },
+  { id: "unit_km_703", category: "Area Privat / Kamar Hotel", floor: "Lantai 7", name: "Kamar 703", code: "KM-703", order: 28 },
+  { id: "unit_km_704", category: "Area Privat / Kamar Hotel", floor: "Lantai 7", name: "Kamar 704", code: "KM-704", order: 29 },
 
   // Lantai 8 (Kamar Hotel)
-  { id: "unit_km_801", category: "Kamar Hotel", floor: "Lantai 8", name: "Kamar 801", code: "KM-801", order: 30 },
-  { id: "unit_km_802", category: "Kamar Hotel", floor: "Lantai 8", name: "Kamar 802", code: "KM-802", order: 31 },
-  { id: "unit_km_803", category: "Kamar Hotel", floor: "Lantai 8", name: "Kamar 803", code: "KM-803", order: 32 },
+  { id: "unit_km_801", category: "Area Privat / Kamar Hotel", floor: "Lantai 8", name: "Kamar 801", code: "KM-801", order: 30 },
+  { id: "unit_km_802", category: "Area Privat / Kamar Hotel", floor: "Lantai 8", name: "Kamar 802", code: "KM-802", order: 31 },
+  { id: "unit_km_803", category: "Area Privat / Kamar Hotel", floor: "Lantai 8", name: "Kamar 803", code: "KM-803", order: 32 },
 
   // Lantai 9 (Kamar Hotel)
-  { id: "unit_km_901", category: "Kamar Hotel", floor: "Lantai 9", name: "Kamar 901", code: "KM-901", order: 33 },
-  { id: "unit_km_902", category: "Kamar Hotel", floor: "Lantai 9", name: "Kamar 902", code: "KM-902", order: 34 },
-  { id: "unit_km_903", category: "Kamar Hotel", floor: "Lantai 9", name: "Kamar 903", code: "KM-903", order: 35 },
+  { id: "unit_km_901", category: "Area Privat / Kamar Hotel", floor: "Lantai 9", name: "Kamar 901", code: "KM-901", order: 33 },
+  { id: "unit_km_902", category: "Area Privat / Kamar Hotel", floor: "Lantai 9", name: "Kamar 902", code: "KM-902", order: 34 },
+  { id: "unit_km_903", category: "Area Privat / Kamar Hotel", floor: "Lantai 9", name: "Kamar 903", code: "KM-903", order: 35 },
 
   // Lantai 10 (Kamar Hotel)
-  { id: "unit_km_1001", category: "Kamar Hotel", floor: "Lantai 10", name: "Kamar 1001", code: "KM-1001", order: 36 },
-  { id: "unit_km_1002", category: "Kamar Hotel", floor: "Lantai 10", name: "Kamar 1002", code: "KM-1002", order: 37 },
-  { id: "unit_km_1003", category: "Kamar Hotel", floor: "Lantai 10", name: "Kamar 1003", code: "KM-1003", order: 38 },
+  { id: "unit_km_1001", category: "Area Privat / Kamar Hotel", floor: "Lantai 10", name: "Kamar 1001", code: "KM-1001", order: 36 },
+  { id: "unit_km_1002", category: "Area Privat / Kamar Hotel", floor: "Lantai 10", name: "Kamar 1002", code: "KM-1002", order: 37 },
+  { id: "unit_km_1003", category: "Area Privat / Kamar Hotel", floor: "Lantai 10", name: "Kamar 1003", code: "KM-1003", order: 38 },
 
   // Lantai 11 (Kamar Hotel)
-  { id: "unit_km_1101", category: "Kamar Hotel", floor: "Lantai 11", name: "Kamar 1101", code: "KM-1101", order: 39 },
-  { id: "unit_km_1102", category: "Kamar Hotel", floor: "Lantai 11", name: "Kamar 1102", code: "KM-1102", order: 40 },
+  { id: "unit_km_1101", category: "Area Privat / Kamar Hotel", floor: "Lantai 11", name: "Kamar 1101", code: "KM-1101", order: 39 },
+  { id: "unit_km_1102", category: "Area Privat / Kamar Hotel", floor: "Lantai 11", name: "Kamar 1102", code: "KM-1102", order: 40 },
 
   // Lantai 12 (Kamar Hotel)
-  { id: "unit_km_1201", category: "Kamar Hotel", floor: "Lantai 12", name: "President Suite 1201", code: "PS-1201", order: 41 },
-  { id: "unit_km_1202", category: "Kamar Hotel", floor: "Lantai 12", name: "Executive Suite 1202", code: "ES-1202", order: 42 },
+  { id: "unit_km_1201", category: "Area Privat / Kamar Hotel", floor: "Lantai 12", name: "President Suite 1201", code: "PS-1201", order: 41 },
+  { id: "unit_km_1202", category: "Area Privat / Kamar Hotel", floor: "Lantai 12", name: "Executive Suite 1202", code: "ES-1202", order: 42 },
 
   // Rooftop
-  { id: "unit_rf_vrv", category: "Outdoor VRV per Lantai", floor: "Rooftop", name: "Outdoor VRV Rooftop", code: "VRV-RF", order: 43 },
-  { id: "unit_rf_lift", category: "Ruangan Peralatan Hotel", floor: "Rooftop", name: "Ruang Motor Lift Rooftop", code: "EQ-LIFT", order: 44 },
-  { id: "unit_rf_ahu", category: "Ruangan Peralatan Hotel", floor: "Rooftop", name: "Ruang AHU & Exhaust Rooftop", code: "EQ-AHU", order: 45 },
+  { id: "unit_rf_vrv", category: "Area Utilitas/Outdoor VRV", floor: "Rooftop", name: "Outdoor VRV Rooftop", code: "VRV-RF", order: 43 },
+  { id: "unit_rf_lift", category: "Ruang Teknis & Utilitas", floor: "Rooftop", name: "Ruang Motor Lift Rooftop", code: "EQ-LIFT", order: 44 },
+  { id: "unit_rf_ahu", category: "Ruang Teknis & Utilitas", floor: "Rooftop", name: "Ruang AHU & Exhaust Rooftop", code: "EQ-AHU", order: 45 },
 
   // Lantai Lain / VRV - Ruang Meeting
-  { id: "unit_rm_singhasari", category: "Ruang Meeting", floor: "Lantai Lain / VRV", name: "Ballroom Singhasari", code: "BLR-01", order: 46 },
-  { id: "unit_rm_aster1", category: "Ruang Meeting", floor: "Lantai Lain / VRV", name: "Meeting Room Aster 1", code: "MR-AST1", order: 47 },
-  { id: "unit_rm_aster2", category: "Ruang Meeting", floor: "Lantai Lain / VRV", name: "Meeting Room Aster 2", code: "MR-AST2", order: 48 },
-  { id: "unit_rm_tulip", category: "Ruang Meeting", floor: "Lantai Lain / VRV", name: "Meeting Room Tulip", code: "MR-TLP", order: 49 },
-  { id: "unit_rm_vip", category: "Ruang Meeting", floor: "Lantai Lain / VRV", name: "VIP Boardroom", code: "MR-VIP", order: 50 },
+  { id: "unit_rm_singhasari", category: "Area Publik & Komersial", floor: "Lantai Lain / VRV", name: "Ballroom Singhasari", code: "BLR-01", order: 46 },
+  { id: "unit_rm_aster1", category: "Area Publik & Komersial", floor: "Lantai Lain / VRV", name: "Meeting Room Aster 1", code: "MR-AST1", order: 47 },
+  { id: "unit_rm_aster2", category: "Area Publik & Komersial", floor: "Lantai Lain / VRV", name: "Meeting Room Aster 2", code: "MR-AST2", order: 48 },
+  { id: "unit_rm_tulip", category: "Area Publik & Komersial", floor: "Lantai Lain / VRV", name: "Meeting Room Tulip", code: "MR-TLP", order: 49 },
+  { id: "unit_rm_vip", category: "Area Publik & Komersial", floor: "Lantai Lain / VRV", name: "VIP Boardroom", code: "MR-VIP", order: 50 },
 
   // Lantai Lain / VRV - Office
-  { id: "unit_off_gm", category: "Office", floor: "Lantai Lain / VRV", name: "Office General Manager", code: "OFF-GM", order: 51 },
-  { id: "unit_off_hrd", category: "Office", floor: "Lantai Lain / VRV", name: "Office HRD & GA", code: "OFF-HRD", order: 52 },
-  { id: "unit_off_acc", category: "Office", floor: "Lantai Lain / VRV", name: "Office Accounting & Finance", code: "OFF-ACC", order: 53 },
-  { id: "unit_off_sales", category: "Office", floor: "Lantai Lain / VRV", name: "Office Sales & Marketing", code: "OFF-SLS", order: 54 },
-  { id: "unit_off_eng", category: "Office", floor: "Lantai Lain / VRV", name: "Office Engineering", code: "OFF-ENG", order: 55 },
+  { id: "unit_off_gm", category: "Area Operasional & Servis", floor: "Lantai Lain / VRV", name: "Office General Manager", code: "OFF-GM", order: 51 },
+  { id: "unit_off_hrd", category: "Area Operasional & Servis", floor: "Lantai Lain / VRV", name: "Office HRD & GA", code: "OFF-HRD", order: 52 },
+  { id: "unit_off_acc", category: "Area Operasional & Servis", floor: "Lantai Lain / VRV", name: "Office Accounting & Finance", code: "OFF-ACC", order: 53 },
+  { id: "unit_off_sales", category: "Area Operasional & Servis", floor: "Lantai Lain / VRV", name: "Office Sales & Marketing", code: "OFF-SLS", order: 54 },
+  { id: "unit_off_eng", category: "Area Operasional & Servis", floor: "Lantai Lain / VRV", name: "Office Engineering", code: "OFF-ENG", order: 55 },
 
   // Lantai Lain / VRV - Ruangan Peralatan Hotel
-  { id: "unit_eq_server", category: "Ruangan Peralatan Hotel", floor: "Lantai Lain / VRV", name: "Ruang Server IT & CCTV", code: "EQ-SRV", order: 56 },
+  { id: "unit_eq_server", category: "Ruang Teknis & Utilitas", floor: "Lantai Lain / VRV", name: "Ruang Server IT & CCTV", code: "EQ-SRV", order: 56 },
 
   // Lantai Lain / VRV - Outdoor VRV per Lantai
-  { id: "unit_vrv_lt6", category: "Outdoor VRV per Lantai", floor: "Lantai Lain / VRV", name: "Outdoor VRV Lantai 6", code: "VRV-LT6", order: 57 },
-  { id: "unit_vrv_lt5", category: "Outdoor VRV per Lantai", floor: "Lantai Lain / VRV", name: "Outdoor VRV Lantai 5", code: "VRV-LT5", order: 58 },
-  { id: "unit_vrv_lt3", category: "Outdoor VRV per Lantai", floor: "Lantai Lain / VRV", name: "Outdoor VRV Lantai 3", code: "VRV-LT3", order: 59 },
-  { id: "unit_vrv_podium", category: "Outdoor VRV per Lantai", floor: "Lantai Lain / VRV", name: "Outdoor VRV Podium Barat", code: "VRV-POD", order: 60 },
+  { id: "unit_vrv_lt6", category: "Area Utilitas/Outdoor VRV", floor: "Lantai Lain / VRV", name: "Outdoor VRV Lantai 6", code: "VRV-LT6", order: 57 },
+  { id: "unit_vrv_lt5", category: "Area Utilitas/Outdoor VRV", floor: "Lantai Lain / VRV", name: "Outdoor VRV Lantai 5", code: "VRV-LT5", order: 58 },
+  { id: "unit_vrv_lt3", category: "Area Utilitas/Outdoor VRV", floor: "Lantai Lain / VRV", name: "Outdoor VRV Lantai 3", code: "VRV-LT3", order: 59 },
+  { id: "unit_vrv_podium", category: "Area Utilitas/Outdoor VRV", floor: "Lantai Lain / VRV", name: "Outdoor VRV Podium Barat", code: "VRV-POD", order: 60 },
 ];
 
 export function getLocalACUnits(): ACUnitLocation[] {
@@ -2826,12 +2827,14 @@ export function getLocalACUnits(): ACUnitLocation[] {
         let updatedList: ACUnitLocation[] = parsed.map((u: ACUnitLocation) => ({
           ...u,
           floor: resolveFloorFromUnit(u),
+          category: normalizeACCategory(u.category),
         }));
 
         const needsMissingDefaults = !hasBasement || !hasLobby || !hasLantai2 || !hasRooftop;
         const hadOldFloors = parsed.some((u: ACUnitLocation) => u.floor !== resolveFloorFromUnit(u));
+        const hadOldCategories = parsed.some((u: ACUnitLocation) => u.category !== normalizeACCategory(u.category));
 
-        if (needsMissingDefaults || hadOldFloors) {
+        if (needsMissingDefaults || hadOldFloors || hadOldCategories) {
           const existingIds = new Set(updatedList.map((p: any) => p.id));
           const missingDefaults = DEFAULT_AC_UNITS.filter((u) => !existingIds.has(u.id));
           updatedList = [...updatedList, ...missingDefaults];

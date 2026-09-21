@@ -18,6 +18,7 @@ import {
   AC_CATEGORIES,
   ACUnitLocation,
   ACMaintenanceLog,
+  normalizeACCategory,
 } from "../types";
 import { useAuth } from "../auth";
 import {
@@ -39,7 +40,7 @@ export function ACLogEntryModal({
   const { user } = useAuth();
 
   // 1. Kategori Dropdown dinamis
-  const [category, setCategory] = useState<ACCategory>("Kamar Hotel");
+  const [category, setCategory] = useState<ACCategory>("Area Privat / Kamar Hotel");
   const [units, setUnits] = useState<ACUnitLocation[]>([]);
   const [selectedUnitId, setSelectedUnitId] = useState<string>("");
 
@@ -83,7 +84,7 @@ export function ACLogEntryModal({
         if (initialUnitId) {
           const match = data.find((u) => u.id === initialUnitId);
           if (match) {
-            setCategory(match.category);
+            setCategory(normalizeACCategory(match.category));
             setSelectedUnitId(match.id);
           }
         }
@@ -96,7 +97,7 @@ export function ACLogEntryModal({
   }, [initialUnitId]);
 
   // Filter units according to selected category
-  const filteredUnits = units.filter((u) => u.category === category);
+  const filteredUnits = units.filter((u) => normalizeACCategory(u.category) === category);
 
   // Auto-select first unit of category when category changes
   useEffect(() => {

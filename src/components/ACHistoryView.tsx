@@ -25,6 +25,7 @@ import {
   ACCategory,
   AC_CATEGORIES,
   ACMaintenanceLog,
+  normalizeACCategory,
 } from "../types";
 import { useAuth } from "../auth";
 import {
@@ -126,7 +127,7 @@ export function ACHistoryView() {
   const now = new Date();
   const filteredLogs = logs.filter((item) => {
     // Category
-    if (categoryFilter !== "all" && item.category !== categoryFilter) {
+    if (categoryFilter !== "all" && normalizeACCategory(item.category) !== categoryFilter) {
       return false;
     }
 
@@ -152,7 +153,9 @@ export function ACHistoryView() {
     if (searchTerm) {
       const q = searchTerm.toLowerCase();
       const matchName = item.unit_name.toLowerCase().includes(q);
-      const matchCat = item.category.toLowerCase().includes(q);
+      const matchCat =
+        normalizeACCategory(item.category).toLowerCase().includes(q) ||
+        item.category.toLowerCase().includes(q);
       const matchUser = item.user_name.toLowerCase().includes(q);
       const matchNotes = item.notes ? item.notes.toLowerCase().includes(q) : false;
       if (!matchName && !matchCat && !matchUser && !matchNotes) return false;

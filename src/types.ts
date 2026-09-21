@@ -100,6 +100,12 @@ export interface AppSettings {
 }
 
 export type ACCategory =
+  | "Area Publik & Komersial"
+  | "Area Operasional & Servis"
+  | "Ruang Teknis & Utilitas"
+  | "Area Privat / Kamar Hotel"
+  | "Area Utilitas/Outdoor VRV"
+  // Legacy aliases
   | "Kamar Hotel"
   | "Ruang Meeting"
   | "Office"
@@ -107,12 +113,22 @@ export type ACCategory =
   | "Outdoor VRV per Lantai";
 
 export const AC_CATEGORIES: ACCategory[] = [
-  "Kamar Hotel",
-  "Ruang Meeting",
-  "Office",
-  "Ruangan Peralatan Hotel",
-  "Outdoor VRV per Lantai",
+  "Area Publik & Komersial",
+  "Area Operasional & Servis",
+  "Ruang Teknis & Utilitas",
+  "Area Privat / Kamar Hotel",
+  "Area Utilitas/Outdoor VRV",
 ];
+
+export function normalizeACCategory(cat?: string | null): ACCategory {
+  if (!cat) return "Area Privat / Kamar Hotel";
+  if (cat === "Kamar Hotel") return "Area Privat / Kamar Hotel";
+  if (cat === "Ruang Meeting") return "Area Publik & Komersial";
+  if (cat === "Office") return "Area Operasional & Servis";
+  if (cat === "Ruangan Peralatan Hotel") return "Ruang Teknis & Utilitas";
+  if (cat === "Outdoor VRV per Lantai") return "Area Utilitas/Outdoor VRV";
+  return cat as ACCategory;
+}
 
 export const REAL_FLOORS = [
   "Basement",

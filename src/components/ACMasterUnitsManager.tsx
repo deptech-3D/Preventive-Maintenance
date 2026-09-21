@@ -19,6 +19,7 @@ import {
   REAL_FLOORS,
   RealFloor,
   resolveFloorFromUnit,
+  normalizeACCategory,
 } from "../types";
 import {
   fetchACUnits,
@@ -37,7 +38,7 @@ export function ACMasterUnitsManager() {
   // Add / Edit Modal state
   const [modalMode, setModalMode] = useState<"add" | "edit" | null>(null);
   const [editingUnit, setEditingUnit] = useState<ACUnitLocation | null>(null);
-  const [formCategory, setFormCategory] = useState<ACCategory>("Kamar Hotel");
+  const [formCategory, setFormCategory] = useState<ACCategory>("Area Privat / Kamar Hotel");
   const [formFloor, setFormFloor] = useState<RealFloor>("Lantai 3");
   const [formName, setFormName] = useState<string>("");
   const [formCode, setFormCode] = useState<string>("");
@@ -70,13 +71,15 @@ export function ACMasterUnitsManager() {
 
   const openAddModal = () => {
     setErrorMsg(null);
-    let defaultCategory: ACCategory = "Kamar Hotel";
+    let defaultCategory: ACCategory = "Area Privat / Kamar Hotel";
     if (selectedFloor === "Lantai Lain / VRV" || selectedFloor === "Rooftop") {
-      defaultCategory = "Outdoor VRV per Lantai";
+      defaultCategory = "Area Utilitas/Outdoor VRV";
     } else if (selectedFloor === "Basement") {
-      defaultCategory = "Ruangan Peralatan Hotel";
-    } else if (selectedFloor === "Lobby / Lantai 1" || selectedFloor === "Lantai 2") {
-      defaultCategory = "Ruang Meeting";
+      defaultCategory = "Ruang Teknis & Utilitas";
+    } else if (selectedFloor === "Lobby / Lantai 1") {
+      defaultCategory = "Area Publik & Komersial";
+    } else if (selectedFloor === "Lantai 2") {
+      defaultCategory = "Area Operasional & Servis";
     }
     setFormCategory(defaultCategory);
     setFormFloor(selectedFloor);
@@ -89,7 +92,7 @@ export function ACMasterUnitsManager() {
 
   const openEditModal = (unit: ACUnitLocation) => {
     setErrorMsg(null);
-    setFormCategory(unit.category);
+    setFormCategory(normalizeACCategory(unit.category));
     setFormFloor(resolveFloorFromUnit(unit));
     setFormName(unit.name);
     setFormCode(unit.code || "");
@@ -161,7 +164,7 @@ export function ACMasterUnitsManager() {
   const filteredUnits = units.filter((u) => {
     const unitFloor = resolveFloorFromUnit(u);
     const matchFloor = unitFloor === selectedFloor;
-    const matchCategory = selectedCategory === "all" || u.category === selectedCategory;
+    const matchCategory = selectedCategory === "all" || normalizeACCategory(u.category) === selectedCategory;
     const matchSearch =
       !searchTerm ||
       u.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -260,7 +263,7 @@ export function ACMasterUnitsManager() {
             </button>
             {AC_CATEGORIES.map((cat) => {
               const countInFloor = units.filter(
-                (u) => resolveFloorFromUnit(u) === selectedFloor && u.category === cat
+                (u) => resolveFloorFromUnit(u) === selectedFloor && normalizeACCategory(u.category) === cat
               ).length;
               if (countInFloor === 0) return null;
               const isSelected = selectedCategory === cat;

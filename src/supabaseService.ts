@@ -17,6 +17,7 @@ import {
   REAL_FLOORS,
   resolveFloorFromUnit,
   normalizeACCategory,
+  formatUnitCycleLabel,
 } from "./types";
 import * as XLSX from "xlsx";
 
@@ -3358,5 +3359,300 @@ export async function copyACLogsToClipboardAsTsv(logs: ACMaintenanceLog[]): Prom
   }
 
   return { success: true, rowCount: logs.length, message: "Data riwayat AC berhasil disalin ke clipboard! Tekan Ctrl+V di Excel/Google Sheets." };
+}
+
+export async function copyACScheduleToClipboardAsTsv(
+  scheduleList: ACUnitScheduleStatus[],
+  cycleDefault = 1
+): Promise<{ success: boolean; rowCount: number; message: string }> {
+  if (scheduleList.length === 0) {
+    return { success: false, rowCount: 0, message: "Tidak ada data jadwal unit AC untuk disalin." };
+  }
+
+  const headers = [
+    "No",
+    "Nama Ruangan / Unit",
+    "Lantai",
+    "Kategori Area",
+    "Durasi Siklus Cuci",
+    "Terakhir Dicuci",
+    "Tanggal Jatuh Tempo",
+    "Status Jadwal",
+    "Sisa Hari (Hari)",
+    "Teknisi Terakhir",
+    "Catatan Unit",
+  ];
+
+  const tsvLines: string[] = [headers.join("\t")];
+
+  scheduleList.forEach((item, index) => {
+    const unit = item.unit;
+    const floor = resolveFloorFromUnit(unit);
+    const category = normalizeACCategory(unit.category);
+    const cycleLabel = formatUnitCycleLabel(unit, cycleDefault);
+
+    let lastCleanDate = "-";
+    if (item.last_cleaned_date) {
+      const d = new Date(item.last_cleaned_date);
+      lastCleanDate = d.toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" });
+    }
+
+    let nextDueDate = "-";
+    if (item.next_due_date) {
+      const d = new Date(item.next_due_date);
+      nextDueDate = d.toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" });
+    }
+
+    const techName = item.last_log?.user_name || "-";
+
+    const row = [
+      String(index + 1),
+      unit.name,
+      floor,
+      category,
+      cycleLabel,
+      lastCleanDate,
+      nextDueDate,
+      item.status_label,
+      String(item.days_remaining),
+      techName,
+      (unit.notes || "-").replace(/\t|\r|\n/g, " "),
+    ];
+
+    tsvLines.push(row.join("\t"));
+  });
+
+  const tsvText = tsvLines.join("\r\n");
+
+  try {
+    await navigator.clipboard.writeText(tsvText);
+  } catch {
+    const textarea = document.createElement("textarea");
+    textarea.value = tsvText;
+    document.body.appendChild(textarea);
+    textarea.select();
+    document.execCommand("copy");
+    document.body.removeChild(textarea);
+  }
+
+  return {
+    success: true,
+    rowCount: scheduleList.length,
+    message: `Berhasil menyalin ${scheduleList.length} baris tabel jadwal AC! Buka Google Sheets & tekan Ctrl+V pada sel A1.`,
+  };
+}
+
+export function exportACMasterReportToExcel(
+  logs: ACMaintenanceLog[],
+  scheduleList: ACUnitScheduleStatus[],
+  propertyName = "Engineering Hotel",
+  cycleDefault = 1
+) {
+  const workbook = XLSX.utils.book_new();
+
+  // Sheet 1: Riwayat Log Cuci AC
+  const logRows = logs.map((l, index) => {
+    const d = new Date(l.recorded_at);
+    const dateStr = d.toLocaleDateString("id-ID", { day: "2-digit", month: "long", year: "numeric" });
+    const timeStr = d.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
+    const tempDiff = Number((l.temp_before - l.temp_after).toFixed(1));
+    const anemoDiff = Number((l.anemo_after - l.anemo_before).toFixed(2));
+
+    return {
+      "No": index + 1,
+      "Tanggal": dateStr,
+      "Jam": timeStr,
+      "Kategori": l.category,
+      "Ruangan / Unit": l.unit_name,
+      "Nama Teknisi": l.user_name,
+      "Suhu Before (°C)": l.temp_before,
+      "Suhu After (°C)": l.temp_after,
+      "Penurunan Suhu (°C)": tempDiff > 0 ? `-${tempDiff} °C` : `${tempDiff} °C`,
+      "Anemometer Before (m/s)": l.anemo_before,
+      "Anemometer After (m/s)": l.anemo_after,
+      "Peningkatan Hembusan (m/s)": anemoDiff > 0 ? `+${anemoDiff} m/s` : `${anemoDiff} m/s`,
+      "Catatan Kondisi": l.notes || "-",
+    };
+  });
+
+  const wsLogs = XLSX.utils.json_to_sheet(logRows);
+  wsLogs["!cols"] = [
+    { wch: 5 }, { wch: 18 }, { wch: 10 }, { wch: 22 }, { wch: 26 }, { wch: 20 },
+    { wch: 16 }, { wch: 16 }, { wch: 18 }, { wch: 22 }, { wch: 22 }, { wch: 24 }, { wch: 38 }
+  ];
+  XLSX.utils.book_append_sheet(workbook, wsLogs, "Riwayat Cuci AC");
+
+  // Sheet 2: Jadwal & Status Siklus Cuci AC
+  const schedRows = scheduleList.map((s, index) => {
+    const unit = s.unit;
+    const floor = resolveFloorFromUnit(unit);
+    const category = normalizeACCategory(unit.category);
+    const cycleLabel = formatUnitCycleLabel(unit, cycleDefault);
+
+    let lastCleanStr = "-";
+    if (s.last_cleaned_date) {
+      const d = new Date(s.last_cleaned_date);
+      lastCleanStr = d.toLocaleDateString("id-ID", { day: "2-digit", month: "long", year: "numeric" });
+    }
+
+    let nextDueStr = "-";
+    if (s.next_due_date) {
+      const d = new Date(s.next_due_date);
+      nextDueStr = d.toLocaleDateString("id-ID", { day: "2-digit", month: "long", year: "numeric" });
+    }
+
+    const techName = s.last_log?.user_name || "-";
+
+    return {
+      "No": index + 1,
+      "Nama / Nomor Ruangan": unit.name,
+      "Lantai": floor,
+      "Kategori Area": category,
+      "Durasi Siklus Cuci": cycleLabel,
+      "Terakhir Dicuci": lastCleanStr,
+      "Tanggal Jatuh Tempo": nextDueStr,
+      "Status Jadwal": s.status_label,
+      "Sisa Hari": s.days_remaining,
+      "Teknisi Terakhir": techName,
+      "Kode Unit": unit.code || "-",
+      "Catatan Lokasi": unit.notes || "-",
+    };
+  });
+
+  const wsSched = XLSX.utils.json_to_sheet(schedRows);
+  wsSched["!cols"] = [
+    { wch: 5 }, { wch: 24 }, { wch: 16 }, { wch: 24 }, { wch: 20 }, { wch: 18 },
+    { wch: 18 }, { wch: 22 }, { wch: 12 }, { wch: 20 }, { wch: 14 }, { wch: 32 }
+  ];
+  XLSX.utils.book_append_sheet(workbook, wsSched, "Monitoring Jadwal & Status");
+
+  const today = new Date().toISOString().slice(0, 10);
+  const cleanHotel = propertyName.replace(/[^a-zA-Z0-9_-]/g, "_");
+  XLSX.writeFile(workbook, `Buku_Perawatan_AC_${cleanHotel}_${today}.xlsx`);
+}
+
+export function downloadACLogsAsCsv(logs: ACMaintenanceLog[], filename = "Laporan_Riwayat_Cuci_AC.csv") {
+  const headers = [
+    "No",
+    "Tanggal",
+    "Jam",
+    "Kategori",
+    "Ruangan / Unit",
+    "Teknisi",
+    "Suhu Before (C)",
+    "Suhu After (C)",
+    "Penurunan Suhu (C)",
+    "Anemometer Before (m/s)",
+    "Anemometer After (m/s)",
+    "Peningkatan Angin (m/s)",
+    "Catatan Kondisi",
+  ];
+
+  const csvRows = [headers.map((h) => `"${h}"`).join(",")];
+
+  logs.forEach((l, index) => {
+    const d = new Date(l.recorded_at);
+    const dateStr = d.toLocaleDateString("id-ID", { day: "2-digit", month: "2-digit", year: "numeric" });
+    const timeStr = d.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
+    const tempDiff = (l.temp_before - l.temp_after).toFixed(1);
+    const anemoDiff = (l.anemo_after - l.anemo_before).toFixed(2);
+
+    const row = [
+      String(index + 1),
+      dateStr,
+      timeStr,
+      l.category,
+      l.unit_name,
+      l.user_name,
+      String(l.temp_before),
+      String(l.temp_after),
+      tempDiff,
+      String(l.anemo_before),
+      String(l.anemo_after),
+      anemoDiff,
+      l.notes || "",
+    ].map((val) => `"${String(val).replace(/"/g, '""')}"`);
+
+    csvRows.push(row.join(","));
+  });
+
+  const blob = new Blob(["\uFEFF" + csvRows.join("\r\n")], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.setAttribute("href", url);
+  link.setAttribute("download", filename);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
+export function downloadACScheduleAsCsv(
+  scheduleList: ACUnitScheduleStatus[],
+  cycleDefault = 1,
+  filename = "Monitoring_Jadwal_Cuci_AC.csv"
+) {
+  const headers = [
+    "No",
+    "Nama Ruangan / Unit",
+    "Lantai",
+    "Kategori Area",
+    "Durasi Siklus Cuci",
+    "Terakhir Dicuci",
+    "Tanggal Jatuh Tempo",
+    "Status Jadwal",
+    "Sisa Hari",
+    "Teknisi Terakhir",
+    "Catatan Unit",
+  ];
+
+  const csvRows = [headers.map((h) => `"${h}"`).join(",")];
+
+  scheduleList.forEach((s, index) => {
+    const unit = s.unit;
+    const floor = resolveFloorFromUnit(unit);
+    const category = normalizeACCategory(unit.category);
+    const cycleLabel = formatUnitCycleLabel(unit, cycleDefault);
+
+    let lastCleanStr = "-";
+    if (s.last_cleaned_date) {
+      const d = new Date(s.last_cleaned_date);
+      lastCleanStr = d.toLocaleDateString("id-ID", { day: "2-digit", month: "2-digit", year: "numeric" });
+    }
+
+    let nextDueStr = "-";
+    if (s.next_due_date) {
+      const d = new Date(s.next_due_date);
+      nextDueStr = d.toLocaleDateString("id-ID", { day: "2-digit", month: "2-digit", year: "numeric" });
+    }
+
+    const techName = s.last_log?.user_name || "-";
+
+    const row = [
+      String(index + 1),
+      unit.name,
+      floor,
+      category,
+      cycleLabel,
+      lastCleanStr,
+      nextDueStr,
+      s.status_label,
+      String(s.days_remaining),
+      techName,
+      unit.notes || "-",
+    ].map((val) => `"${String(val).replace(/"/g, '""')}"`);
+
+    csvRows.push(row.join(","));
+  });
+
+  const blob = new Blob(["\uFEFF" + csvRows.join("\r\n")], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.setAttribute("href", url);
+  link.setAttribute("download", filename);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
 }
 

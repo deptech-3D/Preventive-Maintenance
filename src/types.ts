@@ -115,8 +115,9 @@ export const AC_CATEGORIES: ACCategory[] = [
 ];
 
 export const REAL_FLOORS = [
-  "Basement 1",
-  "Basement 2",
+  "Basement",
+  "Lobby / Lantai 1",
+  "Lantai 2",
   "Lantai 3",
   "Lantai 5",
   "Lantai 6",
@@ -138,8 +139,29 @@ export function resolveFloorFromUnit(unit: {
   code?: string;
   category?: string;
 }): RealFloor {
-  if (unit.floor && (REAL_FLOORS as readonly string[]).includes(unit.floor)) {
-    return unit.floor as RealFloor;
+  if (unit.floor) {
+    if (unit.floor === "Basement 1" || unit.floor === "Basement 2" || unit.floor === "Basement") {
+      return "Basement";
+    }
+    if (
+      unit.floor === "Lobby" ||
+      unit.floor === "Lantai 1" ||
+      unit.floor === "Lt 1" ||
+      unit.floor === "Lt. 1" ||
+      unit.floor === "Lobby / Lantai 1"
+    ) {
+      return "Lobby / Lantai 1";
+    }
+    if (
+      unit.floor === "Lantai 2" ||
+      unit.floor === "Lt 2" ||
+      unit.floor === "Lt. 2"
+    ) {
+      return "Lantai 2";
+    }
+    if ((REAL_FLOORS as readonly string[]).includes(unit.floor)) {
+      return unit.floor as RealFloor;
+    }
   }
 
   const text = `${unit.name || ""} ${unit.code || ""} ${unit.floor || ""}`.trim();
@@ -149,19 +171,19 @@ export function resolveFloorFromUnit(unit: {
     return "Rooftop";
   }
 
-  // Basement 1 detection (e.g. Basement 1, Basemant 1, B1, BS1, Basemen 1)
-  if (/\b(?:basement|basemant|basemen|bs|b)\s*1\b/i.test(text)) {
-    return "Basement 1";
+  // Basement detection (Basement, Basement 1, Basement 2, B1, B2, BS1, BS2)
+  if (/\b(?:basement|basemant|basemen|bs|b1|b2|bs1|bs2)\b/i.test(text)) {
+    return "Basement";
   }
 
-  // Basement 2 detection (e.g. Basement 2, Basemant 2, B2, BS2, Basemen 2)
-  if (/\b(?:basement|basemant|basemen|bs|b)\s*2\b/i.test(text)) {
-    return "Basement 2";
+  // Lobby / Lantai 1 detection
+  if (/\b(?:lobby|loby|front\s*desk|reception|lantai\s*1|lt\.?\s*1|fl\.?\s*1)\b/i.test(text)) {
+    return "Lobby / Lantai 1";
   }
 
-  // Generic Basement mention
-  if (/\b(?:basement|basemant|basemen)\b/i.test(text)) {
-    return "Basement 1";
+  // Lantai 2 detection
+  if (/\b(?:lantai\s*2|lt\.?\s*2|fl\.?\s*2)\b/i.test(text)) {
+    return "Lantai 2";
   }
 
   // 4-digit room numbers: 1001-1099, 1101-1199, 1201-1299
@@ -173,17 +195,22 @@ export function resolveFloorFromUnit(unit: {
     if (num === 12) return "Lantai 12";
   }
 
-  // 3-digit room numbers: 301-399 -> Lantai 3, 501-599 -> Lantai 5, etc.
-  const m3 = text.match(/\b([356789])\d{2}\b/);
+  // 3-digit room numbers: 101-199 -> Lobby / Lantai 1, 201-299 -> Lantai 2, 301-399 -> Lantai 3, etc.
+  const m3 = text.match(/\b([12356789])\d{2}\b/);
   if (m3) {
     const num = parseInt(m3[1], 10);
-    return `Lantai ${num}` as RealFloor;
+    if (num === 1) return "Lobby / Lantai 1";
+    if (num === 2) return "Lantai 2";
+    if (num === 3) return "Lantai 3";
+    if (num >= 5 && num <= 9) return `Lantai ${num}` as RealFloor;
   }
 
-  // Explicit mention like "Lantai 3", "Lt. 5", "Lt 8"
+  // Explicit mention like "Lantai 1", "Lantai 2", "Lantai 3", "Lt. 5", "Lt 8"
   const mLt = text.match(/(?:Lantai|Lt\.?)\s*(\d+)/i);
   if (mLt) {
     const num = parseInt(mLt[1], 10);
+    if (num === 1) return "Lobby / Lantai 1";
+    if (num === 2) return "Lantai 2";
     if (num === 3) return "Lantai 3";
     if (num >= 5 && num <= 12) return `Lantai ${num}` as RealFloor;
   }

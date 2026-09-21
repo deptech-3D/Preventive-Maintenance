@@ -2702,16 +2702,24 @@ export async function restoreSystemFromJSON(jsonData: any): Promise<{ ok: boolea
 // ============================================================================
 
 export const DEFAULT_AC_UNITS: ACUnitLocation[] = [
-  // Basement 1
-  { id: "unit_b1_lvmdp", category: "Ruangan Peralatan Hotel", floor: "Basement 1", name: "Ruang Panel Utama LVMDP (B1)", code: "EQ-LVMDP", order: 1 },
-  { id: "unit_b1_genset", category: "Ruangan Peralatan Hotel", floor: "Basement 1", name: "Ruang Genset & Solar (B1)", code: "EQ-GEN", order: 2 },
-  { id: "unit_b1_laundry", category: "Ruangan Peralatan Hotel", floor: "Basement 1", name: "Ruang Laundry & Linen (B1)", code: "EQ-LND", order: 3 },
-  { id: "unit_b1_loading", category: "Office", floor: "Basement 1", name: "Office Loading Dock & Security (B1)", code: "OFF-B1", order: 4 },
+  // Basement
+  { id: "unit_b_lvmdp", category: "Ruangan Peralatan Hotel", floor: "Basement", name: "Ruang Panel Utama LVMDP (Basement)", code: "EQ-LVMDP", order: 1 },
+  { id: "unit_b_genset", category: "Ruangan Peralatan Hotel", floor: "Basement", name: "Ruang Genset & Solar (Basement)", code: "EQ-GEN", order: 2 },
+  { id: "unit_b_laundry", category: "Ruangan Peralatan Hotel", floor: "Basement", name: "Ruang Laundry & Linen (Basement)", code: "EQ-LND", order: 3 },
+  { id: "unit_b_loading", category: "Office", floor: "Basement", name: "Office Loading Dock & Security (Basement)", code: "OFF-B", order: 4 },
+  { id: "unit_b_pompa", category: "Ruangan Peralatan Hotel", floor: "Basement", name: "Ruang Pompa & Chiller (Basement)", code: "EQ-PMP", order: 5 },
+  { id: "unit_b_stp", category: "Ruangan Peralatan Hotel", floor: "Basement", name: "Ruang STP & GWT (Basement)", code: "EQ-STP", order: 6 },
+  { id: "unit_b_fan", category: "Ruangan Peralatan Hotel", floor: "Basement", name: "Ruang Exhaust Fan Parkir (Basement)", code: "EQ-EXH", order: 7 },
 
-  // Basement 2
-  { id: "unit_b2_pompa", category: "Ruangan Peralatan Hotel", floor: "Basement 2", name: "Ruang Pompa & Chiller (B2)", code: "EQ-PMP", order: 5 },
-  { id: "unit_b2_stp", category: "Ruangan Peralatan Hotel", floor: "Basement 2", name: "Ruang STP & GWT (B2)", code: "EQ-STP", order: 6 },
-  { id: "unit_b2_fan", category: "Ruangan Peralatan Hotel", floor: "Basement 2", name: "Ruang Exhaust Fan Parkir (B2)", code: "EQ-EXH", order: 7 },
+  // Lobby / Lantai 1
+  { id: "unit_l1_lobby", category: "Ruangan Peralatan Hotel", floor: "Lobby / Lantai 1", name: "Lobby & Reception Area", code: "LOB-01", order: 8 },
+  { id: "unit_l1_resto", category: "Ruangan Peralatan Hotel", floor: "Lobby / Lantai 1", name: "Restoran / Coffee Shop", code: "RST-01", order: 9 },
+  { id: "unit_l1_fo", category: "Office", floor: "Lobby / Lantai 1", name: "Office Front Desk & Back Office", code: "OFF-FO", order: 10 },
+
+  // Lantai 2
+  { id: "unit_l2_ballroom", category: "Ruang Meeting", floor: "Lantai 2", name: "Grand Ballroom Aster (Lantai 2)", code: "BLR-L2", order: 11 },
+  { id: "unit_l2_meeting", category: "Ruang Meeting", floor: "Lantai 2", name: "Ruang Meeting Tulip (Lantai 2)", code: "MR-TLP", order: 12 },
+  { id: "unit_l2_office", category: "Office", floor: "Lantai 2", name: "Office Management & Sales (Lantai 2)", code: "OFF-L2", order: 13 },
 
   // Lantai 3 (Kamar Hotel)
   { id: "unit_km_301", category: "Kamar Hotel", floor: "Lantai 3", name: "Kamar 301", code: "KM-301", order: 8 },
@@ -2809,11 +2817,10 @@ export function getLocalACUnits(): ACUnitLocation[] {
           return DEFAULT_AC_UNITS;
         }
 
-        // Pastikan unit Basement & Rooftop ikut tersedia
-        const hasBasement = parsed.some((u: ACUnitLocation) => {
-          const f = resolveFloorFromUnit(u);
-          return f === "Basement 1" || f === "Basement 2";
-        });
+        // Pastikan unit Basement, Lobby / Lantai 1, Lantai 2, & Rooftop ikut tersedia
+        const hasBasement = parsed.some((u: ACUnitLocation) => resolveFloorFromUnit(u) === "Basement");
+        const hasLobby = parsed.some((u: ACUnitLocation) => resolveFloorFromUnit(u) === "Lobby / Lantai 1");
+        const hasLantai2 = parsed.some((u: ACUnitLocation) => resolveFloorFromUnit(u) === "Lantai 2");
         const hasRooftop = parsed.some((u: ACUnitLocation) => resolveFloorFromUnit(u) === "Rooftop");
 
         let updatedList: ACUnitLocation[] = parsed.map((u: ACUnitLocation) => ({
@@ -2821,7 +2828,10 @@ export function getLocalACUnits(): ACUnitLocation[] {
           floor: resolveFloorFromUnit(u),
         }));
 
-        if (!hasBasement || !hasRooftop) {
+        const needsMissingDefaults = !hasBasement || !hasLobby || !hasLantai2 || !hasRooftop;
+        const hadOldFloors = parsed.some((u: ACUnitLocation) => u.floor !== resolveFloorFromUnit(u));
+
+        if (needsMissingDefaults || hadOldFloors) {
           const existingIds = new Set(updatedList.map((p: any) => p.id));
           const missingDefaults = DEFAULT_AC_UNITS.filter((u) => !existingIds.has(u.id));
           updatedList = [...updatedList, ...missingDefaults];

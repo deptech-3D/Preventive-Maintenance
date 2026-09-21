@@ -73,8 +73,10 @@ export function ACMasterUnitsManager() {
     let defaultCategory: ACCategory = "Kamar Hotel";
     if (selectedFloor === "Lantai Lain / VRV" || selectedFloor === "Rooftop") {
       defaultCategory = "Outdoor VRV per Lantai";
-    } else if (selectedFloor === "Basement 1" || selectedFloor === "Basement 2") {
+    } else if (selectedFloor === "Basement") {
       defaultCategory = "Ruangan Peralatan Hotel";
+    } else if (selectedFloor === "Lobby / Lantai 1" || selectedFloor === "Lantai 2") {
+      defaultCategory = "Ruang Meeting";
     }
     setFormCategory(defaultCategory);
     setFormFloor(selectedFloor);
@@ -205,7 +207,7 @@ export function ACMasterUnitsManager() {
           <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-slate-700">
             <span>Pilih Tab Lantai Riil</span>
             <span className="text-[11px] font-normal text-slate-400">
-              (Basement 1 & 2, Lantai 3-12, Rooftop)
+              (Basement, Lobby / Lantai 1, Lantai 2, Lantai 3-12, Rooftop)
             </span>
           </div>
           <span className="text-[11px] font-semibold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-100">
@@ -463,10 +465,12 @@ export function ACMasterUnitsManager() {
                   value={formName}
                   onChange={(e) => setFormName(e.target.value)}
                   placeholder={
-                    formFloor === "Basement 1"
-                      ? "Contoh: Ruang Panel LVMDP / Ruang Genset (B1)"
-                      : formFloor === "Basement 2"
-                      ? "Contoh: Ruang Pompa & Chiller / STP (B2)"
+                    formFloor === "Basement"
+                      ? "Contoh: Ruang Panel LVMDP / Ruang Genset / Pompa"
+                      : formFloor === "Lobby / Lantai 1"
+                      ? "Contoh: Lobby Reception / Restoran / Front Office"
+                      : formFloor === "Lantai 2"
+                      ? "Contoh: Ballroom Aster / Ruang Meeting / Kamar 201"
                       : formFloor === "Rooftop"
                       ? "Contoh: Outdoor VRV Rooftop / Ruang Lift"
                       : formFloor.includes("3")

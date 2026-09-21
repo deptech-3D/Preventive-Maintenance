@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   User as UserIcon,
   Settings as SettingsIcon,
-  ShieldAlert,
   Clock,
   Image,
   Globe,
@@ -18,7 +17,6 @@ import {
   CheckCircle2,
   Check,
   AlertTriangle,
-  Layers,
   Key,
   FileSpreadsheet,
   Copy,
@@ -46,7 +44,7 @@ import {
 } from "lucide-react";
 import { ACMasterUnitsManager } from "./ACMasterUnitsManager";
 import { ACMaintenanceCycleSettings } from "./ACMaintenanceCycleSettings";
-import { User, MeterMenu, AppSettings } from "../types";
+import { User, AppSettings } from "../types";
 import { useAuth } from "../auth";
 import { useI18n, Lang } from "../i18n";
 import { SUPABASE_URL } from "../supabase";
@@ -57,9 +55,6 @@ import {
   createUser,
   deleteUser,
   updateUserPassword,
-  fetchMenus,
-  createMenu,
-  deleteMenu,
   updateAdminCredentials,
   fetchReadings,
   fetchPlantLogs,
@@ -75,7 +70,6 @@ export function Settings() {
 
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [usersList, setUsersList] = useState<User[]>([]);
-  const [menusList, setMenusList] = useState<MeterMenu[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<{ text: string; kind: "ok" | "err" } | null>(null);
@@ -118,13 +112,6 @@ export function Settings() {
   const [newUserEmail, setNewUserEmail] = useState("");
   const [newUserPass, setNewUserPass] = useState("");
   const [newUserRole, setNewUserRole] = useState<"user" | "admin">("user");
-
-  // New menu state
-  const [showAddMenu, setShowAddMenu] = useState(false);
-  const [newMenuName, setNewMenuName] = useState("");
-  const [newMenuUnit, setNewMenuUnit] = useState("m³");
-  const [newMenuKind, setNewMenuKind] = useState<"simple" | "pln">("simple");
-  const [newMenuIcon, setNewMenuIcon] = useState("Gauge");
 
   // Admin creds state
   const [currPass, setCurrPass] = useState("");
@@ -210,12 +197,8 @@ export function Settings() {
       }
 
       if (user?.role === "admin") {
-        const [uList, mList] = await Promise.all([
-          fetchUsers(),
-          fetchMenus(),
-        ]);
+        const uList = await fetchUsers();
         setUsersList(uList);
-        setMenusList(mList);
       }
     } catch (e) {
       console.error(e);
@@ -699,43 +682,6 @@ export function Settings() {
         try {
           await deleteUser(id);
           setMsg({ text: "Pengguna berhasil dihapus", kind: "ok" });
-          loadData();
-        } catch (err: any) {
-          setMsg({ text: err?.message || "Gagal menghapus", kind: "err" });
-        }
-      },
-    });
-  };
-
-  const handleAddMenu = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setMsg(null);
-    try {
-      await createMenu({
-        name: newMenuName,
-        unit: newMenuUnit,
-        kind: newMenuKind,
-        icon: newMenuIcon,
-      });
-      setShowAddMenu(false);
-      setNewMenuName("");
-      setNewMenuUnit("m³");
-      setMsg({ text: "Menu meter baru berhasil ditambahkan", kind: "ok" });
-      loadData();
-    } catch (err: any) {
-      setMsg({ text: err?.message || "Gagal menambah menu", kind: "err" });
-    }
-  };
-
-  const handleDeleteMenu = (id: string, name: string) => {
-    setConfirmModal({
-      open: true,
-      title: "Hapus Menu Meter",
-      description: `Apakah Anda yakin ingin menghapus menu meteran "${name}"? Menu ini tidak akan ditampilkan lagi untuk pencatatan baru.`,
-      action: async () => {
-        try {
-          await deleteMenu(id);
-          setMsg({ text: "Menu berhasil dihapus", kind: "ok" });
           loadData();
         } catch (err: any) {
           setMsg({ text: err?.message || "Gagal menghapus", kind: "err" });
@@ -1281,97 +1227,15 @@ export function Settings() {
               </div>
             </div>
 
-            {/* Machine Room Log Sheet Alert Thresholds */}
-            <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-3.5" id="machine-room-thresholds">
-              <div className="flex items-center justify-between">
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
-                    <ShieldAlert className="w-4 h-4 text-amber-600" />
-                    <span>Ambang Batas Alarm Ruang Mesin (LVMDP, Genset, Pompa)</span>
-                  </label>
-                  <p className="text-[11px] text-slate-500 mt-0.5">
-                    Nilai kritis yang otomatis memicu peringatan merah/kuning saat teknisi mengisi log sheet
-                  </p>
-                </div>
-                <button
-                  type="submit"
-                  disabled={saving}
-                  className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl transition shadow-sm flex items-center gap-1.5 disabled:opacity-50"
-                >
-                  <Save className="w-3.5 h-3.5" />
-                  <span>{saving ? "Menyimpan..." : "Simpan Batas"}</span>
-                </button>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {/* Hydrant Min Pressure */}
-                <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-xs space-y-1">
-                  <span className="text-xs font-bold text-slate-800 block">Min. Tekanan Pompa Hydrant</span>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="number"
-                      step="0.1"
-                      value={hydrantMinPressure}
-                      onChange={(e) => setHydrantMinPressure(e.target.value)}
-                      placeholder="7.0"
-                      className="w-28 px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-mono font-bold text-slate-900"
-                    />
-                    <span className="text-xs font-semibold text-slate-600">Bar</span>
-                  </div>
-                  <p className="text-[10px] text-slate-500">Standar aman: ≥ 7.0 Bar. Alarm aktif jika tekanan &lt; nilai ini.</p>
-                </div>
-
-                {/* Suhu Max Ruang LVMDP */}
-                <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-xs space-y-1">
-                  <span className="text-xs font-bold text-slate-800 block">Maks. Suhu Ruang LVMDP</span>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="number"
-                      step="0.5"
-                      value={lvmdpMaxTemp}
-                      onChange={(e) => setLvmdpMaxTemp(e.target.value)}
-                      placeholder="32.0"
-                      className="w-28 px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-mono font-bold text-slate-900"
-                    />
-                    <span className="text-xs font-semibold text-slate-600">°C</span>
-                  </div>
-                  <p className="text-[10px] text-slate-500">Standar optimal: ≤ 30-32°C. Alarm aktif jika suhu &gt; nilai ini.</p>
-                </div>
-
-                {/* Min Tegangan Aki Genset */}
-                <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-xs space-y-1">
-                  <span className="text-xs font-bold text-slate-800 block">Min. Tegangan Aki Genset</span>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="number"
-                      step="0.1"
-                      value={gensetMinVolt}
-                      onChange={(e) => setGensetMinVolt(e.target.value)}
-                      placeholder="24.0"
-                      className="w-28 px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-mono font-bold text-slate-900"
-                    />
-                    <span className="text-xs font-semibold text-slate-600">V DC</span>
-                  </div>
-                  <p className="text-[10px] text-slate-500">Standar normal: 24 - 27 V DC. Alarm aktif jika &lt; nilai ini.</p>
-                </div>
-
-                {/* Min Tegangan Aki Hydrant */}
-                <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-xs space-y-1">
-                  <span className="text-xs font-bold text-slate-800 block">Min. Tegangan Aki Diesel Hydrant</span>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="number"
-                      step="0.1"
-                      value={hydrantMinVolt}
-                      onChange={(e) => setHydrantMinVolt(e.target.value)}
-                      placeholder="24.0"
-                      className="w-28 px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-mono font-bold text-slate-900"
-                    />
-                    <span className="text-xs font-semibold text-slate-600">V DC</span>
-                  </div>
-                  <p className="text-[10px] text-slate-500">Standar normal: 24 - 27 V DC. Alarm aktif jika &lt; nilai ini.</p>
-                </div>
-              </div>
+            <div className="flex justify-end pt-3 border-t border-slate-100">
+              <button
+                type="submit"
+                disabled={saving}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl transition shadow-sm flex items-center gap-1.5 disabled:opacity-50"
+              >
+                <Save className="w-3.5 h-3.5" />
+                <span>{saving ? "Menyimpan..." : t("save")}</span>
+              </button>
             </div>
           </form>
           )}
@@ -1496,107 +1360,6 @@ export function Settings() {
                       </button>
                     )}
                   </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Meter Menus Management */}
-          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                <Layers className="w-4 h-4 text-blue-600" />
-                <span>{t("menus")} ({menusList.length})</span>
-              </h2>
-              <button
-                type="button"
-                onClick={() => setShowAddMenu(!showAddMenu)}
-                className="px-3 py-1.5 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-xl text-xs font-bold transition flex items-center gap-1"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span>{t("add_menu")}</span>
-              </button>
-            </div>
-
-            {showAddMenu && (
-              <form
-                onSubmit={handleAddMenu}
-                className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-3"
-              >
-                <h4 className="text-xs font-bold text-slate-800">Form Menu Meter Baru</h4>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                  <input
-                    type="text"
-                    required
-                    placeholder="Nama Meter (e.g. Chiller Meter)"
-                    value={newMenuName}
-                    onChange={(e) => setNewMenuName(e.target.value)}
-                    className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs"
-                  />
-                  <input
-                    type="text"
-                    required
-                    placeholder="Satuan (e.g. m³, kWh, L)"
-                    value={newMenuUnit}
-                    onChange={(e) => setNewMenuUnit(e.target.value)}
-                    className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs"
-                  />
-                  <select
-                    value={newMenuKind}
-                    onChange={(e) => setNewMenuKind(e.target.value as any)}
-                    className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-semibold"
-                  >
-                    <option value="simple">{t("kind_simple")}</option>
-                    <option value="pln">{t("kind_pln")}</option>
-                  </select>
-                  <select
-                    value={newMenuIcon}
-                    onChange={(e) => setNewMenuIcon(e.target.value)}
-                    className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-semibold"
-                  >
-                    <option value="Gauge">Icon: Gauge</option>
-                    <option value="Drop">Icon: Water Drop</option>
-                    <option value="Lightning">Icon: Lightning (PLN)</option>
-                    <option value="Flame">Icon: Gas Flame</option>
-                    <option value="Buildings">Icon: Rooftop/Building</option>
-                    <option value="Recycle">Icon: Recycle/STP</option>
-                  </select>
-                </div>
-                <div className="flex justify-end gap-2 pt-1">
-                  <button
-                    type="button"
-                    onClick={() => setShowAddMenu(false)}
-                    className="px-3 py-1 text-xs text-slate-600 hover:bg-slate-200 rounded-lg"
-                  >
-                    {t("cancel")}
-                  </button>
-                  <button
-                    type="submit"
-                    className="px-3 py-1 bg-blue-600 text-white rounded-lg text-xs font-bold"
-                  >
-                    {t("save")}
-                  </button>
-                </div>
-              </form>
-            )}
-
-            <div className="divide-y divide-slate-100">
-              {menusList.map((m) => (
-                <div key={m.menu_id} className="py-2.5 flex items-center justify-between">
-                  <div>
-                    <span className="text-xs font-bold text-slate-900">{m.name}</span>
-                    <span className="text-[11px] text-slate-500 ml-2">
-                      ({m.unit}) • {m.kind === "pln" ? "PLN Mode" : "Simple"}
-                    </span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => handleDeleteMenu(m.menu_id, m.name)}
-                    className="p-1.5 text-slate-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition"
-                    title="Hapus menu meter"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
                 </div>
               ))}
             </div>

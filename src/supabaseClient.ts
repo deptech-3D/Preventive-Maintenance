@@ -31,19 +31,39 @@ export const SUPABASE_URL = getEffectiveSupabaseUrl()
 export const SUPABASE_ANON_KEY = getEffectiveSupabaseAnonKey()
 // ============================================================================
 
-// Custom storage adapter menggunakan Capacitor Preferences
-// Memungkinkan auth token tersimpan di native preferences (Android/iOS)
-// dan tersinkronisasi otomatis dengan session login aplikasi sebelumnya.
+// Custom storage adapter dengan fallback yang aman untuk environment web maupun Capacitor
 const capacitorStorageAdapter: SupportedStorage = {
   getItem: async (key: string): Promise<string | null> => {
-    const { value } = await Preferences.get({ key })
-    return value
+    try {
+      const { value } = await Preferences.get({ key })
+      if (value !== null && value !== undefined) return value
+    } catch {}
+    try {
+      if (typeof localStorage !== 'undefined') {
+        return localStorage.getItem(key)
+      }
+    } catch {}
+    return null
   },
   setItem: async (key: string, value: string): Promise<void> => {
-    await Preferences.set({ key, value })
+    try {
+      await Preferences.set({ key, value })
+    } catch {}
+    try {
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem(key, value)
+      }
+    } catch {}
   },
   removeItem: async (key: string): Promise<void> => {
-    await Preferences.remove({ key })
+    try {
+      await Preferences.remove({ key })
+    } catch {}
+    try {
+      if (typeof localStorage !== 'undefined') {
+        localStorage.removeItem(key)
+      }
+    } catch {}
   },
 }
 

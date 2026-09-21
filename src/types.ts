@@ -115,6 +115,8 @@ export const AC_CATEGORIES: ACCategory[] = [
 ];
 
 export const REAL_FLOORS = [
+  "Basement 1",
+  "Basement 2",
   "Lantai 3",
   "Lantai 5",
   "Lantai 6",
@@ -124,10 +126,70 @@ export const REAL_FLOORS = [
   "Lantai 10",
   "Lantai 11",
   "Lantai 12",
+  "Rooftop",
   "Lantai Lain / VRV",
 ] as const;
 
 export type RealFloor = (typeof REAL_FLOORS)[number];
+
+export function resolveFloorFromUnit(unit: {
+  floor?: string;
+  name?: string;
+  code?: string;
+  category?: string;
+}): RealFloor {
+  if (unit.floor && (REAL_FLOORS as readonly string[]).includes(unit.floor)) {
+    return unit.floor as RealFloor;
+  }
+
+  const text = `${unit.name || ""} ${unit.code || ""} ${unit.floor || ""}`.trim();
+
+  // Rooftop detection
+  if (/\b(?:rooftop|roof\s*top|rt|rf)\b/i.test(text)) {
+    return "Rooftop";
+  }
+
+  // Basement 1 detection (e.g. Basement 1, Basemant 1, B1, BS1, Basemen 1)
+  if (/\b(?:basement|basemant|basemen|bs|b)\s*1\b/i.test(text)) {
+    return "Basement 1";
+  }
+
+  // Basement 2 detection (e.g. Basement 2, Basemant 2, B2, BS2, Basemen 2)
+  if (/\b(?:basement|basemant|basemen|bs|b)\s*2\b/i.test(text)) {
+    return "Basement 2";
+  }
+
+  // Generic Basement mention
+  if (/\b(?:basement|basemant|basemen)\b/i.test(text)) {
+    return "Basement 1";
+  }
+
+  // 4-digit room numbers: 1001-1099, 1101-1199, 1201-1299
+  const m4 = text.match(/\b(1[0-2])\d{2}\b/);
+  if (m4) {
+    const num = parseInt(m4[1], 10);
+    if (num === 10) return "Lantai 10";
+    if (num === 11) return "Lantai 11";
+    if (num === 12) return "Lantai 12";
+  }
+
+  // 3-digit room numbers: 301-399 -> Lantai 3, 501-599 -> Lantai 5, etc.
+  const m3 = text.match(/\b([356789])\d{2}\b/);
+  if (m3) {
+    const num = parseInt(m3[1], 10);
+    return `Lantai ${num}` as RealFloor;
+  }
+
+  // Explicit mention like "Lantai 3", "Lt. 5", "Lt 8"
+  const mLt = text.match(/(?:Lantai|Lt\.?)\s*(\d+)/i);
+  if (mLt) {
+    const num = parseInt(mLt[1], 10);
+    if (num === 3) return "Lantai 3";
+    if (num >= 5 && num <= 12) return `Lantai ${num}` as RealFloor;
+  }
+
+  return "Lantai Lain / VRV";
+}
 
 export interface ACUnitLocation {
   id: string;

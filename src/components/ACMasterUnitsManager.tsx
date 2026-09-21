@@ -5,15 +5,21 @@ import {
   Pencil,
   Trash2,
   Search,
-  Filter,
   CheckCircle2,
   AlertTriangle,
   X,
   Layers,
   Check,
-  Tag,
+  ChevronRight,
 } from "lucide-react";
-import { ACCategory, AC_CATEGORIES, ACUnitLocation } from "../types";
+import {
+  ACCategory,
+  AC_CATEGORIES,
+  ACUnitLocation,
+  REAL_FLOORS,
+  RealFloor,
+  resolveFloorFromUnit,
+} from "../types";
 import {
   fetchACUnits,
   createACUnit,
@@ -24,6 +30,7 @@ import {
 export function ACMasterUnitsManager() {
   const [units, setUnits] = useState<ACUnitLocation[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+  const [selectedFloor, setSelectedFloor] = useState<RealFloor>("Lantai 3");
   const [selectedCategory, setSelectedCategory] = useState<ACCategory | "all">("all");
   const [searchTerm, setSearchTerm] = useState<string>("");
 
@@ -31,6 +38,7 @@ export function ACMasterUnitsManager() {
   const [modalMode, setModalMode] = useState<"add" | "edit" | null>(null);
   const [editingUnit, setEditingUnit] = useState<ACUnitLocation | null>(null);
   const [formCategory, setFormCategory] = useState<ACCategory>("Kamar Hotel");
+  const [formFloor, setFormFloor] = useState<RealFloor>("Lantai 3");
   const [formName, setFormName] = useState<string>("");
   const [formCode, setFormCode] = useState<string>("");
   const [formNotes, setFormNotes] = useState<string>("");
@@ -60,9 +68,16 @@ export function ACMasterUnitsManager() {
     loadUnits();
   }, []);
 
-  const openAddModal = (defaultCat?: ACCategory) => {
+  const openAddModal = () => {
     setErrorMsg(null);
-    setFormCategory(defaultCat || (selectedCategory !== "all" ? selectedCategory : "Kamar Hotel"));
+    let defaultCategory: ACCategory = "Kamar Hotel";
+    if (selectedFloor === "Lantai Lain / VRV" || selectedFloor === "Rooftop") {
+      defaultCategory = "Outdoor VRV per Lantai";
+    } else if (selectedFloor === "Basement 1" || selectedFloor === "Basement 2") {
+      defaultCategory = "Ruangan Peralatan Hotel";
+    }
+    setFormCategory(defaultCategory);
+    setFormFloor(selectedFloor);
     setFormName("");
     setFormCode("");
     setFormNotes("");
@@ -73,6 +88,7 @@ export function ACMasterUnitsManager() {
   const openEditModal = (unit: ACUnitLocation) => {
     setErrorMsg(null);
     setFormCategory(unit.category);
+    setFormFloor(resolveFloorFromUnit(unit));
     setFormName(unit.name);
     setFormCode(unit.code || "");
     setFormNotes(unit.notes || "");
@@ -95,20 +111,22 @@ export function ACMasterUnitsManager() {
       if (modalMode === "add") {
         await createACUnit({
           category: formCategory,
+          floor: formFloor,
           name: cleanName,
           code: formCode.trim() || undefined,
           notes: formNotes.trim() || undefined,
           order: units.length + 1,
         });
-        setSuccessMsg(`Berhasil menambahkan "${cleanName}"`);
+        setSuccessMsg(`Berhasil menambahkan "${cleanName}" di ${formFloor}`);
       } else if (modalMode === "edit" && editingUnit) {
         await updateACUnit(editingUnit.id, {
           category: formCategory,
+          floor: formFloor,
           name: cleanName,
           code: formCode.trim() || undefined,
           notes: formNotes.trim() || undefined,
         });
-        setSuccessMsg(`Berhasil memperbarui "${cleanName}"`);
+        setSuccessMsg(`Berhasil memperbarui "${cleanName}" (${formFloor})`);
       }
 
       setModalMode(null);
@@ -137,14 +155,16 @@ export function ACMasterUnitsManager() {
     }
   };
 
-  // Filtered unit list
+  // Filtered unit list strictly per selected real floor
   const filteredUnits = units.filter((u) => {
+    const unitFloor = resolveFloorFromUnit(u);
+    const matchFloor = unitFloor === selectedFloor;
     const matchCategory = selectedCategory === "all" || u.category === selectedCategory;
     const matchSearch =
       !searchTerm ||
       u.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (u.code && u.code.toLowerCase().includes(searchTerm.toLowerCase()));
-    return matchCategory && matchSearch;
+    return matchFloor && matchCategory && matchSearch;
   });
 
   return (
@@ -158,62 +178,61 @@ export function ACMasterUnitsManager() {
       )}
 
       {/* Header & Add Button */}
-      <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
             <Building2 className="w-5 h-5 text-blue-600" />
-            <span>Master Lokasi & Unit AC/VRV</span>
+            <span>Master Data Kamar & Unit AC</span>
           </h2>
           <p className="text-xs text-slate-500 mt-0.5">
-            Kelola daftar nama/nomor ruangan dan unit Outdoor VRV per lantai untuk 5 kategori
+            Sistem filter tab lantai riil dan pengelolaan master nomor kamar per lantai
           </p>
         </div>
 
         <button
           id="btn-add-unit-master"
-          onClick={() => openAddModal()}
-          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-sm flex items-center gap-1.5 transition shrink-0 self-start sm:self-auto"
+          onClick={openAddModal}
+          className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white rounded-xl text-xs font-bold shadow-sm flex items-center justify-center gap-2 transition shrink-0 w-full sm:w-auto min-h-[44px]"
         >
           <Plus className="w-4 h-4" />
-          <span>Tambah Unit Baru</span>
+          <span>Tambah Kamar ({selectedFloor})</span>
         </button>
       </div>
 
-      {/* Category Tabs & Search Bar */}
-      <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs space-y-3">
-        {/* Category Chips */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none text-xs">
-          <button
-            onClick={() => setSelectedCategory("all")}
-            className={`px-3 py-1.5 rounded-xl font-bold transition shrink-0 flex items-center gap-1.5 border ${
-              selectedCategory === "all"
-                ? "bg-slate-900 text-white border-slate-900"
-                : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100"
-            }`}
-          >
-            <span>Semua Kategori</span>
-            <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-white/20">
-              {units.length}
+      {/* SISTEM TAB LANTAI RIIL HORIZONTAL */}
+      <div className="bg-white p-3 sm:p-4 rounded-2xl border border-slate-200 shadow-xs space-y-3">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-slate-700">
+            <span>Pilih Tab Lantai Riil</span>
+            <span className="text-[11px] font-normal text-slate-400">
+              (Basement 1 & 2, Lantai 3-12, Rooftop)
             </span>
-          </button>
+          </div>
+          <span className="text-[11px] font-semibold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-100">
+            Aktif: {selectedFloor}
+          </span>
+        </div>
 
-          {AC_CATEGORIES.map((cat) => {
-            const count = units.filter((u) => u.category === cat).length;
-            const isSelected = selectedCategory === cat;
+        {/* Horizontal Tab Bar Buttons */}
+        <div className="flex items-center gap-2 overflow-x-auto pb-2 pt-0.5 scrollbar-thin scrollbar-thumb-slate-300">
+          {REAL_FLOORS.map((floor) => {
+            const count = units.filter((u) => resolveFloorFromUnit(u) === floor).length;
+            const isActive = selectedFloor === floor;
             return (
               <button
-                key={cat}
-                onClick={() => setSelectedCategory(cat)}
-                className={`px-3 py-1.5 rounded-xl font-bold transition shrink-0 flex items-center gap-1.5 border ${
-                  isSelected
-                    ? "bg-blue-600 text-white border-blue-600 shadow-xs"
-                    : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100"
+                key={floor}
+                id={`tab-floor-${floor.replace(/\s+/g, "-").toLowerCase()}`}
+                onClick={() => setSelectedFloor(floor)}
+                className={`min-h-[44px] px-3.5 py-2 rounded-xl text-xs font-bold transition shrink-0 flex items-center gap-2 border shadow-2xs ${
+                  isActive
+                    ? "bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-500/20"
+                    : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100 hover:border-slate-300"
                 }`}
               >
-                <span>{cat}</span>
+                <span>{floor}</span>
                 <span
-                  className={`px-1.5 py-0.2 rounded-full text-[10px] ${
-                    isSelected ? "bg-white/25 text-white" : "bg-slate-200 text-slate-700"
+                  className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
+                    isActive ? "bg-white/25 text-white" : "bg-slate-200 text-slate-700"
                   }`}
                 >
                   {count}
@@ -223,32 +242,89 @@ export function ACMasterUnitsManager() {
           })}
         </div>
 
-        {/* Search Input */}
-        <div className="relative">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
-          <input
-            type="text"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Cari nama ruangan, nomor kamar, atau identifikasi lantai VRV..."
-            className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 placeholder-slate-400 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
-          />
+        {/* Secondary Filter & Search within selected floor */}
+        <div className="pt-2 border-t border-slate-100 flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
+          {/* Category Chip Selector */}
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none text-xs">
+            <button
+              onClick={() => setSelectedCategory("all")}
+              className={`px-2.5 py-1.5 rounded-lg font-bold transition shrink-0 text-[11px] border ${
+                selectedCategory === "all"
+                  ? "bg-slate-900 text-white border-slate-900"
+                  : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100"
+              }`}
+            >
+              Semua Area ({units.filter((u) => resolveFloorFromUnit(u) === selectedFloor).length})
+            </button>
+            {AC_CATEGORIES.map((cat) => {
+              const countInFloor = units.filter(
+                (u) => resolveFloorFromUnit(u) === selectedFloor && u.category === cat
+              ).length;
+              if (countInFloor === 0) return null;
+              const isSelected = selectedCategory === cat;
+              return (
+                <button
+                  key={cat}
+                  onClick={() => setSelectedCategory(cat)}
+                  className={`px-2.5 py-1.5 rounded-lg font-bold transition shrink-0 text-[11px] border ${
+                    isSelected
+                      ? "bg-blue-600 text-white border-blue-600"
+                      : "bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100"
+                  }`}
+                >
+                  {cat} ({countInFloor})
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Search Input */}
+          <div className="relative flex-1">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder={`Cari kamar atau unit di ${selectedFloor}...`}
+              className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 placeholder-slate-400 focus:outline-hidden focus:ring-2 focus:ring-blue-500 min-h-[40px]"
+            />
+            {searchTerm && (
+              <button
+                onClick={() => setSearchTerm("")}
+                className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* Units Table / Grid */}
+      {/* Units Table / Grid for Selected Floor */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+        <div className="bg-slate-50/80 px-4 py-2.5 border-b border-slate-200 flex items-center justify-between text-xs">
+          <div className="font-bold text-slate-800 flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-blue-600" />
+            <span>Daftar Kamar / Unit di {selectedFloor}</span>
+          </div>
+          <span className="text-slate-500 font-medium">
+            Total {filteredUnits.length} kamar/unit
+          </span>
+        </div>
+
         {loading ? (
           <div className="p-8 text-center text-xs text-slate-500">
             <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-2" />
-            <span>Memuat master unit lokasi...</span>
+            <span>Memuat data {selectedFloor}...</span>
           </div>
         ) : filteredUnits.length === 0 ? (
           <div className="p-8 text-center text-xs text-slate-500 space-y-2">
             <Layers className="w-8 h-8 text-slate-300 mx-auto" />
-            <p className="font-semibold text-slate-700">Tidak ada unit yang cocok</p>
+            <p className="font-semibold text-slate-700">
+              Belum ada kamar / unit di {selectedFloor}
+            </p>
             <p className="text-[11px]">
-              Klik tombol &ldquo;Tambah Unit Baru&rdquo; untuk mendaftarkan ruangan atau outdoor VRV pada kategori ini.
+              Klik tombol &ldquo;Tambah Kamar ({selectedFloor})&rdquo; di atas untuk mendaftarkan kamar di lantai ini.
             </p>
           </div>
         ) : (
@@ -257,65 +333,74 @@ export function ACMasterUnitsManager() {
               <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold uppercase tracking-wider text-[10px]">
                 <tr>
                   <th className="py-3 px-4 w-12 text-center">No</th>
-                  <th className="py-3 px-4">Nama / Nomor Unit</th>
+                  <th className="py-3 px-4">Nama / Nomor Kamar</th>
+                  <th className="py-3 px-4">Lantai</th>
                   <th className="py-3 px-4">Kategori Area</th>
                   <th className="py-3 px-4">Kode Unit</th>
                   <th className="py-3 px-4 text-right">Aksi</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
-                {filteredUnits.map((u, idx) => (
-                  <tr key={u.id} className="hover:bg-slate-50/80 transition group">
-                    <td className="py-3 px-4 text-center font-bold text-slate-400">
-                      {idx + 1}
-                    </td>
-                    <td className="py-3 px-4">
-                      <div className="font-bold text-slate-900">{u.name}</div>
-                      {u.notes && (
-                        <div className="text-[11px] text-slate-400 mt-0.5">{u.notes}</div>
-                      )}
-                    </td>
-                    <td className="py-3 px-4">
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-100">
-                        {u.category}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4">
-                      {u.code ? (
-                        <span className="font-mono text-[11px] text-slate-600 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
-                          {u.code}
+                {filteredUnits.map((u, idx) => {
+                  const resolvedFloor = resolveFloorFromUnit(u);
+                  return (
+                    <tr key={u.id} className="hover:bg-slate-50/80 transition group">
+                      <td className="py-3 px-4 text-center font-bold text-slate-400">
+                        {idx + 1}
+                      </td>
+                      <td className="py-3 px-4">
+                        <div className="font-bold text-slate-900">{u.name}</div>
+                        {u.notes && (
+                          <div className="text-[11px] text-slate-400 mt-0.5">{u.notes}</div>
+                        )}
+                      </td>
+                      <td className="py-3 px-4">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-100">
+                          {resolvedFloor}
                         </span>
-                      ) : (
-                        <span className="text-slate-400">-</span>
-                      )}
-                    </td>
-                    <td className="py-3 px-4 text-right space-x-1.5">
-                      <button
-                        onClick={() => openEditModal(u)}
-                        className="px-2.5 py-1 text-slate-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg text-xs font-bold transition inline-flex items-center gap-1 border border-slate-200"
-                        title="Edit Unit"
-                      >
-                        <Pencil className="w-3.5 h-3.5" />
-                        <span>Edit</span>
-                      </button>
-                      <button
-                        onClick={() => setDeleteTarget(u)}
-                        className="px-2.5 py-1 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg text-xs font-bold transition inline-flex items-center gap-1 border border-slate-200"
-                        title="Hapus Unit"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                        <span>Hapus</span>
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                      <td className="py-3 px-4">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-100 text-slate-700 border border-slate-200">
+                          {u.category}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4">
+                        {u.code ? (
+                          <span className="font-mono text-[11px] text-slate-600 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+                            {u.code}
+                          </span>
+                        ) : (
+                          <span className="text-slate-400">-</span>
+                        )}
+                      </td>
+                      <td className="py-3 px-4 text-right space-x-1.5 whitespace-nowrap">
+                        <button
+                          onClick={() => openEditModal(u)}
+                          className="px-2.5 py-1 text-slate-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg text-xs font-bold transition inline-flex items-center gap-1 border border-slate-200 min-h-[32px]"
+                          title="Edit Unit"
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                          <span>Edit</span>
+                        </button>
+                        <button
+                          onClick={() => setDeleteTarget(u)}
+                          className="px-2.5 py-1 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg text-xs font-bold transition inline-flex items-center gap-1 border border-slate-200 min-h-[32px]"
+                          title="Hapus Unit"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          <span>Hapus</span>
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
         )}
       </div>
 
-      {/* ADD / EDIT MODAL */}
+      {/* ADD / EDIT MODAL DENGAN DROPDOWN PILIHAN LANTAI */}
       {modalMode && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs">
           <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-slate-200 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
@@ -323,12 +408,14 @@ export function ACMasterUnitsManager() {
               <h3 className="text-sm font-bold flex items-center gap-2">
                 <Building2 className="w-4 h-4 text-blue-400" />
                 <span>
-                  {modalMode === "add" ? "Tambah Unit / Ruangan Baru" : "Edit Unit / Ruangan"}
+                  {modalMode === "add"
+                    ? `Tambah Kamar Baru (${formFloor})`
+                    : "Edit Data Kamar / Unit"}
                 </span>
               </h3>
               <button
                 onClick={() => setModalMode(null)}
-                className="w-7 h-7 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition"
+                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -342,75 +429,100 @@ export function ACMasterUnitsManager() {
                 </div>
               )}
 
-              {/* Kategori Area */}
+              {/* DROPDOWN PILIHAN LANTAI */}
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">
-                  Kategori Area (5 Kategori) <span className="text-red-500">*</span>
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+                  Pilihan Lantai <span className="text-red-500">*</span>
                 </label>
-                <div className="space-y-1">
-                  {AC_CATEGORIES.map((cat) => (
-                    <label
-                      key={cat}
-                      className={`flex items-center gap-2.5 p-2 rounded-xl border cursor-pointer transition ${
-                        formCategory === cat
-                          ? "bg-blue-50 border-blue-500 text-blue-900 font-bold"
-                          : "bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100"
-                      }`}
-                    >
-                      <input
-                        type="radio"
-                        name="unitCategory"
-                        value={cat}
-                        checked={formCategory === cat}
-                        onChange={() => setFormCategory(cat)}
-                        className="text-blue-600 focus:ring-blue-500"
-                      />
-                      <span>{cat}</span>
-                    </label>
+                <select
+                  id="select-room-floor"
+                  value={formFloor}
+                  onChange={(e) => setFormFloor(e.target.value as RealFloor)}
+                  required
+                  className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-hidden min-h-[44px]"
+                >
+                  {REAL_FLOORS.map((floor) => (
+                    <option key={floor} value={floor}>
+                      {floor}
+                    </option>
                   ))}
-                </div>
+                </select>
+                <p className="text-[11px] text-slate-400 mt-1">
+                  Data yang disimpan ke database Supabase memiliki penanda lantai yang jelas.
+                </p>
               </div>
 
-              {/* Nama Unit / Ruangan */}
+              {/* Nama / Nomor Ruangan */}
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">
-                  Nama / Nomor Ruangan / Identifikasi Lantai VRV{" "}
-                  <span className="text-red-500">*</span>
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+                  Nama / Nomor Kamar <span className="text-red-500">*</span>
                 </label>
                 <input
+                  id="input-room-name"
                   type="text"
                   value={formName}
                   onChange={(e) => setFormName(e.target.value)}
-                  placeholder="Contoh: Kamar 104 / Ruang Server IT / Outdoor VRV Lt. 3"
+                  placeholder={
+                    formFloor === "Basement 1"
+                      ? "Contoh: Ruang Panel LVMDP / Ruang Genset (B1)"
+                      : formFloor === "Basement 2"
+                      ? "Contoh: Ruang Pompa & Chiller / STP (B2)"
+                      : formFloor === "Rooftop"
+                      ? "Contoh: Outdoor VRV Rooftop / Ruang Lift"
+                      : formFloor.includes("3")
+                      ? "Contoh: Kamar 309"
+                      : formFloor.includes("5")
+                      ? "Contoh: Kamar 507"
+                      : "Contoh: Kamar 605 / Outdoor VRV"
+                  }
                   required
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
+                  className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-hidden min-h-[44px]"
                 />
+              </div>
+
+              {/* Kategori Area */}
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
+                  Kategori Area <span className="text-red-500">*</span>
+                </label>
+                <select
+                  id="select-room-category"
+                  value={formCategory}
+                  onChange={(e) => setFormCategory(e.target.value as ACCategory)}
+                  className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-hidden min-h-[44px]"
+                >
+                  {AC_CATEGORIES.map((cat) => (
+                    <option key={cat} value={cat}>
+                      {cat}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               {/* Kode Identifikasi */}
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
                   Kode Unit (Opsional)
                 </label>
                 <input
                   type="text"
                   value={formCode}
                   onChange={(e) => setFormCode(e.target.value)}
-                  placeholder="Contoh: KM-104 / VRV-LT3"
+                  placeholder="Contoh: KM-309 / VRV-LT3"
                   className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-mono text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
                 />
               </div>
 
               {/* Catatan / Detail Lokasi */}
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
                   Catatan Lokasi (Opsional)
                 </label>
                 <textarea
                   rows={2}
                   value={formNotes}
                   onChange={(e) => setFormNotes(e.target.value)}
-                  placeholder="Contoh: AC Split Duct 2 PK / Posisi Rooftop Sayap Barat"
+                  placeholder="Contoh: AC Split Duct 2 PK / Posisi Kamar Sayap Timur"
                   className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-hidden resize-none"
                 />
               </div>
@@ -420,17 +532,17 @@ export function ACMasterUnitsManager() {
                   type="button"
                   onClick={() => setModalMode(null)}
                   disabled={saving}
-                  className="px-3.5 py-2 text-xs font-bold text-slate-600 hover:text-slate-900 transition"
+                  className="px-4 py-2.5 text-xs font-bold text-slate-600 hover:text-slate-900 transition min-h-[44px]"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
                   disabled={saving}
-                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-sm flex items-center gap-1.5 transition disabled:opacity-50"
+                  className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-sm flex items-center gap-1.5 transition disabled:opacity-50 min-h-[44px]"
                 >
                   <Check className="w-4 h-4" />
-                  <span>{saving ? "Menyimpan..." : "Simpan Unit"}</span>
+                  <span>{saving ? "Menyimpan..." : "Simpan Kamar"}</span>
                 </button>
               </div>
             </form>
@@ -448,8 +560,8 @@ export function ACMasterUnitsManager() {
             <div className="text-center">
               <h4 className="text-sm font-bold text-slate-900">Hapus Unit Lokasi?</h4>
               <p className="text-xs text-slate-500 mt-1">
-                Apakah Anda yakin ingin menghapus <strong>&ldquo;{deleteTarget.name}&rdquo;</strong> dari
-                kategori <strong>{deleteTarget.category}</strong>?
+                Apakah Anda yakin ingin menghapus <strong>&ldquo;{deleteTarget.name}&rdquo;</strong> dari{" "}
+                <strong>{resolveFloorFromUnit(deleteTarget)}</strong>?
               </p>
             </div>
             <div className="flex items-center justify-center gap-2 pt-2">
@@ -457,7 +569,7 @@ export function ACMasterUnitsManager() {
                 type="button"
                 onClick={() => setDeleteTarget(null)}
                 disabled={deleting}
-                className="px-4 py-2 text-xs font-bold text-slate-600 hover:text-slate-900 transition"
+                className="px-4 py-2 text-xs font-bold text-slate-600 hover:text-slate-900 transition min-h-[44px]"
               >
                 Batal
               </button>
@@ -465,7 +577,7 @@ export function ACMasterUnitsManager() {
                 type="button"
                 onClick={handleDelete}
                 disabled={deleting}
-                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl transition disabled:opacity-50"
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl transition disabled:opacity-50 min-h-[44px]"
               >
                 {deleting ? "Menghapus..." : "Ya, Hapus Unit"}
               </button>

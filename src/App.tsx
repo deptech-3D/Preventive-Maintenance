@@ -9,6 +9,7 @@ import {
   User as UserIcon,
   Plus,
   Thermometer,
+  Search,
 } from "lucide-react";
 import { useAuth } from "./auth";
 import { useI18n } from "./i18n";
@@ -17,6 +18,7 @@ import { Login } from "./components/Login";
 import { Dashboard } from "./components/Dashboard";
 import { History } from "./components/History";
 import { Settings } from "./components/Settings";
+import { ACSearchMode } from "./components/ACSearchMode";
 import { ACLogEntryModal } from "./components/ACLogEntryModal";
 import { ACMaintenanceLog } from "./types";
 
@@ -24,8 +26,9 @@ export function App() {
   const { user, loading } = useAuth();
   const { t } = useI18n();
 
-  const [activeTab, setActiveTab] = useState<"dashboard" | "history" | "settings">("dashboard");
+  const [activeTab, setActiveTab] = useState<"dashboard" | "search" | "history" | "settings">("dashboard");
   const [showACLogModal, setShowACLogModal] = useState(false);
+  const [selectedACUnitId, setSelectedACUnitId] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [propertyTitle, setPropertyTitle] = useState(user?.property_name || "Engineering Hotel");
 
@@ -52,8 +55,14 @@ export function App() {
     return <Login />;
   }
 
+  const handleOpenACLog = (unitId?: string) => {
+    setSelectedACUnitId(unitId || null);
+    setShowACLogModal(true);
+  };
+
   const handleACEntrySuccess = (_newLog: ACMaintenanceLog) => {
     setShowACLogModal(false);
+    setSelectedACUnitId(null);
     setRefreshKey((k) => k + 1);
     setActiveTab("history");
   };
@@ -97,11 +106,24 @@ export function App() {
 
               <button
                 id="header-tab-catat-ac"
-                onClick={() => setShowACLogModal(true)}
+                onClick={() => handleOpenACLog()}
                 className="px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer bg-blue-600 text-white hover:bg-blue-700 shadow-xs"
               >
                 <Plus className="w-3.5 h-3.5" />
                 <span>Catat Cuci AC</span>
+              </button>
+
+              <button
+                id="header-tab-search"
+                onClick={() => setActiveTab("search")}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                  activeTab === "search"
+                    ? "bg-white text-blue-600 shadow-xs"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                <Search className="w-3.5 h-3.5" />
+                <span>Pencarian Kamar</span>
               </button>
 
               <button
@@ -145,7 +167,10 @@ export function App() {
       {/* Main Content Area */}
       <main className="flex-1 max-w-6xl w-full mx-auto px-4 pt-4 sm:pt-6">
         {activeTab === "dashboard" && (
-          <Dashboard key={refreshKey} onOpenACLog={() => setShowACLogModal(true)} />
+          <Dashboard key={refreshKey} onOpenACLog={() => handleOpenACLog()} />
+        )}
+        {activeTab === "search" && (
+          <ACSearchMode key={refreshKey} onOpenACLog={handleOpenACLog} />
         )}
         {activeTab === "history" && <History key={refreshKey} />}
         {activeTab === "settings" && <Settings key={refreshKey} />}
@@ -154,8 +179,11 @@ export function App() {
       {/* Modal Form Pencatatan Perawatan AC */}
       {showACLogModal && (
         <ACLogEntryModal
-          initialUnitId={null}
-          onClose={() => setShowACLogModal(false)}
+          initialUnitId={selectedACUnitId}
+          onClose={() => {
+            setShowACLogModal(false);
+            setSelectedACUnitId(null);
+          }}
           onSuccess={handleACEntrySuccess}
         />
       )}
@@ -163,6 +191,7 @@ export function App() {
       {/* Bottom Tab Bar (iOS Native Style) */}
       <nav className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-lg border-t border-slate-200/80 shadow-[0_-4px_16px_rgba(0,0,0,0.04)]">
         <div className="max-w-lg mx-auto flex items-center justify-around h-16 px-2">
+          {/* 1. Dashboard */}
           <button
             id="tab-dashboard"
             onClick={() => setActiveTab("dashboard")}
@@ -173,21 +202,36 @@ export function App() {
             }`}
           >
             <LayoutDashboard className="w-5 h-5 mb-0.5" />
-            <span className="text-[10px]">{t("dashboard")}</span>
+            <span className="text-[10px] whitespace-nowrap">{t("dashboard")}</span>
           </button>
 
-          {/* Special Action Button: Catat Cuci AC */}
+          {/* 2. Catat AC */}
           <button
             id="tab-catat-ac"
-            onClick={() => setShowACLogModal(true)}
-            className="flex flex-col items-center justify-center -mt-5 cursor-pointer group"
+            onClick={() => handleOpenACLog()}
+            className="flex-1 flex flex-col items-center justify-center -mt-5 cursor-pointer group"
           >
-            <div className="w-12 h-12 rounded-full bg-blue-600 group-hover:bg-blue-700 text-white flex items-center justify-center shadow-lg shadow-blue-500/30 transition transform group-active:scale-95 border-2 border-white">
+            <div className="w-10 h-10 rounded-full bg-blue-600 group-hover:bg-blue-700 text-white flex items-center justify-center shadow-lg shadow-blue-500/30 transition transform group-active:scale-95 border-2 border-white">
               <Plus className="w-6 h-6 stroke-[2.5]" />
             </div>
-            <span className="text-[10px] font-bold text-blue-600 mt-0.5">Catat AC</span>
+            <span className="text-[10px] font-bold text-blue-600 mt-0.5 whitespace-nowrap">Catat AC</span>
           </button>
 
+          {/* 3. Mode Pencarian Langsung (Di antara Catat AC dan Riwayat) */}
+          <button
+            id="tab-search"
+            onClick={() => setActiveTab("search")}
+            className={`flex-1 flex flex-col items-center justify-center py-1 transition cursor-pointer ${
+              activeTab === "search"
+                ? "text-blue-600 font-bold"
+                : "text-slate-500 hover:text-slate-800 font-medium"
+            }`}
+          >
+            <Search className="w-5 h-5 mb-0.5" />
+            <span className="text-[10px] whitespace-nowrap">Pencarian</span>
+          </button>
+
+          {/* 4. Riwayat */}
           <button
             id="tab-history"
             onClick={() => setActiveTab("history")}
@@ -198,9 +242,10 @@ export function App() {
             }`}
           >
             <HistoryIcon className="w-5 h-5 mb-0.5" />
-            <span className="text-[10px]">Riwayat</span>
+            <span className="text-[10px] whitespace-nowrap">Riwayat</span>
           </button>
 
+          {/* 5. Pengaturan */}
           <button
             id="tab-settings"
             onClick={() => setActiveTab("settings")}
@@ -211,7 +256,7 @@ export function App() {
             }`}
           >
             <SettingsIcon className="w-5 h-5 mb-0.5" />
-            <span className="text-[10px]">{t("settings")}</span>
+            <span className="text-[10px] whitespace-nowrap">{t("settings")}</span>
           </button>
         </div>
       </nav>

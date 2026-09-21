@@ -3,8 +3,6 @@ import {
   Building2,
   ShieldCheck,
   RefreshCw,
-  Plus,
-  Thermometer,
 } from "lucide-react";
 import { AppSettings } from "../types";
 import { useAuth } from "../auth";
@@ -16,7 +14,7 @@ interface DashboardProps {
   onOpenACLog?: () => void;
 }
 
-export function Dashboard({ onOpenACLog }: DashboardProps) {
+export function Dashboard({ onOpenACLog: _onOpenACLog }: DashboardProps) {
   const { user } = useAuth();
   const { t, lang } = useI18n();
   const [settings, setSettings] = useState<AppSettings | null>(null);
@@ -66,16 +64,6 @@ export function Dashboard({ onOpenACLog }: DashboardProps) {
               <span>{t("safety_first") || "Preventive Maintenance Berjadwal"}</span>
             </div>
             <div className="flex items-center gap-2">
-              {onOpenACLog && (
-                <button
-                  type="button"
-                  onClick={onOpenACLog}
-                  className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-md transition"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>Catat Cuci AC</span>
-                </button>
-              )}
               <button
                 onClick={handleRefresh}
                 className="p-2 rounded-full bg-black/40 text-white/80 hover:text-white hover:bg-black/60 transition backdrop-blur-md"

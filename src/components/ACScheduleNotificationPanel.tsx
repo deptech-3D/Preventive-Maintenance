@@ -16,6 +16,7 @@ import {
   Layers,
   Sparkles,
   Calendar,
+  X,
 } from "lucide-react";
 import {
   ACCategory,
@@ -23,6 +24,7 @@ import {
   ACUnitScheduleStatus,
   AppSettings,
   ACMaintenanceLog,
+  resolveFloorFromUnit,
 } from "../types";
 import {
   getACScheduleOverview,
@@ -109,13 +111,17 @@ export function ACScheduleNotificationPanel({
       return false;
     }
 
-    // Search
-    if (searchTerm) {
-      const q = searchTerm.toLowerCase();
-      const matchName = item.unit.name.toLowerCase().includes(q);
-      const matchCode = item.unit.code ? item.unit.code.toLowerCase().includes(q) : false;
-      const matchCat = item.unit.category.toLowerCase().includes(q);
-      if (!matchName && !matchCode && !matchCat) return false;
+    // Real-time Search
+    if (searchTerm.trim()) {
+      const q = searchTerm.toLowerCase().trim();
+      const unit = item.unit;
+      const resolvedFloor = resolveFloorFromUnit(unit).toLowerCase();
+      const matchName = unit.name.toLowerCase().includes(q);
+      const matchCode = unit.code ? unit.code.toLowerCase().includes(q) : false;
+      const matchCat = unit.category.toLowerCase().includes(q);
+      const matchFloor = (unit.floor ? unit.floor.toLowerCase() : "").includes(q) || resolvedFloor.includes(q);
+      const matchNotes = unit.notes ? unit.notes.toLowerCase().includes(q) : false;
+      if (!matchName && !matchCode && !matchCat && !matchFloor && !matchNotes) return false;
     }
 
     return true;
@@ -126,14 +132,14 @@ export function ACScheduleNotificationPanel({
   return (
     <div className="space-y-4" id="ac-schedule-notification-panel">
       {/* KPI Cards Header */}
-      <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3.5">
+      <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-xs space-y-4">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 border-b border-slate-100 pb-3.5">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center font-bold shadow-md shadow-blue-500/20 shrink-0">
               <CalendarClock className="w-5 h-5" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <h2 className="text-base font-bold text-slate-900">
                   Daftar AC & VRV Mendekati Waktu Cleaning
                 </h2>
@@ -147,25 +153,69 @@ export function ACScheduleNotificationPanel({
             </div>
           </div>
 
-          <div className="flex items-center gap-2 shrink-0">
-            <button
-              onClick={handleRefresh}
-              disabled={refreshing}
-              className="p-2 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-xl border border-slate-200 transition"
-              title="Perbarui data"
-            >
-              <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />
-            </button>
-            <button
-              id="btn-quick-record-ac"
-              onClick={() => handleOpenForm()}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-sm shadow-blue-500/20 flex items-center gap-1.5 transition"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Catat Cuci AC</span>
-            </button>
+          {/* REAL-TIME SEARCH BAR & ACTION BUTTONS */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full lg:w-auto">
+            {/* Search Input Bar */}
+            <div className="relative flex-1 sm:w-72 lg:w-80">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3 pointer-events-none" />
+              <input
+                id="dashboard-search-bar"
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Cari nomor kamar / area (misal: 502, Meeting)..."
+                className="w-full pl-9 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-900 placeholder-slate-400 focus:outline-hidden focus:ring-2 focus:ring-blue-500 focus:bg-white transition min-h-[42px]"
+              />
+              {searchTerm && (
+                <button
+                  type="button"
+                  onClick={() => setSearchTerm("")}
+                  className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600 p-1 rounded-full transition"
+                  title="Hapus pencarian"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleRefresh}
+                disabled={refreshing}
+                className="p-2.5 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-xl border border-slate-200 transition shrink-0 min-h-[42px] min-w-[42px] flex items-center justify-center"
+                title="Perbarui data"
+              >
+                <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />
+              </button>
+              <button
+                id="btn-quick-record-ac"
+                onClick={() => handleOpenForm()}
+                className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white rounded-xl text-xs font-bold shadow-sm shadow-blue-500/20 flex items-center justify-center gap-1.5 transition shrink-0 min-h-[42px] flex-1 sm:flex-initial"
+              >
+                <Plus className="w-4 h-4" />
+                <span className="whitespace-nowrap">Catat Cuci AC</span>
+              </button>
+            </div>
           </div>
         </div>
+
+        {/* Real-time search feedback notification */}
+        {searchTerm.trim() && (
+          <div className="flex items-center justify-between p-3 bg-blue-50 border border-blue-200 rounded-xl text-xs text-blue-900 animate-in fade-in">
+            <div className="flex items-center gap-2">
+              <Search className="w-4 h-4 text-blue-600 shrink-0" />
+              <span>
+                Hasil pencarian real-time: <strong>{filteredList.length}</strong> unit cocok untuk &ldquo;<strong>{searchTerm}</strong>&rdquo;
+              </span>
+            </div>
+            <button
+              onClick={() => setSearchTerm("")}
+              className="text-xs font-bold text-blue-700 hover:text-blue-900 underline ml-3 shrink-0"
+            >
+              Reset
+            </button>
+          </div>
+        )}
 
         {/* 4 Summary Stat Cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
@@ -313,44 +363,34 @@ export function ACScheduleNotificationPanel({
             </button>
           </div>
 
-          {/* 5 Categories Selector + Search Input */}
-          <div className="flex flex-col sm:flex-row gap-2">
-            <div className="flex items-center gap-1 overflow-x-auto pb-1 scrollbar-none text-xs flex-1">
+          {/* Categories Selector */}
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none text-xs">
+            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mr-1 shrink-0">
+              Kategori:
+            </span>
+            <button
+              onClick={() => setCategoryFilter("all")}
+              className={`px-3 py-1.5 rounded-xl font-bold shrink-0 border transition cursor-pointer ${
+                categoryFilter === "all"
+                  ? "bg-blue-600 text-white border-blue-600 shadow-xs"
+                  : "bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200"
+              }`}
+            >
+              Semua
+            </button>
+            {AC_CATEGORIES.map((cat) => (
               <button
-                onClick={() => setCategoryFilter("all")}
-                className={`px-2.5 py-1 rounded-lg font-bold shrink-0 border cursor-pointer ${
-                  categoryFilter === "all"
-                    ? "bg-blue-600 text-white border-blue-600"
+                key={cat}
+                onClick={() => setCategoryFilter(cat)}
+                className={`px-3 py-1.5 rounded-xl font-bold shrink-0 border transition cursor-pointer ${
+                  categoryFilter === cat
+                    ? "bg-blue-600 text-white border-blue-600 shadow-xs"
                     : "bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200"
                 }`}
               >
-                Semua Kategori
+                {cat}
               </button>
-              {AC_CATEGORIES.map((cat) => (
-                <button
-                  key={cat}
-                  onClick={() => setCategoryFilter(cat)}
-                  className={`px-2.5 py-1 rounded-lg font-bold shrink-0 border cursor-pointer ${
-                    categoryFilter === cat
-                      ? "bg-blue-600 text-white border-blue-600"
-                      : "bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200"
-                  }`}
-                >
-                  {cat}
-                </button>
-              ))}
-            </div>
-
-            <div className="relative sm:w-64 shrink-0">
-              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Cari ruangan atau lantai..."
-                className="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:outline-hidden focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
+            ))}
           </div>
         </div>
       </div>
@@ -363,10 +403,27 @@ export function ACScheduleNotificationPanel({
             <span>Memperhitungkan jadwal perawatan AC...</span>
           </div>
         ) : filteredList.length === 0 ? (
-          <div className="p-8 text-center text-xs text-slate-500 space-y-1.5">
-            <Layers className="w-8 h-8 text-slate-300 mx-auto" />
-            <p className="font-bold text-slate-700">Tidak ada data unit yang sesuai filter</p>
-            <p className="text-[11px]">Cobalah mengubah pilihan filter atau reset kata kunci pencarian.</p>
+          <div className="p-8 text-center text-xs text-slate-500 space-y-2.5">
+            <Layers className="w-9 h-9 text-slate-300 mx-auto" />
+            <p className="font-bold text-slate-800 text-sm">
+              {searchTerm.trim()
+                ? `Tidak ada unit yang cocok dengan "${searchTerm}"`
+                : "Tidak ada data unit yang sesuai filter"}
+            </p>
+            <p className="text-[11px] text-slate-500 max-w-sm mx-auto">
+              {searchTerm.trim()
+                ? "Cobalah mengetik nomor kamar lain (misal: 502, 301) atau nama area (misal: Meeting, Server, VRV)."
+                : "Cobalah mengubah pilihan status atau kategori filter."}
+            </p>
+            {searchTerm.trim() && (
+              <button
+                type="button"
+                onClick={() => setSearchTerm("")}
+                className="px-3.5 py-1.5 bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 rounded-xl font-bold text-xs transition"
+              >
+                Hapus Kata Kunci
+              </button>
+            )}
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -428,9 +485,14 @@ export function ACScheduleNotificationPanel({
 
                       {/* Unit Name & Code */}
                       <td className="py-3 px-4">
-                        <div className="font-bold text-slate-900">{item.unit.name}</div>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-bold text-slate-900">{item.unit.name}</span>
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200 shrink-0">
+                            {resolveFloorFromUnit(item.unit)}
+                          </span>
+                        </div>
                         {item.unit.code && (
-                          <span className="font-mono text-[10px] text-slate-500">
+                          <span className="font-mono text-[10px] text-slate-500 block mt-0.5">
                             {item.unit.code}
                           </span>
                         )}

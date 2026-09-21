@@ -11,6 +11,7 @@ import {
   Layers,
   Check,
   ChevronRight,
+  Clock,
 } from "lucide-react";
 import {
   ACCategory,
@@ -20,6 +21,7 @@ import {
   RealFloor,
   resolveFloorFromUnit,
   normalizeACCategory,
+  formatUnitCycleLabel,
 } from "../types";
 import {
   fetchACUnits,
@@ -43,6 +45,7 @@ export function ACMasterUnitsManager() {
   const [formName, setFormName] = useState<string>("");
   const [formCode, setFormCode] = useState<string>("");
   const [formNotes, setFormNotes] = useState<string>("");
+  const [formCycleSelect, setFormCycleSelect] = useState<string>("default");
   const [saving, setSaving] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -86,6 +89,7 @@ export function ACMasterUnitsManager() {
     setFormName("");
     setFormCode("");
     setFormNotes("");
+    setFormCycleSelect("default");
     setEditingUnit(null);
     setModalMode("add");
   };
@@ -97,6 +101,17 @@ export function ACMasterUnitsManager() {
     setFormName(unit.name);
     setFormCode(unit.code || "");
     setFormNotes(unit.notes || "");
+    
+    if (unit.cycle_days && unit.cycle_days > 0 && unit.cycle_days % 30 !== 0) {
+      setFormCycleSelect(`days_${unit.cycle_days}`);
+    } else if (unit.cycle_months && unit.cycle_months > 0) {
+      setFormCycleSelect(`months_${unit.cycle_months}`);
+    } else if (unit.cycle_days && unit.cycle_days > 0) {
+      setFormCycleSelect(`months_${Math.round(unit.cycle_days / 30)}`);
+    } else {
+      setFormCycleSelect("default");
+    }
+
     setEditingUnit(unit);
     setModalMode("edit");
   };
@@ -111,6 +126,15 @@ export function ACMasterUnitsManager() {
       return;
     }
 
+    let cycle_months: number | undefined = undefined;
+    let cycle_days: number | undefined = undefined;
+
+    if (formCycleSelect.startsWith("months_")) {
+      cycle_months = parseInt(formCycleSelect.replace("months_", ""), 10);
+    } else if (formCycleSelect.startsWith("days_")) {
+      cycle_days = parseInt(formCycleSelect.replace("days_", ""), 10);
+    }
+
     try {
       setSaving(true);
       if (modalMode === "add") {
@@ -120,6 +144,8 @@ export function ACMasterUnitsManager() {
           name: cleanName,
           code: formCode.trim() || undefined,
           notes: formNotes.trim() || undefined,
+          cycle_months,
+          cycle_days,
           order: units.length + 1,
         });
         setSuccessMsg(`Berhasil menambahkan "${cleanName}" di ${formFloor}`);
@@ -130,6 +156,8 @@ export function ACMasterUnitsManager() {
           name: cleanName,
           code: formCode.trim() || undefined,
           notes: formNotes.trim() || undefined,
+          cycle_months: cycle_months || null as any,
+          cycle_days: cycle_days || null as any,
         });
         setSuccessMsg(`Berhasil memperbarui "${cleanName}" (${formFloor})`);
       }
@@ -341,6 +369,7 @@ export function ACMasterUnitsManager() {
                   <th className="py-3 px-4">Nama / Nomor Kamar</th>
                   <th className="py-3 px-4">Lantai</th>
                   <th className="py-3 px-4">Kategori Area</th>
+                  <th className="py-3 px-4">Durasi Cuci</th>
                   <th className="py-3 px-4">Kode Unit</th>
                   <th className="py-3 px-4 text-right">Aksi</th>
                 </tr>
@@ -348,6 +377,7 @@ export function ACMasterUnitsManager() {
               <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
                 {filteredUnits.map((u, idx) => {
                   const resolvedFloor = resolveFloorFromUnit(u);
+                  const isCustomCycle = Boolean(u.cycle_months || u.cycle_days);
                   return (
                     <tr key={u.id} className="hover:bg-slate-50/80 transition group">
                       <td className="py-3 px-4 text-center font-bold text-slate-400">
@@ -367,6 +397,18 @@ export function ACMasterUnitsManager() {
                       <td className="py-3 px-4">
                         <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-100 text-slate-700 border border-slate-200">
                           {u.category}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4">
+                        <span
+                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold border ${
+                            isCustomCycle
+                              ? "bg-indigo-50 text-indigo-700 border-indigo-200"
+                              : "bg-slate-100 text-slate-600 border-slate-200"
+                          }`}
+                        >
+                          <Clock className="w-3 h-3 text-slate-400" />
+                          {formatUnitCycleLabel(u, 1)}
                         </span>
                       </td>
                       <td className="py-3 px-4">
@@ -504,6 +546,33 @@ export function ACMasterUnitsManager() {
                     </option>
                   ))}
                 </select>
+              </div>
+
+              {/* Durasi Siklus Cuci AC */}
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">
+                    Durasi Siklus Cuci AC
+                  </label>
+                  <span className="text-[10px] text-indigo-600 font-semibold">
+                    Kebutuhan Tiap Area Berbeda
+                  </span>
+                </div>
+                <select
+                  value={formCycleSelect}
+                  onChange={(e) => setFormCycleSelect(e.target.value)}
+                  className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-900 focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:outline-hidden min-h-[44px]"
+                >
+                  <option value="default">Default Sistem (Ikuti Pengaturan Siklus Global)</option>
+                  <option value="days_14">14 Hari (~2 Minggu) - Area Sangat Berdebu / Dapur</option>
+                  <option value="months_1">1 Bulan Sekali (~30 Hari) - Kamar Hotel / Tamu Publik</option>
+                  <option value="months_2">2 Bulan Sekali (~60 Hari) - Office & Ruang Meeting</option>
+                  <option value="months_3">3 Bulan Sekali (~90 Hari) - Outdoor VRV & Ruang Pompa/Teknis</option>
+                  <option value="months_6">6 Bulan Sekali (~180 Hari) - Ruang Tertutup / Gudang Arsip</option>
+                </select>
+                <p className="text-[10px] text-slate-500 mt-1">
+                  Pilih durasi khusus jika unit ini butuh dicuci lebih sering atau lebih santai daripada standar default.
+                </p>
               </div>
 
               {/* Kode Identifikasi */}

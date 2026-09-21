@@ -24,6 +24,7 @@ import {
   resolveFloorFromUnit,
   ACMaintenanceLog,
   normalizeACCategory,
+  formatUnitCycleLabel,
 } from "../types";
 import { getACScheduleOverview } from "../supabaseService";
 
@@ -393,6 +394,16 @@ export function ACSearchMode({ onOpenACLog }: ACSearchModeProps) {
                   <div className="flex items-center gap-1.5 flex-wrap">
                     <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-medium bg-slate-100 text-slate-700">
                       {unit.category}
+                    </span>
+                    <span
+                      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold border ${
+                        unit.cycle_months || unit.cycle_days
+                          ? "bg-indigo-50 text-indigo-700 border-indigo-200"
+                          : "bg-slate-50 text-slate-600 border-slate-200"
+                      }`}
+                    >
+                      <Clock className="w-2.5 h-2.5 text-slate-400" />
+                      {formatUnitCycleLabel(unit, 1)}
                     </span>
                     <span
                       className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] border ${statusBadge}`}

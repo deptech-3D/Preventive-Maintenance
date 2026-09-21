@@ -2920,6 +2920,45 @@ export async function updateACUnit(id: string, updates: Partial<ACUnitLocation>)
   return updatedItem;
 }
 
+export async function updateBulkACUnits(
+  updates: Array<{ id: string; cycle_months?: number | null; cycle_days?: number | null }>
+): Promise<void> {
+  const current = getLocalACUnits();
+  const updateMap = new Map(updates.map((u) => [u.id, u]));
+
+  const nextUnits = current.map((u) => {
+    const patch = updateMap.get(u.id);
+    if (!patch) return u;
+    const clone = { ...u };
+    if (patch.cycle_months !== undefined) {
+      if (patch.cycle_months === null || patch.cycle_months === 0) {
+        delete clone.cycle_months;
+      } else {
+        clone.cycle_months = patch.cycle_months;
+      }
+    }
+    if (patch.cycle_days !== undefined) {
+      if (patch.cycle_days === null || patch.cycle_days === 0) {
+        delete clone.cycle_days;
+      } else {
+        clone.cycle_days = patch.cycle_days;
+      }
+    }
+    return clone;
+  });
+
+  saveLocalACUnits(nextUnits);
+
+  try {
+    for (const item of updates) {
+      const dbPatch: any = {};
+      if (item.cycle_months !== undefined) dbPatch.cycle_months = item.cycle_months;
+      if (item.cycle_days !== undefined) dbPatch.cycle_days = item.cycle_days;
+      await supabase.from("ac_unit_locations").update(dbPatch).eq("id", item.id);
+    }
+  } catch {}
+}
+
 export async function deleteACUnit(id: string): Promise<void> {
   const current = getLocalACUnits();
   const filtered = current.filter((u) => u.id !== id);
@@ -3153,8 +3192,16 @@ export function calculateACScheduleStatus(
 
     const lastDate = new Date(lastLog.recorded_at);
     const nextDueDate = new Date(lastDate);
-    // Add cycleMonths to lastDate
-    nextDueDate.setMonth(nextDueDate.getMonth() + validCycle);
+
+    // Durasi spesifik per unit atau fallback ke global cycle
+    const effectiveMonths = unit.cycle_months && unit.cycle_months > 0 ? unit.cycle_months : validCycle;
+    const effectiveDays = unit.cycle_days && unit.cycle_days > 0 ? unit.cycle_days : null;
+
+    if (effectiveDays) {
+      nextDueDate.setDate(nextDueDate.getDate() + effectiveDays);
+    } else {
+      nextDueDate.setMonth(nextDueDate.getMonth() + effectiveMonths);
+    }
 
     // Calculate calendar days difference
     const diffMs = nextDueDate.getTime() - now.getTime();

@@ -26,6 +26,7 @@ import {
   ACMaintenanceLog,
   resolveFloorFromUnit,
   normalizeACCategory,
+  formatUnitCycleLabel,
 } from "../types";
 import {
   getACScheduleOverview,
@@ -529,8 +530,20 @@ export function ACScheduleNotificationPanel({
                         <div className="font-semibold text-slate-800">
                           {item.next_due_date ? formatReadableDate(item.next_due_date) : "Segera"}
                         </div>
-                        <div className="text-[10px] text-slate-400">
-                          Siklus: {cycleText}
+                        <div className="text-[10px] text-slate-500 font-medium flex items-center gap-1">
+                          <span>Siklus:</span>
+                          <span
+                            className={
+                              item.unit.cycle_months || item.unit.cycle_days
+                                ? "text-indigo-600 font-bold"
+                                : "text-slate-400"
+                            }
+                          >
+                            {formatUnitCycleLabel(
+                              item.unit,
+                              settings?.ac_maintenance_cycle_months || 1
+                            )}
+                          </span>
                         </div>
                       </td>
 

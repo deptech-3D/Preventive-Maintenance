@@ -101,8 +101,8 @@ export function ACMaintenanceCycleSettings() {
         const drafts: Record<string, { months?: number; days?: number }> = {};
         uList.forEach((u) => {
           drafts[u.id] = {
-            months: u.cycle_months,
-            days: u.cycle_days,
+            months: u.cycle_months ?? undefined,
+            days: u.cycle_days ?? undefined,
           };
         });
         setUnitDraftCycles(drafts);

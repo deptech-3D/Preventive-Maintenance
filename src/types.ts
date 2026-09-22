@@ -243,8 +243,8 @@ export interface ACUnitLocation {
   notes?: string;
   order?: number;
   created_at?: string;
-  cycle_months?: number; // Durasi siklus cuci khusus unit ini (misal: 1, 2, 3, 6 bulan). Jika kosong, mengikuti default global.
-  cycle_days?: number; // Durasi kustom dalam hari (misal: 14 hari, 45 hari).
+  cycle_months?: number | null; // Durasi siklus cuci khusus unit ini (misal: 1, 2, 3, 6 bulan). Jika kosong, mengikuti default global.
+  cycle_days?: number | null; // Durasi kustom dalam hari (misal: 14 hari, 45 hari).
 }
 
 export function formatUnitCycleLabel(unit?: Partial<ACUnitLocation> | null, defaultMonths: number = 1): string {

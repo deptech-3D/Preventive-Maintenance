@@ -253,12 +253,12 @@ export function formatUnitCycleLabel(unit?: Partial<ACUnitLocation> | null, defa
     return `${unit.cycle_days} Hari`;
   }
   if (unit.cycle_months && unit.cycle_months > 0) {
-    return `${unit.cycle_months} Bulan Sekali`;
+    return `${unit.cycle_months} Bulan`;
   }
   if (unit.cycle_days && unit.cycle_days > 0) {
-    return `${Math.round(unit.cycle_days / 30)} Bulan Sekali`;
+    return `${Math.round(unit.cycle_days / 30)} Bulan`;
   }
-  return `${defaultMonths} Bulan (Default)`;
+  return `${defaultMonths} Bulan`;
 }
 
 export interface ACMaintenanceLog {

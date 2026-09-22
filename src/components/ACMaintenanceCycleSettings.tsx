@@ -456,11 +456,18 @@ export function ACMaintenanceCycleSettings() {
                 className="text-xs font-semibold bg-transparent border-0 text-slate-800 focus:outline-hidden cursor-pointer"
               >
                 <option value="default">Default Sistem ({cycle})</option>
-                <option value="days_14">14 Hari (2 Minggu)</option>
-                <option value="months_1">1 Bulan Sekali (~30 Hari)</option>
-                <option value="months_2">2 Bulan Sekali (~60 Hari)</option>
-                <option value="months_3">3 Bulan Sekali (~90 Hari)</option>
-                <option value="months_6">6 Bulan Sekali (~180 Hari)</option>
+                <option value="months_1">1 Bulan</option>
+                <option value="months_2">2 Bulan</option>
+                <option value="months_3">3 Bulan</option>
+                <option value="months_4">4 Bulan</option>
+                <option value="months_5">5 Bulan</option>
+                <option value="months_6">6 Bulan</option>
+                <option value="months_7">7 Bulan</option>
+                <option value="months_8">8 Bulan</option>
+                <option value="months_9">9 Bulan</option>
+                <option value="months_10">10 Bulan</option>
+                <option value="months_11">11 Bulan</option>
+                <option value="months_12">12 Bulan</option>
               </select>
               <button
                 type="button"
@@ -579,11 +586,18 @@ export function ACMaintenanceCycleSettings() {
                             }`}
                           >
                             <option value="default">Default Sistem ({cycle})</option>
-                            <option value="days_14">14 Hari (2 Minggu) - Area Berdebu/Dapur</option>
-                            <option value="months_1">1 Bulan Sekali (~30 Hari) - Kamar Tamu/Publik</option>
-                            <option value="months_2">2 Bulan Sekali (~60 Hari) - Office/Meeting</option>
-                            <option value="months_3">3 Bulan Sekali (~90 Hari) - Outdoor VRV/Teknis</option>
-                            <option value="months_6">6 Bulan Sekali (~180 Hari) - Gudang/Arsip</option>
+                            <option value="months_1">1 Bulan</option>
+                            <option value="months_2">2 Bulan</option>
+                            <option value="months_3">3 Bulan</option>
+                            <option value="months_4">4 Bulan</option>
+                            <option value="months_5">5 Bulan</option>
+                            <option value="months_6">6 Bulan</option>
+                            <option value="months_7">7 Bulan</option>
+                            <option value="months_8">8 Bulan</option>
+                            <option value="months_9">9 Bulan</option>
+                            <option value="months_10">10 Bulan</option>
+                            <option value="months_11">11 Bulan</option>
+                            <option value="months_12">12 Bulan</option>
                           </select>
                         </td>
                         <td className="py-2.5 px-3 text-center">

@@ -564,11 +564,18 @@ export function ACMasterUnitsManager() {
                   className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-900 focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:outline-hidden min-h-[44px]"
                 >
                   <option value="default">Default Sistem (Ikuti Pengaturan Siklus Global)</option>
-                  <option value="days_14">14 Hari (~2 Minggu) - Area Sangat Berdebu / Dapur</option>
-                  <option value="months_1">1 Bulan Sekali (~30 Hari) - Kamar Hotel / Tamu Publik</option>
-                  <option value="months_2">2 Bulan Sekali (~60 Hari) - Office & Ruang Meeting</option>
-                  <option value="months_3">3 Bulan Sekali (~90 Hari) - Outdoor VRV & Ruang Pompa/Teknis</option>
-                  <option value="months_6">6 Bulan Sekali (~180 Hari) - Ruang Tertutup / Gudang Arsip</option>
+                  <option value="months_1">1 Bulan</option>
+                  <option value="months_2">2 Bulan</option>
+                  <option value="months_3">3 Bulan</option>
+                  <option value="months_4">4 Bulan</option>
+                  <option value="months_5">5 Bulan</option>
+                  <option value="months_6">6 Bulan</option>
+                  <option value="months_7">7 Bulan</option>
+                  <option value="months_8">8 Bulan</option>
+                  <option value="months_9">9 Bulan</option>
+                  <option value="months_10">10 Bulan</option>
+                  <option value="months_11">11 Bulan</option>
+                  <option value="months_12">12 Bulan</option>
                 </select>
                 <p className="text-[10px] text-slate-500 mt-1">
                   Pilih durasi khusus jika unit ini butuh dicuci lebih sering atau lebih santai daripada standar default.

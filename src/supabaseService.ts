@@ -124,6 +124,27 @@ export function getLocalStoredUsers(): StoredUserAccount[] {
   return [];
 }
 
+export function getDeletedUserIds(): string[] {
+  if (typeof localStorage === "undefined") return [];
+  try {
+    const raw = localStorage.getItem("meter_deleted_user_ids");
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return [];
+}
+
+export function addDeletedUserId(idOrEmail: string) {
+  if (typeof localStorage === "undefined" || !idOrEmail) return;
+  try {
+    const list = getDeletedUserIds();
+    const clean = idOrEmail.trim().toLowerCase();
+    if (!list.includes(clean)) {
+      list.push(clean);
+      localStorage.setItem("meter_deleted_user_ids", JSON.stringify(list));
+    }
+  } catch {}
+}
+
 export function saveLocalStoredUsers(users: StoredUserAccount[]) {
   if (typeof localStorage === "undefined") return;
   try {
@@ -248,10 +269,14 @@ export async function supabaseLogin(identifier: string, pass: string): Promise<U
   }
 
   // B. Check Default Technician
+  const deletedIds = getDeletedUserIds();
   const isTechMatch =
-    cleanId === "budi" ||
-    cleanId === "budi@meter.local" ||
-    cleanId === "budi santoso";
+    !deletedIds.includes("budi") &&
+    !deletedIds.includes("budi@meter.local") &&
+    !deletedIds.includes("usr_technician_1") &&
+    (cleanId === "budi" ||
+      cleanId === "budi@meter.local" ||
+      cleanId === "budi santoso");
 
   if (isTechMatch) {
     if (cleanPass === "123" || cleanPass === "123456" || cleanPass === "budi") {
@@ -480,6 +505,8 @@ export async function fetchUsers(): Promise<User[]> {
     customAdminEmail = localStorage.getItem("meter_admin_custom_email");
   }
 
+  const deletedIds = getDeletedUserIds();
+
   const defaultUsers: User[] = [
     {
       user_id: "usr_admin_default",
@@ -497,17 +524,31 @@ export async function fetchUsers(): Promise<User[]> {
     },
   ];
 
+  const filteredDefaultUsers = defaultUsers.filter(
+    (u) =>
+      !deletedIds.includes(u.user_id.toLowerCase()) &&
+      !deletedIds.includes(u.email.toLowerCase())
+  );
+
   if (list.length === 0) {
-    list = [...defaultUsers];
+    list = [...filteredDefaultUsers];
   } else {
-    // If no admin in Supabase list, add default admin
-    if (!list.some((u) => u.role === "admin")) {
+    // If no admin in Supabase list, add default admin if not deleted
+    if (
+      !list.some((u) => u.role === "admin") &&
+      filteredDefaultUsers.some((u) => u.role === "admin")
+    ) {
       list.unshift(defaultUsers[0]);
     }
   }
 
   // Merge any local created users
-  const locals = getLocalStoredUsers().filter((u) => !u.deleted);
+  const locals = getLocalStoredUsers().filter(
+    (u) =>
+      !u.deleted &&
+      !deletedIds.includes(u.user_id.toLowerCase()) &&
+      !deletedIds.includes((u.email || "").toLowerCase())
+  );
   for (const lu of locals) {
     if (!list.some((u) => u.user_id === lu.user_id || u.email.toLowerCase() === lu.email.toLowerCase())) {
       list.push({
@@ -521,7 +562,11 @@ export async function fetchUsers(): Promise<User[]> {
     }
   }
 
-  return list;
+  return list.filter(
+    (u) =>
+      !deletedIds.includes(u.user_id.toLowerCase()) &&
+      !deletedIds.includes((u.email || "").toLowerCase())
+  );
 }
 
 export async function createUser(user: {
@@ -615,23 +660,55 @@ export async function updateUserPassword(user_id: string, newPassword: string): 
 }
 
 export async function deleteUser(user_id: string): Promise<void> {
+  // Always mark user_id in persistent deleted set
+  addDeletedUserId(user_id);
+
   // Update in local store
   const currentLocals = getLocalStoredUsers();
-  const target = currentLocals.find((u) => u.user_id === user_id);
+  const target = currentLocals.find(
+    (u) => u.user_id === user_id || (u.email && u.email.toLowerCase() === user_id.toLowerCase())
+  );
   if (target) {
     target.deleted = true;
+    if (target.email) addDeletedUserId(target.email);
+    saveLocalStoredUsers(currentLocals);
+  } else {
+    currentLocals.push({
+      user_id,
+      name: "",
+      email: user_id,
+      password_hash: "",
+      role: "user",
+      deleted: true,
+      created_at: new Date().toISOString(),
+    });
     saveLocalStoredUsers(currentLocals);
   }
 
-  // Update in Supabase
-  try {
-    await supabase
-      .from("app_users")
-      .update({ deleted: true })
-      .eq("user_id", user_id);
-  } catch {}
+  // If user is budi
+  if (user_id === "usr_technician_1" || user_id.toLowerCase() === "budi@meter.local" || user_id.toLowerCase() === "budi") {
+    addDeletedUserId("usr_technician_1");
+    addDeletedUserId("budi@meter.local");
+    addDeletedUserId("budi");
+  }
 
-  // Also sync to backend
+  // Update in Supabase - try both delete and soft delete update
+  try {
+    await supabase.from("app_users").delete().eq("user_id", user_id);
+    await supabase.from("app_users").update({ deleted: true }).eq("user_id", user_id);
+    if (target?.email) {
+      await supabase.from("app_users").delete().eq("email", target.email);
+      await supabase.from("app_users").update({ deleted: true }).eq("email", target.email);
+    }
+    if (user_id === "usr_technician_1" || user_id.toLowerCase() === "budi@meter.local") {
+      await supabase.from("app_users").delete().eq("email", "budi@meter.local");
+      await supabase.from("app_users").update({ deleted: true }).eq("email", "budi@meter.local");
+    }
+  } catch (err) {
+    console.warn("Notice deleting user in Supabase:", err);
+  }
+
+  // Also sync to backend if any
   try {
     const token = typeof localStorage !== "undefined" ? localStorage.getItem("meter_checklist_token") : null;
     const headers: Record<string, string> = {};

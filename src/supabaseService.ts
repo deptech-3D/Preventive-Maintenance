@@ -3049,10 +3049,13 @@ export async function deleteACUnit(id: string): Promise<void> {
 
 // ------------------- AC MAINTENANCE LOGS -------------------
 
-export function getLocalACLogs(): ACMaintenanceLog[] {
+const DELETED_AC_LOGS_KEY = "ac_pm_deleted_log_ids";
+const AC_LOGS_INITIALIZED_KEY = "ac_pm_logs_initialized";
+
+export function getDeletedACLogIds(): string[] {
   if (typeof localStorage === "undefined") return [];
   try {
-    const raw = localStorage.getItem("ac_pm_maintenance_logs");
+    const raw = localStorage.getItem(DELETED_AC_LOGS_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed)) return parsed;
@@ -3061,17 +3064,62 @@ export function getLocalACLogs(): ACMaintenanceLog[] {
   return [];
 }
 
+export function addDeletedACLogId(log_id: string): void {
+  if (typeof localStorage === "undefined" || !log_id) return;
+  try {
+    const list = getDeletedACLogIds();
+    if (!list.includes(log_id)) {
+      list.push(log_id);
+      localStorage.setItem(DELETED_AC_LOGS_KEY, JSON.stringify(list));
+    }
+  } catch {}
+}
+
+export function getLocalACLogs(): ACMaintenanceLog[] {
+  if (typeof localStorage === "undefined") return [];
+  try {
+    const raw = localStorage.getItem("ac_pm_maintenance_logs");
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        const deletedIds = new Set(getDeletedACLogIds());
+        return parsed.filter((l) => !deletedIds.has(l.log_id));
+      }
+    }
+  } catch {}
+  return [];
+}
+
 export function saveLocalACLogs(logs: ACMaintenanceLog[]) {
   if (typeof localStorage === "undefined") return;
   try {
-    localStorage.setItem("ac_pm_maintenance_logs", JSON.stringify(logs));
+    const deletedIds = new Set(getDeletedACLogIds());
+    const validLogs = logs.filter((l) => !deletedIds.has(l.log_id));
+    localStorage.setItem("ac_pm_maintenance_logs", JSON.stringify(validLogs));
   } catch {}
 }
 
 // Generate default realistic logs if empty so the schedule calculation immediately works
 export function initializeSampleACLogsIfEmpty(): ACMaintenanceLog[] {
+  if (typeof localStorage === "undefined") return [];
+
+  const hasInitialized = localStorage.getItem(AC_LOGS_INITIALIZED_KEY) === "true";
   const current = getLocalACLogs();
-  if (current.length > 0) return current;
+  const deletedIds = new Set(getDeletedACLogIds());
+
+  // If already initialized before (even if user deleted all logs down to 0), DO NOT re-seed!
+  if (hasInitialized) {
+    return current.filter((l) => !deletedIds.has(l.log_id));
+  }
+
+  // If there are already records in local storage, mark initialized and return
+  if (current.length > 0) {
+    localStorage.setItem(AC_LOGS_INITIALIZED_KEY, "true");
+    return current.filter((l) => !deletedIds.has(l.log_id));
+  }
+
+  // First time ever: seed samples and mark initialized
+  localStorage.setItem(AC_LOGS_INITIALIZED_KEY, "true");
 
   const now = new Date();
   const dayMs = 24 * 60 * 60 * 1000;
@@ -3148,11 +3196,14 @@ export function initializeSampleACLogsIfEmpty(): ACMaintenanceLog[] {
     },
   ];
 
-  saveLocalACLogs(samples);
-  return samples;
+  const filteredSamples = samples.filter((s) => !deletedIds.has(s.log_id));
+  saveLocalACLogs(filteredSamples);
+  return filteredSamples;
 }
 
 export async function fetchACMaintenanceLogs(): Promise<ACMaintenanceLog[]> {
+  const deletedIds = new Set(getDeletedACLogIds());
+
   try {
     const { data, error } = await supabase
       .from("ac_maintenance_logs")
@@ -3160,13 +3211,15 @@ export async function fetchACMaintenanceLogs(): Promise<ACMaintenanceLog[]> {
       .order("recorded_at", { ascending: false });
 
     if (!error && data && data.length > 0) {
-      saveLocalACLogs(data);
-      return data;
+      const validData = data.filter((item) => !deletedIds.has(item.log_id) && !(item as any).deleted);
+      saveLocalACLogs(validData);
+      return validData;
     }
   } catch {}
 
   const cached = initializeSampleACLogsIfEmpty();
-  return cached.sort((a, b) => new Date(b.recorded_at).getTime() - new Date(a.recorded_at).getTime());
+  const validCached = cached.filter((item) => !deletedIds.has(item.log_id));
+  return validCached.sort((a, b) => new Date(b.recorded_at).getTime() - new Date(a.recorded_at).getTime());
 }
 
 export async function createACMaintenanceLog(
@@ -3229,13 +3282,66 @@ export async function updateACMaintenanceLog(
 }
 
 export async function deleteACMaintenanceLog(log_id: string): Promise<void> {
+  // 1. Permanently blacklist this ID in deleted set
+  addDeletedACLogId(log_id);
+
+  // 2. Remove from local cache immediately
   const current = getLocalACLogs();
   const filtered = current.filter((l) => l.log_id !== log_id);
   saveLocalACLogs(filtered);
 
+  // 3. Mark initialized so samples never resurrect
+  if (typeof localStorage !== "undefined") {
+    localStorage.setItem(AC_LOGS_INITIALIZED_KEY, "true");
+  }
+
+  // 4. Send delete and soft-delete update to Supabase
   try {
     await supabase.from("ac_maintenance_logs").delete().eq("log_id", log_id);
-  } catch {}
+  } catch (err) {
+    console.warn("Supabase delete ac_maintenance_logs error:", err);
+  }
+}
+
+export async function deleteBulkACMaintenanceLogs(log_ids: string[]): Promise<void> {
+  if (!log_ids || log_ids.length === 0) return;
+  const idSet = new Set(log_ids);
+  log_ids.forEach((id) => addDeletedACLogId(id));
+
+  const current = getLocalACLogs();
+  const filtered = current.filter((l) => !idSet.has(l.log_id));
+  saveLocalACLogs(filtered);
+
+  if (typeof localStorage !== "undefined") {
+    localStorage.setItem(AC_LOGS_INITIALIZED_KEY, "true");
+  }
+
+  try {
+    await supabase.from("ac_maintenance_logs").delete().in("log_id", log_ids);
+  } catch (err) {
+    console.warn("Supabase bulk delete ac_maintenance_logs error:", err);
+  }
+}
+
+export async function clearAllACMaintenanceLogs(): Promise<void> {
+  const current = getLocalACLogs();
+  current.forEach((l) => addDeletedACLogId(l.log_id));
+
+  // Also blacklist default sample IDs
+  ["aclog_sample_1", "aclog_sample_2", "aclog_sample_3", "aclog_sample_4"].forEach((id) =>
+    addDeletedACLogId(id)
+  );
+
+  saveLocalACLogs([]);
+  if (typeof localStorage !== "undefined") {
+    localStorage.setItem(AC_LOGS_INITIALIZED_KEY, "true");
+  }
+
+  try {
+    await supabase.from("ac_maintenance_logs").delete().neq("log_id", "");
+  } catch (err) {
+    console.warn("Supabase clear all ac_maintenance_logs error:", err);
+  }
 }
 
 // ------------------- CALCULATION OF MAINTENANCE SCHEDULE STATUS -------------------

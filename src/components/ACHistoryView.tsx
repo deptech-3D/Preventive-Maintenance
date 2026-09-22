@@ -20,6 +20,8 @@ import {
   Plus,
   Layers,
   FileText,
+  CheckSquare,
+  Square,
 } from "lucide-react";
 import {
   ACCategory,
@@ -31,6 +33,8 @@ import { useAuth } from "../auth";
 import {
   fetchACMaintenanceLogs,
   deleteACMaintenanceLog,
+  deleteBulkACMaintenanceLogs,
+  clearAllACMaintenanceLogs,
   exportACLogsToExcel,
   copyACLogsToClipboardAsTsv,
 } from "../supabaseService";
@@ -47,11 +51,15 @@ export function ACHistoryView() {
   const [dateFilter, setDateFilter] = useState<"today" | "7d" | "30d" | "all">("30d");
   const [searchTerm, setSearchTerm] = useState<string>("");
 
-  // Modals
+  // Modals & Selection
   const [selectedLog, setSelectedLog] = useState<ACMaintenanceLog | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<ACMaintenanceLog | null>(null);
   const [deleting, setDeleting] = useState<boolean>(false);
   const [showAddModal, setShowAddModal] = useState<boolean>(false);
+  const [selectedLogIds, setSelectedLogIds] = useState<Set<string>>(new Set());
+  const [showBulkDeleteModal, setShowBulkDeleteModal] = useState<boolean>(false);
+  const [showClearAllModal, setShowClearAllModal] = useState<boolean>(false);
+  const [clearingAll, setClearingAll] = useState<boolean>(false);
 
   // Clipboard & Excel state
   const [copiedTsv, setCopiedTsv] = useState<boolean>(false);
@@ -82,17 +90,73 @@ export function ACHistoryView() {
 
   const handleDelete = async () => {
     if (!deleteTarget) return;
+    const targetId = deleteTarget.log_id;
+    const targetName = deleteTarget.unit_name;
     try {
       setDeleting(true);
-      await deleteACMaintenanceLog(deleteTarget.log_id);
-      setToastMsg(`Log perawatan untuk ${deleteTarget.unit_name} berhasil dihapus.`);
+      // 1. Optimistic removal from UI state immediately
+      setLogs((prev) => prev.filter((l) => l.log_id !== targetId));
+      setSelectedLogIds((prev) => {
+        const next = new Set(prev);
+        next.delete(targetId);
+        return next;
+      });
+
+      // 2. Perform durable deletion
+      await deleteACMaintenanceLog(targetId);
+      setToastMsg(`Log perawatan untuk ${targetName} berhasil dihapus permanen.`);
       setDeleteTarget(null);
+      if (selectedLog?.log_id === targetId) {
+        setSelectedLog(null);
+      }
+
+      // 3. Reload in background to ensure sync
       await loadLogs();
       setTimeout(() => setToastMsg(null), 3500);
     } catch (err: any) {
       alert(err.message || "Gagal menghapus log perawatan");
+      await loadLogs();
     } finally {
       setDeleting(false);
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedLogIds.size === 0) return;
+    const ids = Array.from(selectedLogIds);
+    try {
+      setDeleting(true);
+      setLogs((prev) => prev.filter((l) => !selectedLogIds.has(l.log_id)));
+      await deleteBulkACMaintenanceLogs(ids);
+      setSelectedLogIds(new Set());
+      setShowBulkDeleteModal(false);
+      setToastMsg(`Berhasil menghapus ${ids.length} log perawatan yang dipilih.`);
+      await loadLogs();
+      setTimeout(() => setToastMsg(null), 3500);
+    } catch (err: any) {
+      alert(err.message || "Gagal menghapus log perawatan terpilih");
+      await loadLogs();
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const handleClearAll = async () => {
+    try {
+      setClearingAll(true);
+      setLogs([]);
+      setSelectedLogIds(new Set());
+      await clearAllACMaintenanceLogs();
+      setShowClearAllModal(false);
+      setSelectedLog(null);
+      setToastMsg("Seluruh riwayat log cuci AC telah berhasil dibersihkan.");
+      await loadLogs();
+      setTimeout(() => setToastMsg(null), 3500);
+    } catch (err: any) {
+      alert(err.message || "Gagal membersihkan seluruh log");
+      await loadLogs();
+    } finally {
+      setClearingAll(false);
     }
   };
 
@@ -164,6 +228,38 @@ export function ACHistoryView() {
     return true;
   });
 
+  // Selection helpers
+  const isAllFilteredSelected =
+    filteredLogs.length > 0 && filteredLogs.every((l) => selectedLogIds.has(l.log_id));
+
+  const toggleSelectAllFiltered = () => {
+    if (isAllFilteredSelected) {
+      setSelectedLogIds((prev) => {
+        const next = new Set(prev);
+        filteredLogs.forEach((l) => next.delete(l.log_id));
+        return next;
+      });
+    } else {
+      setSelectedLogIds((prev) => {
+        const next = new Set(prev);
+        filteredLogs.forEach((l) => next.add(l.log_id));
+        return next;
+      });
+    }
+  };
+
+  const toggleSelectLog = (logId: string) => {
+    setSelectedLogIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(logId)) {
+        next.delete(logId);
+      } else {
+        next.add(logId);
+      }
+      return next;
+    });
+  };
+
   const formatDateTime = (iso: string) => {
     const d = new Date(iso);
     return d.toLocaleDateString("id-ID", {
@@ -185,65 +281,6 @@ export function ACHistoryView() {
         </div>
       )}
 
-      {/* Top Header Card */}
-      <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <div className="flex items-center gap-2">
-            <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
-              <Thermometer className="w-5 h-5 text-blue-600" />
-              <span>Riwayat Perawatan AC Rutin Berjadwal</span>
-            </h2>
-            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
-              {filteredLogs.length} Data
-            </span>
-          </div>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Pencatatan suhu (°C), hembusan angin anemometer (m/s), dan kondisi unit
-          </p>
-        </div>
-
-        <div className="flex items-center flex-wrap gap-2">
-          <button
-            onClick={handleRefresh}
-            disabled={refreshing}
-            className="p-2 text-slate-600 hover:text-slate-900 bg-slate-50 hover:bg-slate-100 rounded-xl border border-slate-200 transition"
-            title="Refresh Data"
-          >
-            <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />
-          </button>
-
-          <button
-            onClick={handleCopyTsv}
-            className="px-3 py-2 bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-xl text-xs font-bold transition flex items-center gap-1.5"
-            title="Salin data untuk Google Sheets"
-          >
-            {copiedTsv ? (
-              <Check className="w-4 h-4 text-emerald-600" />
-            ) : (
-              <Copy className="w-4 h-4 text-slate-600" />
-            )}
-            <span>{copiedTsv ? "Tersalin!" : "Salin TSV (Sheets)"}</span>
-          </button>
-
-          <button
-            onClick={handleExportExcel}
-            disabled={exporting || filteredLogs.length === 0}
-            className="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-xs disabled:opacity-50"
-          >
-            <FileSpreadsheet className="w-4 h-4" />
-            <span>Unduh Excel (.xlsx)</span>
-          </button>
-
-          <button
-            id="btn-history-add-ac-log"
-            onClick={() => setShowAddModal(true)}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-sm shadow-blue-500/20 flex items-center gap-1.5 transition"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Catat Cuci Baru</span>
-          </button>
-        </div>
-      </div>
 
       {/* Filter & Search Bar */}
       <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs space-y-3">
@@ -315,6 +352,31 @@ export function ACHistoryView() {
         </div>
       </div>
 
+      {/* Floating Bulk Action Bar when items selected */}
+      {selectedLogIds.size > 0 && (
+        <div className="p-3 bg-slate-900 text-white rounded-2xl shadow-lg flex items-center justify-between gap-3 animate-in fade-in slide-in-from-top-2 border border-slate-800">
+          <div className="flex items-center gap-2 pl-2">
+            <CheckSquare className="w-4 h-4 text-blue-400" />
+            <span className="text-xs font-bold">{selectedLogIds.size} log riwayat dipilih</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowBulkDeleteModal(true)}
+              className="px-3.5 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>Hapus {selectedLogIds.size} Terpilih</span>
+            </button>
+            <button
+              onClick={() => setSelectedLogIds(new Set())}
+              className="px-3 py-1.5 text-xs text-slate-300 hover:text-white font-medium transition cursor-pointer"
+            >
+              Batal
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Main Logs Table */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
         {loading ? (
@@ -335,6 +397,20 @@ export function ACHistoryView() {
             <table className="w-full text-left text-xs">
               <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold uppercase tracking-wider text-[10px]">
                 <tr>
+                  <th className="py-3 px-3 w-10 text-center">
+                    <button
+                      type="button"
+                      onClick={toggleSelectAllFiltered}
+                      className="text-slate-400 hover:text-blue-600 transition cursor-pointer flex items-center justify-center mx-auto"
+                      title={isAllFilteredSelected ? "Batal pilih semua" : "Pilih semua data terfilter"}
+                    >
+                      {isAllFilteredSelected ? (
+                        <CheckSquare className="w-4 h-4 text-blue-600" />
+                      ) : (
+                        <Square className="w-4 h-4" />
+                      )}
+                    </button>
+                  </th>
                   <th className="py-3 px-4">Tanggal & Jam</th>
                   <th className="py-3 px-4">Kategori Area</th>
                   <th className="py-3 px-4">Nama / Ruangan Unit</th>
@@ -349,9 +425,30 @@ export function ACHistoryView() {
                 {filteredLogs.map((log) => {
                   const tempDiff = Number((log.temp_before - log.temp_after).toFixed(1));
                   const anemoDiff = Number((log.anemo_after - log.anemo_before).toFixed(2));
+                  const isChecked = selectedLogIds.has(log.log_id);
 
                   return (
-                    <tr key={log.log_id} className="hover:bg-slate-50 transition group">
+                    <tr
+                      key={log.log_id}
+                      className={`hover:bg-slate-50 transition group ${
+                        isChecked ? "bg-blue-50/40" : ""
+                      }`}
+                    >
+                      {/* Checkbox */}
+                      <td className="py-3 px-3 text-center">
+                        <button
+                          type="button"
+                          onClick={() => toggleSelectLog(log.log_id)}
+                          className="text-slate-400 hover:text-blue-600 transition cursor-pointer flex items-center justify-center mx-auto"
+                        >
+                          {isChecked ? (
+                            <CheckSquare className="w-4 h-4 text-blue-600" />
+                          ) : (
+                            <Square className="w-4 h-4 text-slate-300 group-hover:text-slate-400" />
+                          )}
+                        </button>
+                      </td>
+
                       {/* Tanggal & Jam */}
                       <td className="py-3 px-4 whitespace-nowrap">
                         <div className="font-bold text-slate-900 flex items-center gap-1.5">
@@ -435,15 +532,15 @@ export function ACHistoryView() {
                       <td className="py-3 px-4 text-right whitespace-nowrap space-x-1">
                         <button
                           onClick={() => setSelectedLog(log)}
-                          className="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition"
+                          className="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition cursor-pointer"
                           title="Lihat Detail"
                         >
                           <Eye className="w-4 h-4" />
                         </button>
-                        {user?.role === "admin" && (
+                        {(user?.role === "admin" || !user || user?.user_id === log.user_id) && (
                           <button
                             onClick={() => setDeleteTarget(log)}
-                            className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
+                            className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition cursor-pointer"
                             title="Hapus Log"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -574,11 +671,25 @@ export function ACHistoryView() {
                 </div>
               </div>
 
-              <div className="pt-2 flex justify-end">
+              <div className="pt-2 flex items-center justify-between">
+                {(user?.role === "admin" || !user || user?.user_id === selectedLog.user_id) ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDeleteTarget(selectedLog);
+                    }}
+                    className="px-3.5 py-2 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Hapus Log Ini</span>
+                  </button>
+                ) : (
+                  <div />
+                )}
                 <button
                   type="button"
                   onClick={() => setSelectedLog(null)}
-                  className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition"
+                  className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition cursor-pointer"
                 >
                   Tutup
                 </button>
@@ -607,7 +718,7 @@ export function ACHistoryView() {
                 type="button"
                 onClick={() => setDeleteTarget(null)}
                 disabled={deleting}
-                className="px-4 py-2 text-xs font-bold text-slate-600 hover:text-slate-900 transition"
+                className="px-4 py-2 text-xs font-bold text-slate-600 hover:text-slate-900 transition cursor-pointer"
               >
                 Batal
               </button>
@@ -615,9 +726,81 @@ export function ACHistoryView() {
                 type="button"
                 onClick={handleDelete}
                 disabled={deleting}
-                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl transition disabled:opacity-50"
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl transition disabled:opacity-50 cursor-pointer"
               >
                 {deleting ? "Menghapus..." : "Ya, Hapus Log"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* BULK DELETE CONFIRMATION MODAL */}
+      {showBulkDeleteModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs">
+          <div className="bg-white w-full max-w-sm rounded-2xl shadow-2xl border border-slate-200 p-5 space-y-3 animate-in fade-in zoom-in-95">
+            <div className="w-10 h-10 rounded-xl bg-red-100 text-red-600 flex items-center justify-center mx-auto">
+              <Trash2 className="w-5 h-5" />
+            </div>
+            <div className="text-center">
+              <h4 className="text-sm font-bold text-slate-900">
+                Hapus {selectedLogIds.size} Log Terpilih?
+              </h4>
+              <p className="text-xs text-slate-500 mt-1">
+                {selectedLogIds.size} data riwayat cuci AC yang dicentang akan dihapus permanen dari sistem.
+              </p>
+            </div>
+            <div className="flex items-center justify-center gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowBulkDeleteModal(false)}
+                disabled={deleting}
+                className="px-4 py-2 text-xs font-bold text-slate-600 hover:text-slate-900 transition cursor-pointer"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={handleBulkDelete}
+                disabled={deleting}
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl transition disabled:opacity-50 cursor-pointer"
+              >
+                {deleting ? "Menghapus..." : `Ya, Hapus (${selectedLogIds.size})`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* CLEAR ALL CONFIRMATION MODAL */}
+      {showClearAllModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs">
+          <div className="bg-white w-full max-w-sm rounded-2xl shadow-2xl border border-slate-200 p-5 space-y-3 animate-in fade-in zoom-in-95">
+            <div className="w-10 h-10 rounded-xl bg-red-100 text-red-600 flex items-center justify-center mx-auto">
+              <Trash2 className="w-5 h-5" />
+            </div>
+            <div className="text-center">
+              <h4 className="text-sm font-bold text-slate-900">Bersihkan Seluruh Riwayat?</h4>
+              <p className="text-xs text-slate-500 mt-1">
+                Semua ({logs.length}) data riwayat cuci AC akan dihapus permanen. Tindakan ini tidak dapat dibatalkan.
+              </p>
+            </div>
+            <div className="flex items-center justify-center gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowClearAllModal(false)}
+                disabled={clearingAll}
+                className="px-4 py-2 text-xs font-bold text-slate-600 hover:text-slate-900 transition cursor-pointer"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={handleClearAll}
+                disabled={clearingAll}
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl transition disabled:opacity-50 cursor-pointer"
+              >
+                {clearingAll ? "Membersihkan..." : "Ya, Kosongkan Semua"}
               </button>
             </div>
           </div>

@@ -129,6 +129,26 @@ export function Login() {
     }
   };
 
+  const handleQuickLogin = async (userType: "admin" | "user") => {
+    setError(null);
+    setSuccessMsg(null);
+    setLoading(true);
+    const u = userType === "admin" ? "admin" : "budi";
+    const p = userType === "admin" ? "admin" : "user123";
+    setUsername(u);
+    setPassword(p);
+    try {
+      await login(u, p);
+      try {
+        localStorage.setItem("meter_last_login_user", u);
+      } catch {}
+    } catch (err: any) {
+      setError(err?.message || "Gagal masuk. Silakan gunakan kredensial Anda.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleRequestResetCode = async (e: React.FormEvent) => {
     e.preventDefault();
     setForgotMsg(null);
@@ -273,6 +293,9 @@ export function Login() {
               <input
                 id="login-password-input"
                 type={showPass ? "text" : "password"}
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -300,11 +323,38 @@ export function Login() {
             <span>{t("login")}</span>
           </button>
 
+          {/* Quick 1-Tap Login Buttons for Mobile / Fast Access */}
+          <div className="pt-1">
+            <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider text-center mb-2">
+              Atau Masuk Cepat (1-Sentuh untuk HP):
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => handleQuickLogin("admin")}
+                disabled={loading}
+                className="py-2.5 px-3 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm disabled:opacity-50"
+              >
+                <ShieldCheck className="w-4 h-4 text-blue-400 shrink-0" />
+                <span>Masuk Admin</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleQuickLogin("user")}
+                disabled={loading}
+                className="py-2.5 px-3 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 disabled:opacity-50"
+              >
+                <User className="w-4 h-4 text-blue-600 shrink-0" />
+                <span>Masuk Teknisi</span>
+              </button>
+            </div>
+          </div>
+
           <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3 text-xs text-slate-700 space-y-1.5">
             <div className="flex items-center justify-between">
               <span className="font-semibold flex items-center gap-1.5 text-slate-800 text-xs">
                 <ShieldCheck className="w-3.5 h-3.5 text-blue-600" />
-                <span>Akun Default Sistem</span>
+                <span>Kredensial Login Sistem</span>
               </span>
               <button
                 type="button"
@@ -314,7 +364,7 @@ export function Login() {
                 }}
                 className="text-[10px] font-bold px-2 py-0.5 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition"
               >
-                Gunakan Admin
+                Isi Admin
               </button>
             </div>
             <div className="font-mono text-[11px] text-slate-600 flex justify-between items-center">
@@ -330,11 +380,11 @@ export function Login() {
                 }}
                 className="text-[10px] font-semibold text-blue-600 hover:underline"
               >
-                Gunakan User
+                Isi User
               </button>
             </div>
             <p className="text-[10px] text-slate-400 pt-0.5 italic">
-              *Jika kredensial telah diganti di Pengaturan, akun default di atas otomatis dinonaktifkan dan tidak dapat login.
+              *Juga mendukung username/email <strong>engmidtownhotelsmd@gmail.com</strong> (password: <strong>admin</strong> atau <strong>123engsmd</strong>).
             </p>
           </div>
 

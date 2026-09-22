@@ -21,18 +21,25 @@ import {
 } from "./types";
 import * as XLSX from "xlsx";
 import { OFFICIAL_AC_UNITS } from "./data/officialACUnits";
+import {
+  OFFICIAL_USERS_LIST,
+  OFFICIAL_ADMIN_CONFIG,
+  OFFICIAL_USER_BACKUP_VERSION,
+  UserBackupPackage,
+  StoredUserRecord,
+} from "./data/officialUsers";
 
 // Default fallback settings
 export const DEFAULT_SETTINGS: AppSettings = {
   settings_id: "global",
-  property_name: "Grand Hotel Resort & Spa",
+  property_name: "Midtown Hotel Samarinda",
   dashboard_bg_url: "https://images.unsplash.com/photo-1784411641863-d163d776ed55?crop=entropy&cs=srgb&fm=jpg&w=1200&q=75",
   threshold_percent: 30.0,
   shift_pagi_start: "06:00",
   shift_sore_start: "14:00",
   shift_malam_start: "22:00",
-  alert_emails: ["engineering@grandhotel.com"],
-  report_emails: ["gm@grandhotel.com"],
+  alert_emails: ["engmidtownhotelsmd@gmail.com"],
+  report_emails: ["engmidtownhotelsmd@gmail.com"],
   plant_report_emails: ["engmidtownhotelsmd@gmail.com"],
   reset_emails: [],
   chart_days_count: 2,
@@ -521,7 +528,7 @@ export async function fetchUsers(): Promise<User[]> {
         name: u.name,
         email: u.email,
         role: u.role as "admin" | "user",
-        property_name: u.property_name || "Grand Hotel Resort & Spa",
+        property_name: u.property_name || "Midtown Hotel Samarinda",
         created_at: u.created_at,
       }));
     }
@@ -536,19 +543,19 @@ export async function fetchUsers(): Promise<User[]> {
 
   const defaultUsers: User[] = [
     {
-      user_id: "usr_admin_default",
-      name: "Chief Engineer",
-      email: customAdminEmail || "admin@meter.local",
+      user_id: OFFICIAL_ADMIN_CONFIG.user_id,
+      name: OFFICIAL_ADMIN_CONFIG.name,
+      email: customAdminEmail || OFFICIAL_ADMIN_CONFIG.email,
       role: "admin",
-      property_name: "Grand Hotel Resort & Spa",
+      property_name: "Midtown Hotel Samarinda",
     },
-    {
-      user_id: "usr_technician_1",
-      name: "Budi Santoso",
-      email: "budi@meter.local",
-      role: "user",
-      property_name: "Grand Hotel Resort & Spa",
-    },
+    ...OFFICIAL_USERS_LIST.filter((u) => u.role !== "admin").map((u) => ({
+      user_id: u.user_id,
+      name: u.name,
+      email: u.email,
+      role: u.role,
+      property_name: u.property_name || "Midtown Hotel Samarinda",
+    })),
   ];
 
   const filteredDefaultUsers = defaultUsers.filter(
@@ -583,7 +590,7 @@ export async function fetchUsers(): Promise<User[]> {
         name: lu.name,
         email: lu.email,
         role: lu.role,
-        property_name: lu.property_name || "Grand Hotel Resort & Spa",
+        property_name: lu.property_name || "Midtown Hotel Samarinda",
         created_at: lu.created_at,
       });
     }
@@ -611,7 +618,7 @@ export async function createUser(user: {
     email: cleanEmail,
     password_hash: user.password?.trim() || "123456",
     role: user.role,
-    property_name: user.property_name || "Grand Hotel Resort & Spa",
+    property_name: user.property_name || "Midtown Hotel Samarinda",
     deleted: false,
     created_at: new Date().toISOString(),
   };
@@ -846,6 +853,128 @@ export async function updateAdminCredentials(
     });
   } catch (syncErr) {
     console.warn("Notice syncing admin credentials to server:", syncErr);
+  }
+}
+
+// ----------------- User & Admin Export / Import Services -----------------
+
+export function exportUsersAndAdminPackage(): UserBackupPackage {
+  const customAdminEmail = typeof localStorage !== "undefined" ? localStorage.getItem("meter_admin_custom_email") : null;
+  const customAdminPass = typeof localStorage !== "undefined" ? localStorage.getItem("meter_admin_custom_pass") : null;
+  const rawSettings = typeof localStorage !== "undefined" ? localStorage.getItem("meter_app_settings") : null;
+  let propertyName = "Midtown Hotel Samarinda";
+  if (rawSettings) {
+    try {
+      const parsed = JSON.parse(rawSettings);
+      if (parsed.property_name) propertyName = parsed.property_name;
+    } catch {}
+  }
+
+  const localUsers = getLocalStoredUsers();
+  const deletedIds = getDeletedUserIds();
+
+  // Combine default users with local users
+  const allUsersMap = new Map<string, StoredUserRecord>();
+
+  OFFICIAL_USERS_LIST.forEach((u) => {
+    allUsersMap.set(u.user_id, { ...u, property_name: propertyName });
+  });
+
+  localUsers.forEach((u) => {
+    allUsersMap.set(u.user_id, { ...u, property_name: propertyName });
+  });
+
+  return {
+    version: OFFICIAL_USER_BACKUP_VERSION,
+    exported_at: new Date().toISOString(),
+    property_name: propertyName,
+    admin: {
+      name: "Chief Engineer (Admin)",
+      email: customAdminEmail || OFFICIAL_ADMIN_CONFIG.email,
+      custom_password: customAdminPass || undefined,
+    },
+    users: Array.from(allUsersMap.values()).filter((u) => !deletedIds.includes(u.user_id.toLowerCase()) && !deletedIds.includes((u.email || "").toLowerCase())),
+    deleted_user_ids: deletedIds,
+  };
+}
+
+export function exportUsersAndAdminJSON(): string {
+  const pkg = exportUsersAndAdminPackage();
+  return JSON.stringify(pkg, null, 2);
+}
+
+export function downloadUsersBackupJSON(): void {
+  const jsonStr = exportUsersAndAdminJSON();
+  const blob = new Blob([jsonStr], { type: "application/json" });
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `backup-user-dan-admin-midtown-${new Date().toISOString().slice(0, 10)}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  window.URL.revokeObjectURL(url);
+}
+
+export function importUsersAndAdminPackage(data: string | UserBackupPackage): {
+  success: boolean;
+  count: number;
+  message: string;
+} {
+  try {
+    const pkg: UserBackupPackage = typeof data === "string" ? JSON.parse(data) : data;
+    if (!pkg || typeof pkg !== "object") {
+      return { success: false, count: 0, message: "Format file cadangan tidak valid." };
+    }
+
+    if (typeof localStorage === "undefined") {
+      return { success: false, count: 0, message: "Penyimpanan browser tidak tersedia." };
+    }
+
+    // Save admin
+    if (pkg.admin?.email) {
+      localStorage.setItem("meter_admin_custom_email", pkg.admin.email.trim().toLowerCase());
+    }
+    if (pkg.admin?.custom_password) {
+      localStorage.setItem("meter_admin_custom_pass", pkg.admin.custom_password.trim());
+    }
+
+    // Save property name
+    if (pkg.property_name) {
+      const rawSettings = localStorage.getItem("meter_app_settings");
+      let curr = { ...DEFAULT_SETTINGS };
+      if (rawSettings) {
+        try { curr = { ...curr, ...JSON.parse(rawSettings) }; } catch {}
+      }
+      curr.property_name = pkg.property_name;
+      localStorage.setItem("meter_app_settings", JSON.stringify(curr));
+    }
+
+    // Save deleted ids
+    if (Array.isArray(pkg.deleted_user_ids)) {
+      localStorage.setItem("meter_deleted_user_ids", JSON.stringify(pkg.deleted_user_ids));
+    }
+
+    // Save users
+    let userCount = 0;
+    if (Array.isArray(pkg.users)) {
+      saveLocalStoredUsers(pkg.users);
+      userCount = pkg.users.length;
+    }
+
+    localStorage.setItem("meter_users_version", OFFICIAL_USER_BACKUP_VERSION);
+
+    return {
+      success: true,
+      count: userCount,
+      message: `Berhasil memulihkan ${userCount} data akun pengguna & kredensial admin!`,
+    };
+  } catch (err: any) {
+    return {
+      success: false,
+      count: 0,
+      message: `Gagal membaca file cadangan: ${err?.message || "Format JSON tidak valid"}`,
+    };
   }
 }
 

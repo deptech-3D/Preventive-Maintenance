@@ -57,6 +57,9 @@ import {
   deleteUser,
   updateUserPassword,
   updateAdminCredentials,
+  downloadFullSystemBackup,
+  copySystemDataToClipboard,
+  restoreSystemFromJSON,
 } from "../supabaseService";
 
 export function Settings() {
@@ -120,6 +123,13 @@ export function Settings() {
   const [savingPass, setSavingPass] = useState(false);
   const [reportEmail, setReportEmail] = useState("engmidtownhotelsmd@gmail.com");
   const [plantReportEmail, setPlantReportEmail] = useState("engmidtownhotelsmd@gmail.com");
+
+  // Sync / Backup / Restore state
+  const [copiedSyncCode, setCopiedSyncCode] = useState(false);
+  const [pasteSyncCode, setPasteSyncCode] = useState("");
+  const [showPasteModal, setShowPasteModal] = useState(false);
+  const [restoringData, setRestoringData] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   // Admin AC Management Submenu State
   const [adminSubmenu, setAdminSubmenu] = useState<"master_ac" | "cycle_ac" | "reports" | "users" | "general">("master_ac");
@@ -1222,6 +1232,118 @@ export function Settings() {
         </div>
       </div>
 
+      {/* Sinkronisasi & Cadangan Data Antar Perangkat (PC <-> HP) */}
+      <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
+          <div>
+            <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+              <Download className="w-4 h-4 text-blue-600" />
+              <span>Sinkronisasi & Pemindahan Data (PC &harr; HP)</span>
+            </h2>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Pindahkan seluruh unit kamar AC, riwayat perawatan, dan pengaturan dari PC ke HP atau sebaliknya dengan mudah.
+            </p>
+          </div>
+          <span className="text-[11px] font-semibold px-2.5 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full w-fit">
+            Bebas Kuota / 100% Offline
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {/* Unduh JSON */}
+          <button
+            type="button"
+            onClick={() => {
+              try {
+                downloadFullSystemBackup();
+                setMsg({ text: "File data berhasil diunduh! Anda bisa memindahkannya ke HP.", kind: "ok" });
+              } catch {
+                setMsg({ text: "Gagal mengunduh file cadangan.", kind: "err" });
+              }
+            }}
+            className="flex items-center gap-3 p-3.5 bg-slate-50 hover:bg-blue-50/60 border border-slate-200 hover:border-blue-300 rounded-xl transition text-left group"
+          >
+            <div className="w-9 h-9 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center shrink-0 group-hover:scale-105 transition">
+              <Download className="w-4 h-4" />
+            </div>
+            <div>
+              <span className="text-xs font-bold text-slate-800 block">1. Unduh Data (.json)</span>
+              <span className="text-[11px] text-slate-500 block">Simpan semua kamar & log ke file</span>
+            </div>
+          </button>
+
+          {/* Salin Kode Teks */}
+          <button
+            type="button"
+            onClick={() => {
+              const ok = copySystemDataToClipboard();
+              if (ok) {
+                setCopiedSyncCode(true);
+                setMsg({ text: "Kode data sistem berhasil disalin! Anda bisa kirim lewat WA/Email ke HP.", kind: "ok" });
+                setTimeout(() => setCopiedSyncCode(false), 3000);
+              } else {
+                setMsg({ text: "Gagal menyalin kode data.", kind: "err" });
+              }
+            }}
+            className="flex items-center gap-3 p-3.5 bg-slate-50 hover:bg-emerald-50/60 border border-slate-200 hover:border-emerald-300 rounded-xl transition text-left group"
+          >
+            <div className="w-9 h-9 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 group-hover:scale-105 transition">
+              {copiedSyncCode ? <Check className="w-4 h-4 text-emerald-700" /> : <Copy className="w-4 h-4" />}
+            </div>
+            <div>
+              <span className="text-xs font-bold text-slate-800 block">
+                {copiedSyncCode ? "Kode Disalin!" : "2. Salin Kode Teks"}
+              </span>
+              <span className="text-[11px] text-slate-500 block">Kirim kode lewat WA/Email ke HP</span>
+            </div>
+          </button>
+
+          {/* Impor / Pulihkan */}
+          <div className="flex gap-2">
+            <input
+              type="file"
+              ref={fileInputRef}
+              accept=".json"
+              className="hidden"
+              onChange={async (e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                try {
+                  const text = await file.text();
+                  const res = await restoreSystemFromJSON(text);
+                  setMsg({ text: res.message, kind: "ok" });
+                  setTimeout(() => window.location.reload(), 1200);
+                } catch (err: any) {
+                  setMsg({ text: err.message || "Gagal memulihkan file data.", kind: "err" });
+                }
+              }}
+            />
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="flex-1 flex items-center gap-3 p-3.5 bg-slate-50 hover:bg-amber-50/60 border border-slate-200 hover:border-amber-300 rounded-xl transition text-left group"
+            >
+              <div className="w-9 h-9 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center shrink-0 group-hover:scale-105 transition">
+                <Upload className="w-4 h-4" />
+              </div>
+              <div>
+                <span className="text-xs font-bold text-slate-800 block">3. Unggah File (.json)</span>
+                <span className="text-[11px] text-slate-500 block">Terapkan file data di HP</span>
+              </div>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setShowPasteModal(true)}
+              title="Tempel Kode Teks dari WA/Email"
+              className="px-3 py-3.5 bg-slate-50 hover:bg-purple-50 border border-slate-200 hover:border-purple-300 text-purple-700 rounded-xl transition flex items-center justify-center font-bold text-xs"
+            >
+              Tempel Kode
+            </button>
+          </div>
+        </div>
+      </div>
+
       {/* Logout / Keluar Akun Section (Placed at the very bottom) */}
       <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -1355,6 +1477,75 @@ export function Settings() {
                 className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold transition shadow-sm"
               >
                 {confirmModal.confirmText || "Ya, Hapus"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Modal Tempel Kode Data (Sync Code) */}
+      {showPasteModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="w-full max-w-md bg-white rounded-2xl p-5 shadow-2xl border border-slate-200 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2 text-purple-700">
+                <Copy className="w-5 h-5" />
+                <h3 className="text-sm font-bold text-slate-900">Tempel Kode Data Sistem</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowPasteModal(false);
+                  setPasteSyncCode("");
+                }}
+                className="text-xs text-slate-400 hover:text-slate-600 font-bold"
+              >
+                Tutup
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-600">
+              Tempelkan teks kode cadangan yang telah disalin dari laptop (misal dikirim lewat WhatsApp atau Catatan) ke dalam kotak di bawah ini:
+            </p>
+
+            <textarea
+              rows={6}
+              value={pasteSyncCode}
+              onChange={(e) => setPasteSyncCode(e.target.value)}
+              placeholder='Tempel kode JSON di sini...'
+              className="w-full p-3 font-mono text-[11px] bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:outline-none"
+            />
+
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowPasteModal(false);
+                  setPasteSyncCode("");
+                }}
+                className="px-3.5 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                disabled={!pasteSyncCode.trim() || restoringData}
+                onClick={async () => {
+                  setRestoringData(true);
+                  try {
+                    const res = await restoreSystemFromJSON(pasteSyncCode.trim());
+                    setShowPasteModal(false);
+                    setPasteSyncCode("");
+                    setMsg({ text: res.message, kind: "ok" });
+                    setTimeout(() => window.location.reload(), 1200);
+                  } catch (err: any) {
+                    setMsg({ text: err.message || "Kode data tidak valid.", kind: "err" });
+                  } finally {
+                    setRestoringData(false);
+                  }
+                }}
+                className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold transition shadow-sm disabled:opacity-50"
+              >
+                {restoringData ? "Menerapkan..." : "Terapkan ke HP Ini"}
               </button>
             </div>
           </div>

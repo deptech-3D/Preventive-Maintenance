@@ -2762,44 +2762,76 @@ export async function copyPlantLogsToClipboardAsTsv(
   return { success: true, rowCount: sortedLogs.length, message: "Data tabel berhasil disalin ke clipboard! Tekan Ctrl+V di Google Sheets." };
 }
 
-export async function downloadFullSystemBackup(): Promise<void> {
-  const token = typeof localStorage !== "undefined" ? localStorage.getItem("meter_checklist_token") : null;
-  const headers: Record<string, string> = {};
-  if (token) headers["Authorization"] = `Bearer ${token}`;
-
-  const res = await fetch("/api/system/backup", { headers });
-  if (!res.ok) {
-    throw new Error("Gagal mengunduh data cadangan sistem");
+export function getAllSystemDataPayload(): Record<string, any> {
+  const payload: Record<string, any> = {};
+  if (typeof localStorage === "undefined") return payload;
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key && (key.startsWith("ac_") || key.startsWith("meter_"))) {
+      const raw = localStorage.getItem(key);
+      try {
+        payload[key] = JSON.parse(raw || "null");
+      } catch {
+        payload[key] = raw;
+      }
+    }
   }
+  return payload;
+}
 
-  const blob = await res.blob();
+export function downloadFullSystemBackup(): void {
+  const payload = getAllSystemDataPayload();
+  const jsonStr = JSON.stringify(payload, null, 2);
+  const blob = new Blob([jsonStr], { type: "application/json" });
   const url = window.URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `Backup_Engineering_System_${new Date().toISOString().slice(0, 10)}.json`;
+  a.download = `Preventive_Maintenance_Data_${new Date().toISOString().slice(0, 10)}.json`;
   document.body.appendChild(a);
   a.click();
   a.remove();
   window.URL.revokeObjectURL(url);
 }
 
-export async function restoreSystemFromJSON(jsonData: any): Promise<{ ok: boolean; message: string; restored_readings: number; restored_plant_logs: number }> {
-  const token = typeof localStorage !== "undefined" ? localStorage.getItem("meter_checklist_token") : null;
-  const headers: Record<string, string> = { "Content-Type": "application/json" };
-  if (token) headers["Authorization"] = `Bearer ${token}`;
+export function copySystemDataToClipboard(): boolean {
+  try {
+    const payload = getAllSystemDataPayload();
+    const str = JSON.stringify(payload);
+    if (typeof navigator !== "undefined" && navigator.clipboard) {
+      navigator.clipboard.writeText(str);
+      return true;
+    }
+  } catch {}
+  return false;
+}
 
-  const res = await fetch("/api/system/restore", {
-    method: "POST",
-    headers,
-    body: JSON.stringify(jsonData),
-  });
-
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: "Gagal memulihkan sistem" }));
-    throw new Error(err.detail || "Gagal memulihkan sistem");
+export function applySystemDataPayload(payload: Record<string, any>): { count: number } {
+  if (typeof localStorage === "undefined" || !payload || typeof payload !== "object") {
+    return { count: 0 };
   }
+  let count = 0;
+  for (const [key, val] of Object.entries(payload)) {
+    if (key.startsWith("ac_") || key.startsWith("meter_")) {
+      const valStr = typeof val === "string" ? val : JSON.stringify(val);
+      localStorage.setItem(key, valStr);
+      count++;
+    }
+  }
+  return { count };
+}
 
-  return await res.json();
+export async function restoreSystemFromJSON(jsonData: any): Promise<{ ok: boolean; message: string; restored_count: number }> {
+  try {
+    const parsed = typeof jsonData === "string" ? JSON.parse(jsonData) : jsonData;
+    const { count } = applySystemDataPayload(parsed);
+    return {
+      ok: true,
+      message: `Berhasil memulihkan ${count} kategori data sistem (AC, riwayat & pengaturan).`,
+      restored_count: count,
+    };
+  } catch (err: any) {
+    throw new Error(err?.message || "Format data JSON tidak valid");
+  }
 }
 
 // ============================================================================

@@ -2947,41 +2947,57 @@ export function getLocalACUnits(): ACUnitLocation[] {
     if (raw) {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        // Upgrade check: pastikan kamar lantai 3 ada dan penanda floor terisi
-        const hasFloor3 = parsed.some((u: ACUnitLocation) => resolveFloorFromUnit(u) === "Lantai 3");
-        if (!hasFloor3) {
-          saveLocalACUnits(DEFAULT_AC_UNITS);
-          return DEFAULT_AC_UNITS;
-        }
-
-        // Pastikan unit Basement, Lobby / Lantai 1, Lantai 2, & Rooftop ikut tersedia
-        const hasBasement = parsed.some((u: ACUnitLocation) => resolveFloorFromUnit(u) === "Basement");
-        const hasLobby = parsed.some((u: ACUnitLocation) => resolveFloorFromUnit(u) === "Lobby / Lantai 1");
-        const hasLantai2 = parsed.some((u: ACUnitLocation) => resolveFloorFromUnit(u) === "Lantai 2");
-        const hasRooftop = parsed.some((u: ACUnitLocation) => resolveFloorFromUnit(u) === "Rooftop");
-
-        let updatedList: ACUnitLocation[] = parsed.map((u: ACUnitLocation) => ({
+        return parsed.map((u: ACUnitLocation) => ({
           ...u,
-          floor: resolveFloorFromUnit(u),
+          floor: u.floor || resolveFloorFromUnit(u),
           category: normalizeACCategory(u.category),
         }));
-
-        const needsMissingDefaults = !hasBasement || !hasLobby || !hasLantai2 || !hasRooftop;
-        const hadOldFloors = parsed.some((u: ACUnitLocation) => u.floor !== resolveFloorFromUnit(u));
-        const hadOldCategories = parsed.some((u: ACUnitLocation) => u.category !== normalizeACCategory(u.category));
-
-        if (needsMissingDefaults || hadOldFloors || hadOldCategories) {
-          const existingIds = new Set(updatedList.map((p: any) => p.id));
-          const missingDefaults = DEFAULT_AC_UNITS.filter((u) => !existingIds.has(u.id));
-          updatedList = [...updatedList, ...missingDefaults];
-          saveLocalACUnits(updatedList);
-        }
-
-        return updatedList;
       }
     }
   } catch {}
   return DEFAULT_AC_UNITS;
+}
+
+export function exportACUnitsToJSON(): void {
+  const units = getLocalACUnits();
+  const jsonStr = JSON.stringify(units, null, 2);
+  const blob = new Blob([jsonStr], { type: "application/json" });
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `Data_AC_Perlantai_${new Date().toISOString().slice(0, 10)}.json`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  window.URL.revokeObjectURL(url);
+}
+
+export function copyACUnitsToClipboard(): boolean {
+  try {
+    const units = getLocalACUnits();
+    const str = JSON.stringify(units, null, 2);
+    if (typeof navigator !== "undefined" && navigator.clipboard) {
+      navigator.clipboard.writeText(str);
+      return true;
+    }
+  } catch {}
+  return false;
+}
+
+export function importACUnitsFromJSON(jsonData: any): { count: number } {
+  const parsed = typeof jsonData === "string" ? JSON.parse(jsonData) : jsonData;
+  if (!Array.isArray(parsed)) {
+    throw new Error("Format data AC harus berupa daftar unit (array JSON)");
+  }
+  const normalized = parsed.map((u: any, idx: number) => ({
+    ...u,
+    id: u.id || `unit_${Date.now()}_${idx}`,
+    floor: u.floor || resolveFloorFromUnit(u),
+    category: normalizeACCategory(u.category),
+    name: u.name || `Unit ${idx + 1}`,
+  }));
+  saveLocalACUnits(normalized);
+  return { count: normalized.length };
 }
 
 export function saveLocalACUnits(units: ACUnitLocation[]) {

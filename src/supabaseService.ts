@@ -166,6 +166,25 @@ export async function supabaseLogin(identifier: string, pass: string): Promise<U
   const passLower = cleanPass.toLowerCase();
   if (!cleanId || !cleanPass) return null;
 
+  // 0. Try Express Server Auth first (persists across shared URLs, web sessions & devices)
+  try {
+    const res = await fetch("/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: cleanId, password: cleanPass }),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data?.user) {
+        if (typeof localStorage !== "undefined") {
+          localStorage.setItem("meter_supabase_user", JSON.stringify(data.user));
+          if (data.token) localStorage.setItem("meter_checklist_token", data.token);
+        }
+        return data.user;
+      }
+    }
+  } catch {}
+
   // 1. Try direct Supabase cloud authentication (with 2.5s timeout for mobile networks)
   try {
     const cloudPromise = supabase
@@ -514,6 +533,17 @@ export async function updateAppSettings(patch: Partial<AppSettings>): Promise<Ap
 // ----------------- Supabase Users -----------------
 
 export async function fetchUsers(): Promise<User[]> {
+  // 1. Check Express backend first (contains persistent shared users across all clients & devices)
+  try {
+    const res = await fetch("/api/users");
+    if (res.ok) {
+      const data = await res.json();
+      if (data?.ok && Array.isArray(data.users) && data.users.length > 0) {
+        return data.users;
+      }
+    }
+  } catch {}
+
   let list: User[] = [];
   try {
     const { data, error } = await supabase
@@ -958,11 +988,24 @@ export function importUsersAndAdminPackage(data: string | UserBackupPackage): {
     // Save users
     let userCount = 0;
     if (Array.isArray(pkg.users)) {
-      saveLocalStoredUsers(pkg.users);
-      userCount = pkg.users.length;
+      const accounts: StoredUserAccount[] = pkg.users.map((u) => ({
+        user_id: u.user_id,
+        name: u.name,
+        email: u.email,
+        password_hash: u.password_hash || "123456",
+        role: (u.role === "admin" ? "admin" : "user") as "admin" | "user",
+        property_name: u.property_name || "Midtown Hotel Samarinda",
+        deleted: !!u.deleted,
+        created_at: u.created_at || new Date().toISOString(),
+      }));
+      saveLocalStoredUsers(accounts);
+      userCount = accounts.length;
     }
 
     localStorage.setItem("meter_users_version", OFFICIAL_USER_BACKUP_VERSION);
+
+    // Sync to server backend asynchronously
+    syncAllUsersAndAdminToServer().catch(() => {});
 
     return {
       success: true,
@@ -974,6 +1017,62 @@ export function importUsersAndAdminPackage(data: string | UserBackupPackage): {
       success: false,
       count: 0,
       message: `Gagal membaca file cadangan: ${err?.message || "Format JSON tidak valid"}`,
+    };
+  }
+}
+
+export async function copyUsersAndAdminToClipboard(): Promise<boolean> {
+  try {
+    const jsonStr = exportUsersAndAdminJSON();
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(jsonStr);
+      return true;
+    } else {
+      const textarea = document.createElement("textarea");
+      textarea.value = jsonStr;
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand("copy");
+      document.body.removeChild(textarea);
+      return true;
+    }
+  } catch {
+    return false;
+  }
+}
+
+export async function syncAllUsersAndAdminToServer(): Promise<{
+  success: boolean;
+  message: string;
+  count: number;
+}> {
+  try {
+    const pkg = exportUsersAndAdminPackage();
+    const res = await fetch("/api/sync-all", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(pkg),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      return {
+        success: true,
+        count: data.userCount || pkg.users.length,
+        message: "Seluruh data pengguna dan kredensial admin berhasil disinkronkan ke server pusat!",
+      };
+    } else {
+      const err = await res.json().catch(() => ({}));
+      return {
+        success: false,
+        count: 0,
+        message: err.error || "Gagal sinkron ke server.",
+      };
+    }
+  } catch (err: any) {
+    return {
+      success: false,
+      count: 0,
+      message: "Server backend offline atau belum dapat dihubungi.",
     };
   }
 }

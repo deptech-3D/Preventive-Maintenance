@@ -60,6 +60,10 @@ import {
   downloadFullSystemBackup,
   copySystemDataToClipboard,
   restoreSystemFromJSON,
+  downloadUsersBackupJSON,
+  copyUsersAndAdminToClipboard,
+  importUsersAndAdminPackage,
+  syncAllUsersAndAdminToServer,
 } from "../supabaseService";
 
 export function Settings() {
@@ -130,6 +134,56 @@ export function Settings() {
   const [showPasteModal, setShowPasteModal] = useState(false);
   const [restoringData, setRestoringData] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  // User & Admin Sync / Backup State
+  const [syncingUsersServer, setSyncingUsersServer] = useState(false);
+  const [showUserImportModal, setShowUserImportModal] = useState(false);
+  const [userImportText, setUserImportText] = useState("");
+  const [copiedUserCode, setCopiedUserCode] = useState(false);
+
+  const handleSyncUsersToServer = async () => {
+    setSyncingUsersServer(true);
+    try {
+      const res = await syncAllUsersAndAdminToServer();
+      if (res.success) {
+        setMsg({ text: res.message, kind: "ok" });
+        const refreshed = await fetchUsers();
+        setUsersList(refreshed);
+      } else {
+        setMsg({ text: res.message, kind: "err" });
+      }
+    } catch (err: any) {
+      setMsg({ text: err.message || "Gagal sinkronisasi", kind: "err" });
+    } finally {
+      setSyncingUsersServer(false);
+    }
+  };
+
+  const handleCopyUsersJSON = async () => {
+    const success = await copyUsersAndAdminToClipboard();
+    if (success) {
+      setCopiedUserCode(true);
+      setMsg({ text: "Seluruh data akun & kredensial admin disalin ke clipboard!", kind: "ok" });
+      setTimeout(() => setCopiedUserCode(false), 3000);
+    } else {
+      setMsg({ text: "Gagal menyalin ke clipboard.", kind: "err" });
+    }
+  };
+
+  const handleImportUsersJSON = async () => {
+    if (!userImportText.trim()) return;
+    const res = importUsersAndAdminPackage(userImportText.trim());
+    if (res.success) {
+      setShowUserImportModal(false);
+      setUserImportText("");
+      setMsg({ text: res.message, kind: "ok" });
+      const refreshed = await fetchUsers();
+      setUsersList(refreshed);
+      refreshUser();
+    } else {
+      setMsg({ text: res.message, kind: "err" });
+    }
+  };
 
   // Admin AC Management Submenu State
   const [adminSubmenu, setAdminSubmenu] = useState<"master_ac" | "cycle_ac" | "reports" | "users" | "general">("master_ac");
@@ -1165,6 +1219,71 @@ export function Settings() {
               </button>
             </div>
           </form>
+
+          {/* Card Sinkronisasi & Cadangkan Akun User/Admin */}
+          <div className="bg-gradient-to-br from-slate-900 to-blue-950 text-white p-5 rounded-2xl border border-blue-900 shadow-md space-y-3.5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-blue-500/20 border border-blue-400/30 flex items-center justify-center text-blue-400">
+                  <RefreshCw className={`w-4 h-4 ${syncingUsersServer ? "animate-spin" : ""}`} />
+                </div>
+                <div>
+                  <h3 className="text-xs font-bold text-white tracking-wide uppercase">
+                    Sinkronisasi & Cadangkan Data Pengguna & Admin
+                  </h3>
+                  <p className="text-[11px] text-blue-200/80">
+                    Menjamin akun teknisi dan admin otomatis tersimpan permanen di server backend untuk semua tautan shared link aplikasi dan perangkat.
+                  </p>
+                </div>
+              </div>
+              <span className="px-2.5 py-1 rounded-full text-[10px] font-bold tracking-wider uppercase bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 w-fit">
+                Server Sync Aktif
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
+              <button
+                type="button"
+                onClick={handleSyncUsersToServer}
+                disabled={syncingUsersServer}
+                className="px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm disabled:opacity-50"
+                title="Kirim dan simpan data akun ke server backend utama"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${syncingUsersServer ? "animate-spin" : ""}`} />
+                <span>{syncingUsersServer ? "Menyinkronkan..." : "Sinkron ke Server"}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleCopyUsersJSON}
+                className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-blue-200 border border-slate-700 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5"
+                title="Salin kode JSON data akun untuk dipaste atau dibackup"
+              >
+                <Copy className="w-3.5 h-3.5" />
+                <span>{copiedUserCode ? "Tersalin!" : "Salin Data Akun"}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={downloadUsersBackupJSON}
+                className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-white border border-slate-700 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5"
+                title="Unduh file JSON cadangan akun pengguna & admin"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>Unduh File .json</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setShowUserImportModal(true)}
+                className="px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm"
+                title="Pulihkan akun dari file atau teks cadangan"
+              >
+                <Upload className="w-3.5 h-3.5" />
+                <span>Impor Cadangan</span>
+              </button>
+            </div>
+          </div>
           </>
           )}
 
@@ -1546,6 +1665,64 @@ export function Settings() {
                 className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold transition shadow-sm disabled:opacity-50"
               >
                 {restoringData ? "Menerapkan..." : "Terapkan ke HP Ini"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Impor Cadangan Akun Pengguna & Admin */}
+      {showUserImportModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="w-full max-w-md bg-white rounded-2xl p-5 shadow-2xl border border-slate-200 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2 text-blue-600">
+                <Users className="w-5 h-5" />
+                <h3 className="text-sm font-bold text-slate-900">Impor Cadangan Akun Pengguna</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowUserImportModal(false);
+                  setUserImportText("");
+                }}
+                className="text-xs text-slate-400 hover:text-slate-600 font-bold"
+              >
+                Tutup
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-600">
+              Tempelkan teks JSON cadangan akun pengguna atau kredensial admin ke kotak di bawah ini untuk diterapkan langsung:
+            </p>
+
+            <textarea
+              rows={6}
+              value={userImportText}
+              onChange={(e) => setUserImportText(e.target.value)}
+              placeholder='Tempelkan isi JSON backup akun di sini...'
+              className="w-full p-3 font-mono text-[11px] bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:outline-none"
+            />
+
+            <div className="flex justify-end gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowUserImportModal(false);
+                  setUserImportText("");
+                }}
+                className="px-3.5 py-2 text-xs text-slate-600 hover:bg-slate-100 rounded-xl"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={handleImportUsersJSON}
+                disabled={!userImportText.trim()}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition shadow-sm flex items-center gap-1.5"
+              >
+                <Check className="w-3.5 h-3.5" />
+                <span>Pulihkan & Terapkan Akun</span>
               </button>
             </div>
           </div>

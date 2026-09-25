@@ -1,19 +1,34 @@
-import express, { Request, Response } from "express";
+import express, { type Request, type Response } from "express";
 import cors from "cors";
 import path from "path";
 import fs from "fs";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const isProd = process.env.NODE_ENV === "production";
+const distPath = path.resolve(process.cwd(), "dist");
 
 app.use(cors());
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
-// File persistence setup
+// File persistence setup with /tmp fallback for read-only containers
 const DATA_DIR = path.resolve(process.cwd(), "data");
 const DATA_FILE = path.join(DATA_DIR, "server_data.json");
+const TMP_DATA_FILE = path.join("/tmp", "server_data.json");
+
+function getEffectiveDataFile(): string {
+  try {
+    if (!fs.existsSync(DATA_DIR)) {
+      fs.mkdirSync(DATA_DIR, { recursive: true });
+    }
+    const testFile = path.join(DATA_DIR, ".write_test");
+    fs.writeFileSync(testFile, "ok");
+    fs.unlinkSync(testFile);
+    return DATA_FILE;
+  } catch {
+    return TMP_DATA_FILE;
+  }
+}
 
 interface StoredUser {
   user_id: string;
@@ -38,6 +53,8 @@ interface ServerState {
   users: StoredUser[];
   deleted_user_ids: string[];
   settings: Record<string, any>;
+  ac_units?: any[];
+  ac_logs?: any[];
   last_updated: string;
 }
 
@@ -91,39 +108,51 @@ const DEFAULT_SERVER_STATE: ServerState = {
     ac_maintenance_cycle: "1 Bulan Sekali",
     ac_maintenance_cycle_months: 1,
   },
+  ac_units: [],
+  ac_logs: [],
   last_updated: new Date().toISOString(),
 };
 
 function readState(): ServerState {
   try {
-    if (!fs.existsSync(DATA_DIR)) {
-      fs.mkdirSync(DATA_DIR, { recursive: true });
+    const file = getEffectiveDataFile();
+    let parsed: any = {};
+    if (fs.existsSync(file)) {
+      const raw = fs.readFileSync(file, "utf-8");
+      parsed = JSON.parse(raw);
     }
-    if (fs.existsSync(DATA_FILE)) {
-      const raw = fs.readFileSync(DATA_FILE, "utf-8");
-      const parsed = JSON.parse(raw);
-      return {
-        ...DEFAULT_SERVER_STATE,
-        ...parsed,
-        admin: { ...DEFAULT_SERVER_STATE.admin, ...(parsed.admin || {}) },
-        settings: { ...DEFAULT_SERVER_STATE.settings, ...(parsed.settings || {}) },
-      };
+
+    let units = parsed.ac_units;
+    if (!Array.isArray(units) || units.length === 0) {
+      const defaultUnitsFile = path.join(process.cwd(), "data", "default_ac_units.json");
+      if (fs.existsSync(defaultUnitsFile)) {
+        try {
+          units = JSON.parse(fs.readFileSync(defaultUnitsFile, "utf-8"));
+        } catch {}
+      }
     }
+
+    return {
+      ...DEFAULT_SERVER_STATE,
+      ...parsed,
+      admin: { ...DEFAULT_SERVER_STATE.admin, ...(parsed.admin || {}) },
+      settings: { ...DEFAULT_SERVER_STATE.settings, ...(parsed.settings || {}) },
+      ac_units: Array.isArray(units) ? units : [],
+      ac_logs: Array.isArray(parsed.ac_logs) ? parsed.ac_logs : [],
+    };
   } catch (err) {
-    console.error("Error reading server state file:", err);
+    console.error("Notice reading server state file:", err);
   }
   return { ...DEFAULT_SERVER_STATE };
 }
 
 function writeState(state: ServerState): void {
   try {
-    if (!fs.existsSync(DATA_DIR)) {
-      fs.mkdirSync(DATA_DIR, { recursive: true });
-    }
+    const file = getEffectiveDataFile();
     state.last_updated = new Date().toISOString();
-    fs.writeFileSync(DATA_FILE, JSON.stringify(state, null, 2), "utf-8");
+    fs.writeFileSync(file, JSON.stringify(state, null, 2), "utf-8");
   } catch (err) {
-    console.error("Error writing server state file:", err);
+    console.error("Notice writing server state file:", err);
   }
 }
 
@@ -470,11 +499,20 @@ app.post("/api/sync-all", (req: Request, res: Response) => {
     state.users = Array.from(userMap.values());
   }
 
+  if (Array.isArray(pkg.ac_units) && pkg.ac_units.length > 0) {
+    state.ac_units = pkg.ac_units;
+  }
+
+  if (Array.isArray(pkg.ac_logs) && pkg.ac_logs.length > 0) {
+    state.ac_logs = pkg.ac_logs;
+  }
+
   writeState(state);
   res.json({
     ok: true,
-    message: "Seluruh data user, admin, dan pengaturan berhasil disinkronkan ke server!",
+    message: "Seluruh data user, admin, pengaturan, dan AC berhasil disinkronkan ke server!",
     userCount: state.users.filter((u) => !u.deleted).length,
+    acUnitsCount: (state.ac_units || []).length,
   });
 });
 
@@ -498,29 +536,211 @@ app.get("/api/export-package", (_req: Request, res: Response) => {
     },
     users: activeUsers,
     deleted_user_ids: state.deleted_user_ids,
+    settings: state.settings,
+    ac_units: state.ac_units || [],
+    ac_logs: state.ac_logs || [],
   });
+});
+
+// ----------------- AC UNITS & LOGS API -----------------
+
+// GET all AC units
+app.get("/api/ac-units", (_req: Request, res: Response) => {
+  const state = readState();
+  res.json({
+    ok: true,
+    units: state.ac_units || [],
+    count: (state.ac_units || []).length,
+    last_updated: state.last_updated,
+  });
+});
+
+// POST single AC unit (create or update)
+app.post("/api/ac-units", (req: Request, res: Response) => {
+  const unit = req.body;
+  if (!unit || !unit.name) {
+    return res.status(400).json({ ok: false, error: "Nama unit wajib diisi" });
+  }
+  const state = readState();
+  if (!state.ac_units) state.ac_units = [];
+
+  const id = unit.id || `unit_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+  const existingIdx = state.ac_units.findIndex((u) => u.id === id);
+
+  const record = {
+    ...unit,
+    id,
+    created_at: unit.created_at || new Date().toISOString(),
+  };
+
+  if (existingIdx >= 0) {
+    state.ac_units[existingIdx] = { ...state.ac_units[existingIdx], ...record };
+  } else {
+    state.ac_units.push(record);
+  }
+
+  writeState(state);
+  res.json({ ok: true, unit: record });
+});
+
+// PUT bulk AC units (reorder or batch update)
+app.put("/api/ac-units/bulk", (req: Request, res: Response) => {
+  const { units, updates } = req.body;
+  const state = readState();
+  if (!state.ac_units) state.ac_units = [];
+
+  if (Array.isArray(units)) {
+    state.ac_units = units;
+  } else if (Array.isArray(updates)) {
+    const map = new Map(updates.map((u: any) => [u.id, u]));
+    state.ac_units = state.ac_units.map((item: any) => {
+      const patch = map.get(item.id);
+      if (patch) {
+        return { ...item, ...patch };
+      }
+      return item;
+    });
+  }
+
+  writeState(state);
+  res.json({ ok: true, count: state.ac_units.length });
+});
+
+// DELETE single AC unit
+app.delete("/api/ac-units/:id", (req: Request, res: Response) => {
+  const { id } = req.params;
+  const state = readState();
+  if (!state.ac_units) state.ac_units = [];
+  state.ac_units = state.ac_units.filter((u) => u.id !== id);
+  writeState(state);
+  res.json({ ok: true, deleted: id });
+});
+
+// GET all AC maintenance logs
+app.get("/api/ac-logs", (_req: Request, res: Response) => {
+  const state = readState();
+  res.json({ ok: true, logs: state.ac_logs || [] });
+});
+
+// POST single AC maintenance log
+app.post("/api/ac-logs", (req: Request, res: Response) => {
+  const log = req.body;
+  if (!log) return res.status(400).json({ ok: false, error: "Data log wajib diisi" });
+  const state = readState();
+  if (!state.ac_logs) state.ac_logs = [];
+
+  const log_id = log.log_id || `log_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+  const existingIdx = state.ac_logs.findIndex((l) => l.log_id === log_id);
+  const record = {
+    ...log,
+    log_id,
+    created_at: log.created_at || new Date().toISOString(),
+  };
+
+  if (existingIdx >= 0) {
+    state.ac_logs[existingIdx] = record;
+  } else {
+    state.ac_logs.unshift(record);
+  }
+
+  writeState(state);
+  res.json({ ok: true, log: record });
+});
+
+// DELETE AC maintenance log
+app.delete("/api/ac-logs/:id", (req: Request, res: Response) => {
+  const { id } = req.params;
+  const state = readState();
+  if (!state.ac_logs) state.ac_logs = [];
+  state.ac_logs = state.ac_logs.filter((l) => l.log_id !== id);
+  writeState(state);
+  res.json({ ok: true, deleted: id });
+});
+
+// POST Sync from Remote URL (e.g. https://preventive-maint-eng.ai.studio)
+app.post("/api/sync-from-remote", async (req: Request, res: Response) => {
+  const targetUrl = (req.body.url || "https://preventive-maint-eng.ai.studio").trim().replace(/\/+$/, "");
+  try {
+    const pkgRes = await fetch(`${targetUrl}/api/export-package`);
+    if (!pkgRes.ok) {
+      throw new Error(`Remote responded with HTTP status ${pkgRes.status}`);
+    }
+    const pkg: any = await pkgRes.json();
+    const state = readState();
+
+    if (pkg.property_name) state.property_name = pkg.property_name;
+    if (pkg.admin) {
+      if (pkg.admin.email) state.admin.email = pkg.admin.email;
+      if (pkg.admin.name) state.admin.name = pkg.admin.name;
+      if (pkg.admin.custom_password) state.admin.password_hash = pkg.admin.custom_password;
+    }
+    if (Array.isArray(pkg.users)) {
+      state.users = pkg.users;
+    }
+    if (Array.isArray(pkg.deleted_user_ids)) {
+      state.deleted_user_ids = pkg.deleted_user_ids;
+    }
+    if (pkg.settings) {
+      state.settings = { ...state.settings, ...pkg.settings };
+    }
+    if (Array.isArray(pkg.ac_units) && pkg.ac_units.length > 0) {
+      state.ac_units = pkg.ac_units;
+    }
+    if (Array.isArray(pkg.ac_logs) && pkg.ac_logs.length > 0) {
+      state.ac_logs = pkg.ac_logs;
+    }
+
+    writeState(state);
+    res.json({
+      ok: true,
+      message: `Berhasil menyinkronkan data dari ${targetUrl}`,
+      usersCount: state.users.length,
+      acUnitsCount: (state.ac_units || []).length,
+    });
+  } catch (err: any) {
+    res.status(500).json({ ok: false, error: err.message || "Gagal sinkronisasi data remote" });
+  }
 });
 
 // ----------------- STATIC / DEV MIDDLEWARE -----------------
 
 async function startServer() {
-  if (!isProd) {
-    const { createServer: createViteServer } = await import("vite");
-    const vite = await createViteServer({
-      server: { middlewareMode: true },
-      appType: "spa",
-    });
-    app.use(vite.middlewares);
-  } else {
-    const distPath = path.resolve(process.cwd(), "dist");
+  const hasDist = fs.existsSync(distPath) && fs.existsSync(path.join(distPath, "index.html"));
+
+  // If built dist exists, ALWAYS serve static production assets
+  if (hasDist && process.env.VITE_DEV_MODE !== "true") {
+    console.log(`Serving static production build from ${distPath}`);
     app.use(express.static(distPath));
-    app.get("*", (_req: Request, res: Response) => {
+    app.use((_req: Request, res: Response) => {
       res.sendFile(path.join(distPath, "index.html"));
     });
+  } else {
+    // Development mode fallback
+    try {
+      const { createServer: createViteServer } = await import("vite");
+      const vite = await createViteServer({
+        server: { middlewareMode: true },
+        appType: "spa",
+      });
+      app.use(vite.middlewares);
+      console.log("Vite dev middleware mounted");
+    } catch (viteErr) {
+      console.warn("Vite middleware not available, falling back to static:", viteErr);
+      if (fs.existsSync(distPath)) {
+        app.use(express.static(distPath));
+        app.use((_req: Request, res: Response) => {
+          res.sendFile(path.join(distPath, "index.html"));
+        });
+      } else {
+        app.use((_req: Request, res: Response) => {
+          res.status(200).send("App initializing...");
+        });
+      }
+    }
   }
 
   app.listen(Number(PORT), "0.0.0.0", () => {
-    console.log(`Server listening on port ${PORT} (isProd=${isProd})`);
+    console.log(`Server listening on port ${PORT} (hasDist=${hasDist})`);
   });
 }
 

@@ -16,6 +16,15 @@ import {
   Upload,
   Copy,
   FileSpreadsheet,
+  ArrowUpDown,
+  ChevronUp,
+  ChevronDown,
+  GripVertical,
+  ListOrdered,
+  Globe,
+  RefreshCw,
+  CloudDownload,
+  CloudUpload,
 } from "lucide-react";
 import {
   ACCategory,
@@ -35,6 +44,10 @@ import {
   exportACUnitsToJSON,
   copyACUnitsToClipboard,
   importACUnitsFromJSON,
+  moveACUnitInFloor,
+  swapACUnitInFloor,
+  syncWithRemoteLiveApp,
+  pushCurrentDataToRemote,
 } from "../supabaseService";
 
 export function ACMasterUnitsManager() {
@@ -53,8 +66,19 @@ export function ACMasterUnitsManager() {
   const [formCode, setFormCode] = useState<string>("");
   const [formNotes, setFormNotes] = useState<string>("");
   const [formCycleSelect, setFormCycleSelect] = useState<string>("default");
+  const [formOrderNumber, setFormOrderNumber] = useState<number>(1);
   const [saving, setSaving] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  // Reordering states
+  const [reorderMode, setReorderMode] = useState<boolean>(false);
+  const [draggedUnitId, setDraggedUnitId] = useState<string | null>(null);
+  const [quickMoveModal, setQuickMoveModal] = useState<{
+    unit: ACUnitLocation;
+    currentPos: number;
+    maxPos: number;
+  } | null>(null);
+  const [targetPosInput, setTargetPosInput] = useState<string>("1");
 
   // Delete confirmation state
   const [deleteTarget, setDeleteTarget] = useState<ACUnitLocation | null>(null);
@@ -69,6 +93,11 @@ export function ACMasterUnitsManager() {
   const [pasteCode, setPasteCode] = useState("");
   const fileInputRef = React.useRef<HTMLInputElement | null>(null);
 
+  // Live URL Sync state (https://preventive-maint-eng.ai.studio)
+  const [syncingRemote, setSyncingRemote] = useState<boolean>(false);
+  const [liveUrlInput, setLiveUrlInput] = useState<string>("https://preventive-maint-eng.ai.studio");
+  const [remoteSyncModalOpen, setRemoteSyncModalOpen] = useState<boolean>(false);
+
   const loadUnits = async () => {
     try {
       setLoading(true);
@@ -81,9 +110,44 @@ export function ACMasterUnitsManager() {
     }
   };
 
+  const handleSyncFromLive = async (customUrl?: string) => {
+    const target = (customUrl || liveUrlInput || "https://preventive-maint-eng.ai.studio").trim();
+    try {
+      setSyncingRemote(true);
+      setErrorMsg(null);
+      const result = await syncWithRemoteLiveApp(target);
+      setSuccessMsg(result.message);
+      await loadUnits();
+      setRemoteSyncModalOpen(false);
+      setTimeout(() => setSuccessMsg(null), 5000);
+    } catch (err: any) {
+      setErrorMsg(err.message || "Gagal menyinkronkan data dari live server");
+    } finally {
+      setSyncingRemote(false);
+    }
+  };
+
+  const handlePushToLive = async (customUrl?: string) => {
+    const target = (customUrl || liveUrlInput || "https://preventive-maint-eng.ai.studio").trim();
+    try {
+      setSyncingRemote(true);
+      setErrorMsg(null);
+      const result = await pushCurrentDataToRemote(target);
+      setSuccessMsg(result.message);
+      setTimeout(() => setSuccessMsg(null), 5000);
+    } catch (err: any) {
+      setErrorMsg(err.message || "Gagal mengirim data ke live server");
+    } finally {
+      setSyncingRemote(false);
+    }
+  };
+
   useEffect(() => {
     loadUnits();
   }, []);
+
+  // All units strictly on selected real floor
+  const floorUnits = units.filter((u) => resolveFloorFromUnit(u) === selectedFloor);
 
   const openAddModal = () => {
     setErrorMsg(null);
@@ -103,17 +167,23 @@ export function ACMasterUnitsManager() {
     setFormCode("");
     setFormNotes("");
     setFormCycleSelect("default");
+    setFormOrderNumber(floorUnits.length + 1);
     setEditingUnit(null);
     setModalMode("add");
   };
 
   const openEditModal = (unit: ACUnitLocation) => {
     setErrorMsg(null);
+    const uFloor = resolveFloorFromUnit(unit);
     setFormCategory(normalizeACCategory(unit.category));
-    setFormFloor(resolveFloorFromUnit(unit));
+    setFormFloor(uFloor);
     setFormName(unit.name);
     setFormCode(unit.code || "");
     setFormNotes(unit.notes || "");
+
+    const currFloorUnits = units.filter((u) => resolveFloorFromUnit(u) === uFloor);
+    const pos = currFloorUnits.findIndex((u) => u.id === unit.id);
+    setFormOrderNumber(pos >= 0 ? pos + 1 : 1);
     
     if (unit.cycle_days && unit.cycle_days > 0 && unit.cycle_days % 30 !== 0) {
       setFormCycleSelect(`days_${unit.cycle_days}`);
@@ -159,7 +229,7 @@ export function ACMasterUnitsManager() {
           notes: formNotes.trim() || undefined,
           cycle_months,
           cycle_days,
-          order: units.length + 1,
+          order: formOrderNumber || floorUnits.length + 1,
         });
         setSuccessMsg(`Berhasil menambahkan "${cleanName}" di ${formFloor}`);
       } else if (modalMode === "edit" && editingUnit) {
@@ -169,9 +239,17 @@ export function ACMasterUnitsManager() {
           name: cleanName,
           code: formCode.trim() || undefined,
           notes: formNotes.trim() || undefined,
-          cycle_months: cycle_months || null as any,
-          cycle_days: cycle_days || null as any,
+          cycle_months: cycle_months || (null as any),
+          cycle_days: cycle_days || (null as any),
         });
+
+        // If floor position order was changed
+        const currentFloorList = units.filter((u) => resolveFloorFromUnit(u) === formFloor);
+        const oldPos = currentFloorList.findIndex((u) => u.id === editingUnit.id) + 1;
+        if (formOrderNumber !== oldPos && formOrderNumber >= 1) {
+          await moveACUnitInFloor(editingUnit.id, formFloor, formOrderNumber - 1);
+        }
+
         setSuccessMsg(`Berhasil memperbarui "${cleanName}" (${formFloor})`);
       }
 
@@ -201,16 +279,83 @@ export function ACMasterUnitsManager() {
     }
   };
 
+  // Reordering Action Handlers
+  const handleSwap = async (unitId: string, direction: "up" | "down") => {
+    try {
+      const updated = await swapACUnitInFloor(unitId, selectedFloor, direction);
+      setUnits(updated);
+    } catch (err: any) {
+      console.error("Gagal menukar posisi:", err);
+    }
+  };
+
+  const openQuickMoveModal = (unit: ACUnitLocation, currentPos: number, maxPos: number) => {
+    setQuickMoveModal({ unit, currentPos, maxPos });
+    setTargetPosInput(String(currentPos));
+  };
+
+  const executeQuickMove = async () => {
+    if (!quickMoveModal) return;
+    const target = parseInt(targetPosInput, 10);
+    if (isNaN(target) || target < 1 || target > quickMoveModal.maxPos) {
+      setErrorMsg(`Nomor urut harus antara 1 dan ${quickMoveModal.maxPos}`);
+      return;
+    }
+    try {
+      setSaving(true);
+      const updated = await moveACUnitInFloor(quickMoveModal.unit.id, selectedFloor, target - 1);
+      setUnits(updated);
+      setSuccessMsg(
+        `Berhasil memindahkan "${quickMoveModal.unit.name}" ke nomor urut ${target} di ${selectedFloor}!`
+      );
+      setQuickMoveModal(null);
+      setTimeout(() => setSuccessMsg(null), 3500);
+    } catch (err: any) {
+      setErrorMsg(err.message || "Gagal memindahkan urutan unit");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDragStart = (e: React.DragEvent, id: string) => {
+    setDraggedUnitId(id);
+    e.dataTransfer.effectAllowed = "move";
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+  };
+
+  const handleDrop = async (e: React.DragEvent, targetUnitId: string) => {
+    e.preventDefault();
+    if (!draggedUnitId || draggedUnitId === targetUnitId) {
+      setDraggedUnitId(null);
+      return;
+    }
+    const targetIdx = floorUnits.findIndex((u) => u.id === targetUnitId);
+    if (targetIdx !== -1) {
+      try {
+        const updated = await moveACUnitInFloor(draggedUnitId, selectedFloor, targetIdx);
+        setUnits(updated);
+        const movedUnit = floorUnits.find((u) => u.id === draggedUnitId);
+        setSuccessMsg(`Berhasil memindahkan "${movedUnit?.name || "Unit"}" ke urutan no. ${targetIdx + 1}`);
+        setTimeout(() => setSuccessMsg(null), 3500);
+      } catch (err) {
+        console.error("Gagal drop reorder:", err);
+      }
+    }
+    setDraggedUnitId(null);
+  };
+
   // Filtered unit list strictly per selected real floor
-  const filteredUnits = units.filter((u) => {
-    const unitFloor = resolveFloorFromUnit(u);
-    const matchFloor = unitFloor === selectedFloor;
+  const filteredUnits = floorUnits.filter((u) => {
     const matchCategory = selectedCategory === "all" || normalizeACCategory(u.category) === selectedCategory;
     const matchSearch =
       !searchTerm ||
       u.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (u.code && u.code.toLowerCase().includes(searchTerm.toLowerCase()));
-    return matchFloor && matchCategory && matchSearch;
+    return matchCategory && matchSearch;
   });
 
   return (
@@ -261,6 +406,29 @@ export function ACMasterUnitsManager() {
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
+            {/* Tarik Data dari Live URL */}
+            <button
+              type="button"
+              onClick={() => handleSyncFromLive()}
+              disabled={syncingRemote}
+              className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-2xs transition min-h-[36px] cursor-pointer disabled:opacity-50"
+              title="Tarik langsung seluruh data AC, user, dan pengaturan dari https://preventive-maint-eng.ai.studio"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${syncingRemote ? "animate-spin" : ""}`} />
+              <span>{syncingRemote ? "Menyinkronkan..." : "Tarik dari Live (preventive-maint-eng.ai.studio)"}</span>
+            </button>
+
+            {/* Hubungkan URL Live */}
+            <button
+              type="button"
+              onClick={() => setRemoteSyncModalOpen(true)}
+              className="px-3 py-1.5 bg-white hover:bg-slate-100 border border-slate-300 text-slate-700 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-2xs transition min-h-[36px] cursor-pointer"
+              title="Buka opsi sinkronisasi URL Live"
+            >
+              <Globe className="w-3.5 h-3.5 text-blue-600" />
+              <span>Hubungkan URL Live</span>
+            </button>
+
             {/* Unduh JSON */}
             <button
               type="button"
@@ -272,7 +440,7 @@ export function ACMasterUnitsManager() {
               className="px-3 py-1.5 bg-white hover:bg-blue-50 border border-blue-200 text-blue-700 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-2xs transition min-h-[36px]"
             >
               <Download className="w-3.5 h-3.5" />
-              <span>1. Unduh File JSON</span>
+              <span>Unduh File JSON</span>
             </button>
 
             {/* Salin JSON */}
@@ -439,15 +607,56 @@ export function ACMasterUnitsManager() {
 
       {/* Units Table / Grid for Selected Floor */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
-        <div className="bg-slate-50/80 px-4 py-2.5 border-b border-slate-200 flex items-center justify-between text-xs">
-          <div className="font-bold text-slate-800 flex items-center gap-1.5">
+        <div className="bg-slate-50/80 px-4 py-2.5 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2 text-xs">
+          <div className="font-bold text-slate-800 flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-blue-600" />
             <span>Daftar Kamar / Unit di {selectedFloor}</span>
+            <span className="text-slate-400 font-normal">({floorUnits.length} unit)</span>
           </div>
-          <span className="text-slate-500 font-medium">
-            Total {filteredUnits.length} kamar/unit
-          </span>
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              id="btn-toggle-reorder-mode"
+              onClick={() => setReorderMode(!reorderMode)}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 border shadow-2xs cursor-pointer ${
+                reorderMode
+                  ? "bg-blue-600 text-white border-blue-600 shadow-xs"
+                  : "bg-white hover:bg-slate-50 text-slate-700 border-slate-200"
+              }`}
+              title="Aktifkan mode urutkan posisi kamar / unit"
+            >
+              <ArrowUpDown className="w-3.5 h-3.5" />
+              <span>{reorderMode ? "Selesai Atur Urutan" : "Atur Urutan Kamar"}</span>
+            </button>
+
+            <span className="text-slate-500 font-medium">
+              Total {filteredUnits.length} kamar/unit
+            </span>
+          </div>
         </div>
+
+        {/* Banner Panduan Mode Atur Urutan */}
+        {reorderMode && (
+          <div className="bg-gradient-to-r from-blue-50 via-indigo-50 to-slate-50 border-b border-blue-200 p-3 px-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-blue-950 animate-in fade-in">
+            <div className="flex items-center gap-2">
+              <ListOrdered className="w-4 h-4 text-blue-600 shrink-0" />
+              <div>
+                <span className="font-bold">Mode Atur Urutan Aktif ({selectedFloor}):</span>{" "}
+                <span className="text-slate-600">
+                  Gunakan tombol panah <strong>▲/▼</strong>, drag & drop baris, atau klik tombol <strong>Urutan / No.</strong> untuk memindahkan posisi kamar (contoh: pindahkan Restoran ke no. 3).
+                </span>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setReorderMode(false)}
+              className="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold text-xs shrink-0 self-start sm:self-auto cursor-pointer"
+            >
+              Selesai
+            </button>
+          </div>
+        )}
 
         {loading ? (
           <div className="p-8 text-center text-xs text-slate-500">
@@ -469,7 +678,7 @@ export function ACMasterUnitsManager() {
             <table className="w-full text-left text-xs">
               <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold uppercase tracking-wider text-[10px]">
                 <tr>
-                  <th className="py-3 px-4 w-12 text-center">No</th>
+                  <th className="py-3 px-3 text-center w-28">No. Urut</th>
                   <th className="py-3 px-4">Nama / Nomor Kamar</th>
                   <th className="py-3 px-4">Lantai</th>
                   <th className="py-3 px-4">Kategori Area</th>
@@ -479,14 +688,70 @@ export function ACMasterUnitsManager() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
-                {filteredUnits.map((u, idx) => {
+                {filteredUnits.map((u) => {
                   const resolvedFloor = resolveFloorFromUnit(u);
                   const isCustomCycle = Boolean(u.cycle_months || u.cycle_days);
+                  const floorPos = floorUnits.findIndex((item) => item.id === u.id) + 1;
+                  const isFirst = floorPos <= 1;
+                  const isLast = floorPos >= floorUnits.length;
+
                   return (
-                    <tr key={u.id} className="hover:bg-slate-50/80 transition group">
-                      <td className="py-3 px-4 text-center font-bold text-slate-400">
-                        {idx + 1}
+                    <tr
+                      key={u.id}
+                      draggable
+                      onDragStart={(e) => handleDragStart(e, u.id)}
+                      onDragOver={handleDragOver}
+                      onDrop={(e) => handleDrop(e, u.id)}
+                      className={`hover:bg-slate-50/80 transition group ${
+                        draggedUnitId === u.id ? "opacity-40 bg-blue-50" : ""
+                      }`}
+                    >
+                      {/* KOLOM NOMOR URUT DENGAN KONTROL ATUR URUTAN */}
+                      <td className="py-2.5 px-3 text-center whitespace-nowrap">
+                        <div className="inline-flex items-center justify-center gap-1.5">
+                          {/* Drag Handle */}
+                          <div
+                            className="cursor-grab active:cursor-grabbing text-slate-300 hover:text-slate-600 p-0.5"
+                            title="Tarik & lepas untuk geser urutan posisi kamar"
+                          >
+                            <GripVertical className="w-3.5 h-3.5" />
+                          </div>
+
+                          {/* Up & Down Arrows */}
+                          <div className="flex flex-col -my-1">
+                            <button
+                              type="button"
+                              disabled={isFirst}
+                              onClick={() => handleSwap(u.id, "up")}
+                              className="p-0.5 text-slate-400 hover:text-blue-600 hover:bg-blue-100 rounded-sm disabled:opacity-20 transition cursor-pointer"
+                              title={`Geser naik ke No. ${floorPos - 1}`}
+                            >
+                              <ChevronUp className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              disabled={isLast}
+                              onClick={() => handleSwap(u.id, "down")}
+                              className="p-0.5 text-slate-400 hover:text-blue-600 hover:bg-blue-100 rounded-sm disabled:opacity-20 transition cursor-pointer"
+                              title={`Geser turun ke No. ${floorPos + 1}`}
+                            >
+                              <ChevronDown className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+
+                          {/* Clickable Position Badge */}
+                          <button
+                            type="button"
+                            onClick={() => openQuickMoveModal(u, floorPos, floorUnits.length)}
+                            className="px-2 py-0.5 bg-slate-100 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-300 border border-slate-200 rounded-lg font-bold text-xs text-slate-700 transition flex items-center gap-1 group/badge cursor-pointer"
+                            title="Klik untuk pindahkan ke nomor urut tertentu (misal: No. 3)"
+                          >
+                            <span>{floorPos}</span>
+                            <ArrowUpDown className="w-2.5 h-2.5 text-slate-400 group-hover/badge:text-blue-600" />
+                          </button>
+                        </div>
                       </td>
+
                       <td className="py-3 px-4">
                         <div className="font-bold text-slate-900">{u.name}</div>
                         {u.notes && (
@@ -526,8 +791,17 @@ export function ACMasterUnitsManager() {
                       </td>
                       <td className="py-3 px-4 text-right space-x-1.5 whitespace-nowrap">
                         <button
+                          type="button"
+                          onClick={() => openQuickMoveModal(u, floorPos, floorUnits.length)}
+                          className="px-2.5 py-1 text-blue-600 hover:bg-blue-50 rounded-lg text-xs font-bold transition inline-flex items-center gap-1 border border-blue-200 min-h-[32px] cursor-pointer"
+                          title="Pindahkan urutan nomor posisi kamar ini"
+                        >
+                          <ArrowUpDown className="w-3.5 h-3.5" />
+                          <span>Urutan</span>
+                        </button>
+                        <button
                           onClick={() => openEditModal(u)}
-                          className="px-2.5 py-1 text-slate-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg text-xs font-bold transition inline-flex items-center gap-1 border border-slate-200 min-h-[32px]"
+                          className="px-2.5 py-1 text-slate-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg text-xs font-bold transition inline-flex items-center gap-1 border border-slate-200 min-h-[32px] cursor-pointer"
                           title="Edit Unit"
                         >
                           <Pencil className="w-3.5 h-3.5" />
@@ -535,7 +809,7 @@ export function ACMasterUnitsManager() {
                         </button>
                         <button
                           onClick={() => setDeleteTarget(u)}
-                          className="px-2.5 py-1 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg text-xs font-bold transition inline-flex items-center gap-1 border border-slate-200 min-h-[32px]"
+                          className="px-2.5 py-1 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg text-xs font-bold transition inline-flex items-center gap-1 border border-slate-200 min-h-[32px] cursor-pointer"
                           title="Hapus Unit"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
@@ -631,6 +905,26 @@ export function ACMasterUnitsManager() {
                   required
                   className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-hidden min-h-[44px]"
                 />
+              </div>
+
+              {/* POSISI NOMOR URUT DALAM LANTAI */}
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+                  Posisi Nomor Urut di {formFloor}
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    min={1}
+                    max={Math.max(floorUnits.length + 1, 1)}
+                    value={formOrderNumber}
+                    onChange={(e) => setFormOrderNumber(Math.max(1, parseInt(e.target.value, 10) || 1))}
+                    className="w-24 px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-bold text-center text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-hidden min-h-[42px]"
+                  />
+                  <span className="text-[11px] text-slate-500">
+                    Posisi antrean urutan kamar (contoh: isi <strong>3</strong> untuk pindah ke No. 3)
+                  </span>
+                </div>
               </div>
 
               {/* Kategori Area */}
@@ -835,6 +1129,194 @@ export function ACMasterUnitsManager() {
               >
                 Terapkan Data AC
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* MODAL CEPAT PINDAH NOMOR URUT */}
+      {quickMoveModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs">
+          <div className="bg-white w-full max-w-sm rounded-2xl shadow-2xl border border-slate-200 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            <div className="bg-slate-900 text-white px-5 py-3.5 flex items-center justify-between">
+              <h3 className="text-xs font-bold flex items-center gap-2">
+                <ArrowUpDown className="w-4 h-4 text-blue-400" />
+                <span>Atur Nomor Urut Kamar / Unit</span>
+              </h3>
+              <button
+                type="button"
+                onClick={() => setQuickMoveModal(null)}
+                className="w-7 h-7 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-5 space-y-4 text-xs text-slate-700">
+              <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
+                <div className="text-[11px] text-slate-400 uppercase font-bold">Kamar / Unit yang Diatur:</div>
+                <div className="text-sm font-bold text-slate-900 mt-0.5">{quickMoveModal.unit.name}</div>
+                <div className="text-[11px] text-blue-600 mt-1 flex items-center gap-2">
+                  <span>Lantai: <strong>{selectedFloor}</strong></span>
+                  <span>•</span>
+                  <span>Saat ini Urutan: <strong>No. {quickMoveModal.currentPos}</strong></span>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
+                  Pindahkan ke Nomor Urut Baru:
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    min={1}
+                    max={quickMoveModal.maxPos}
+                    value={targetPosInput}
+                    onChange={(e) => setTargetPosInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        executeQuickMove();
+                      }
+                    }}
+                    className="w-24 px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-center text-sm text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
+                    autoFocus
+                  />
+                  <span className="text-xs text-slate-500">
+                    (Pilihan 1 s/d {quickMoveModal.maxPos})
+                  </span>
+                </div>
+              </div>
+
+              {/* Tombol Pilihan Cepat */}
+              <div>
+                <span className="text-[11px] font-bold text-slate-500 block mb-1.5">Pilihan Cepat:</span>
+                <div className="flex flex-wrap gap-1.5">
+                  {[1, 2, 3, 4, 5].filter((n) => n <= quickMoveModal.maxPos).map((n) => (
+                    <button
+                      key={n}
+                      type="button"
+                      onClick={() => setTargetPosInput(String(n))}
+                      className={`px-2.5 py-1 rounded-lg border text-xs font-bold transition cursor-pointer ${
+                        targetPosInput === String(n)
+                          ? "bg-blue-600 text-white border-blue-600"
+                          : "bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200"
+                      }`}
+                    >
+                      No. {n}
+                    </button>
+                  ))}
+                  {quickMoveModal.maxPos > 5 && (
+                    <button
+                      type="button"
+                      onClick={() => setTargetPosInput(String(quickMoveModal.maxPos))}
+                      className={`px-2.5 py-1 rounded-lg border text-xs font-bold transition cursor-pointer ${
+                        targetPosInput === String(quickMoveModal.maxPos)
+                          ? "bg-blue-600 text-white border-blue-600"
+                          : "bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200"
+                      }`}
+                    >
+                      Paling Bawah (No. {quickMoveModal.maxPos})
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <div className="pt-2 flex items-center justify-end gap-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setQuickMoveModal(null)}
+                  className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold transition cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  type="button"
+                  onClick={executeQuickMove}
+                  disabled={saving}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold transition shadow-sm flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                >
+                  <Check className="w-4 h-4" />
+                  <span>{saving ? "Memindahkan..." : "Simpan Urutan"}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL SINKRONISASI LIVE URL */}
+      {remoteSyncModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs">
+          <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-slate-200 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            <div className="bg-slate-900 text-white px-5 py-3.5 flex items-center justify-between">
+              <h3 className="text-xs font-bold flex items-center gap-2">
+                <Globe className="w-4 h-4 text-blue-400" />
+                <span>Sinkronisasi Antara Live & Preview</span>
+              </h3>
+              <button
+                type="button"
+                onClick={() => setRemoteSyncModalOpen(false)}
+                className="w-7 h-7 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-5 space-y-4 text-xs text-slate-700">
+              <p className="text-slate-600">
+                Fitur ini memungkinkan data master AC, urutan kamar, riwayat perawatan, akun teknisi/admin, dan pengaturan yang Anda ubah di <strong>https://preventive-maint-eng.ai.studio</strong> langsung ditarik ke lingkungan preview ini.
+              </p>
+
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+                  Alamat URL Server Live:
+                </label>
+                <input
+                  type="url"
+                  value={liveUrlInput}
+                  onChange={(e) => setLiveUrlInput(e.target.value)}
+                  placeholder="https://preventive-maint-eng.ai.studio"
+                  className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-mono text-xs text-slate-900 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
+                />
+                <span className="text-[11px] text-slate-400 mt-1 block">
+                  Target default: <strong>https://preventive-maint-eng.ai.studio</strong>
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+                <button
+                  type="button"
+                  disabled={syncingRemote}
+                  onClick={() => handleSyncFromLive()}
+                  className="p-3 bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-900 rounded-xl flex flex-col items-center gap-1.5 text-center font-bold transition cursor-pointer disabled:opacity-50"
+                >
+                  <CloudDownload className={`w-5 h-5 text-blue-600 ${syncingRemote ? "animate-bounce" : ""}`} />
+                  <span>Tarik Data dari Live ke Preview</span>
+                  <span className="text-[10px] font-normal text-blue-600">Ambil perubahan terbaru dari situs live</span>
+                </button>
+
+                <button
+                  type="button"
+                  disabled={syncingRemote}
+                  onClick={() => handlePushToLive()}
+                  className="p-3 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-900 rounded-xl flex flex-col items-center gap-1.5 text-center font-bold transition cursor-pointer disabled:opacity-50"
+                >
+                  <CloudUpload className="w-5 h-5 text-emerald-600" />
+                  <span>Kirim Data Preview ke Live</span>
+                  <span className="text-[10px] font-normal text-emerald-600">Unggah unit dari preview ini ke server live</span>
+                </button>
+              </div>
+
+              <div className="pt-2 flex items-center justify-end border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setRemoteSyncModalOpen(false)}
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold transition cursor-pointer"
+                >
+                  Tutup
+                </button>
+              </div>
             </div>
           </div>
         </div>

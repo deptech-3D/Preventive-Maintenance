@@ -49,6 +49,27 @@ export const DEFAULT_SETTINGS: AppSettings = {
   ac_maintenance_cycle_months: 1,
 };
 
+// Helper untuk base API URL: Menangani web browser biasa maupun Capacitor WebView di Android HP
+export const getApiBaseUrl = (): string => {
+  if (typeof window !== "undefined") {
+    const custom = localStorage.getItem("meter_custom_api_url");
+    if (custom && custom.trim().startsWith("http")) {
+      return custom.trim().replace(/\/+$/, "");
+    }
+    // Jika diakses dari dalam APK Android / iOS Capacitor (localhost)
+    if (window.location.protocol === "capacitor:" || window.location.hostname === "localhost") {
+      return "https://preventive-maint-eng.ai.studio";
+    }
+  }
+  return "";
+};
+
+export const apiUrl = (path: string): string => {
+  const base = getApiBaseUrl();
+  const cleanPath = path.startsWith("/") ? path : `/${path}`;
+  return `${base}${cleanPath}`;
+};
+
 // Default initial menus
 export const DEFAULT_MENUS: MeterMenu[] = [
   { menu_id: "menu_pdam", name: "PDAM", unit: "m³", kind: "simple", icon: "Drop", order: 1 },
@@ -3136,6 +3157,16 @@ export function importACUnitsFromJSON(jsonData: any): { count: number } {
     name: u.name || `Unit ${idx + 1}`,
   }));
   saveLocalACUnits(normalized);
+
+  // Simpan langsung ke Server Backend API
+  try {
+    fetch(apiUrl("/api/ac-units/bulk"), {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ units: normalized }),
+    });
+  } catch {}
+
   return { count: normalized.length };
 }
 
@@ -3147,6 +3178,24 @@ export function saveLocalACUnits(units: ACUnitLocation[]) {
 }
 
 export async function fetchACUnits(): Promise<ACUnitLocation[]> {
+  // 1. Coba ambil dari Server Backend API (/api/ac-units)
+  try {
+    const res = await fetch(apiUrl("/api/ac-units"));
+    if (res.ok) {
+      const json = await res.json();
+      if (json.ok && Array.isArray(json.units) && json.units.length > 0) {
+        const mapped = json.units.map((u: any) => ({
+          ...u,
+          floor: u.floor || resolveFloorFromUnit(u),
+          category: normalizeACCategory(u.category),
+        }));
+        saveLocalACUnits(mapped);
+        return mapped;
+      }
+    }
+  } catch {}
+
+  // 2. Coba ambil dari Supabase
   try {
     const { data, error } = await supabase
       .from("ac_unit_locations")
@@ -3157,12 +3206,14 @@ export async function fetchACUnits(): Promise<ACUnitLocation[]> {
       const mapped = data.map((u: any) => ({
         ...u,
         floor: u.floor || resolveFloorFromUnit(u),
+        category: normalizeACCategory(u.category),
       }));
       saveLocalACUnits(mapped);
       return mapped;
     }
   } catch {}
 
+  // 3. Cadangan dari LocalStorage
   const cached = getLocalACUnits();
   return cached;
 }
@@ -3178,6 +3229,15 @@ export async function createACUnit(item: Omit<ACUnitLocation, "id">): Promise<AC
   const current = getLocalACUnits();
   const updated = [...current, newUnit];
   saveLocalACUnits(updated);
+
+  // Kirim ke Server Backend API
+  try {
+    await fetch(apiUrl("/api/ac-units"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(newUnit),
+    });
+  } catch {}
 
   try {
     await supabase.from("ac_unit_locations").insert({
@@ -3203,6 +3263,15 @@ export async function updateACUnit(id: string, updates: Partial<ACUnitLocation>)
   const updatedItem: ACUnitLocation = { ...current[idx], ...updates };
   current[idx] = updatedItem;
   saveLocalACUnits(current);
+
+  // Kirim ke Server Backend API
+  try {
+    await fetch(apiUrl("/api/ac-units"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(updatedItem),
+    });
+  } catch {}
 
   try {
     await supabase.from("ac_unit_locations").update(updates).eq("id", id);
@@ -3240,6 +3309,15 @@ export async function updateBulkACUnits(
 
   saveLocalACUnits(nextUnits);
 
+  // Kirim ke Server Backend API
+  try {
+    await fetch(apiUrl("/api/ac-units/bulk"), {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ updates }),
+    });
+  } catch {}
+
   try {
     for (const item of updates) {
       const dbPatch: any = {};
@@ -3255,9 +3333,120 @@ export async function deleteACUnit(id: string): Promise<void> {
   const filtered = current.filter((u) => u.id !== id);
   saveLocalACUnits(filtered);
 
+  // Kirim ke Server Backend API
+  try {
+    await fetch(apiUrl(`/api/ac-units/${id}`), { method: "DELETE" });
+  } catch {}
+
   try {
     await supabase.from("ac_unit_locations").delete().eq("id", id);
   } catch {}
+}
+
+export async function reorderFloorACUnits(
+  floor: RealFloor | string,
+  orderedFloorUnitIds: string[]
+): Promise<ACUnitLocation[]> {
+  const current = getLocalACUnits();
+
+  // Find all units of this floor
+  const thisFloorUnits = current.filter((u) => resolveFloorFromUnit(u) === floor);
+  const unitMap = new Map(thisFloorUnits.map((u) => [u.id, u]));
+  const reorderedThisFloor: ACUnitLocation[] = [];
+
+  orderedFloorUnitIds.forEach((id, index) => {
+    const unit = unitMap.get(id);
+    if (unit) {
+      reorderedThisFloor.push({
+        ...unit,
+        order: index + 1,
+      });
+      unitMap.delete(id);
+    }
+  });
+
+  // Any units on this floor that weren't in orderedFloorUnitIds
+  unitMap.forEach((unit) => {
+    reorderedThisFloor.push({
+      ...unit,
+      order: reorderedThisFloor.length + 1,
+    });
+  });
+
+  // Re-assemble current array preserving the positions of this floor's items
+  const floorUnitIdsSet = new Set(reorderedThisFloor.map((u) => u.id));
+  let pointer = 0;
+  const nextUnits = current.map((u) => {
+    if (floorUnitIdsSet.has(u.id)) {
+      const item = reorderedThisFloor[pointer++];
+      return item || u;
+    }
+    return u;
+  });
+
+  while (pointer < reorderedThisFloor.length) {
+    nextUnits.push(reorderedThisFloor[pointer++]);
+  }
+
+  // Update global order sequence
+  nextUnits.forEach((u, i) => {
+    u.order = i + 1;
+  });
+
+  saveLocalACUnits(nextUnits);
+
+  // Kirim ke Server Backend API
+  try {
+    await fetch(apiUrl("/api/ac-units/bulk"), {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ units: nextUnits }),
+    });
+  } catch {}
+
+  try {
+    for (const u of reorderedThisFloor) {
+      await supabase.from("ac_unit_locations").update({ order: u.order }).eq("id", u.id);
+    }
+  } catch {}
+
+  return nextUnits;
+}
+
+export async function moveACUnitInFloor(
+  unitId: string,
+  floor: RealFloor | string,
+  targetPositionIndex: number
+): Promise<ACUnitLocation[]> {
+  const current = getLocalACUnits();
+  const thisFloorUnits = current.filter((u) => resolveFloorFromUnit(u) === floor);
+  const fromIndex = thisFloorUnits.findIndex((u) => u.id === unitId);
+  if (fromIndex === -1) return current;
+
+  const toIndex = Math.max(0, Math.min(targetPositionIndex, thisFloorUnits.length - 1));
+  if (fromIndex === toIndex) return current;
+
+  const reordered = [...thisFloorUnits];
+  const [removed] = reordered.splice(fromIndex, 1);
+  reordered.splice(toIndex, 0, removed);
+
+  return reorderFloorACUnits(floor, reordered.map((u) => u.id));
+}
+
+export async function swapACUnitInFloor(
+  unitId: string,
+  floor: RealFloor | string,
+  direction: "up" | "down"
+): Promise<ACUnitLocation[]> {
+  const current = getLocalACUnits();
+  const thisFloorUnits = current.filter((u) => resolveFloorFromUnit(u) === floor);
+  const fromIndex = thisFloorUnits.findIndex((u) => u.id === unitId);
+  if (fromIndex === -1) return current;
+
+  const targetIndex = direction === "up" ? fromIndex - 1 : fromIndex + 1;
+  if (targetIndex < 0 || targetIndex >= thisFloorUnits.length) return current;
+
+  return moveACUnitInFloor(unitId, floor, targetIndex);
 }
 
 // ------------------- AC MAINTENANCE LOGS -------------------
@@ -3417,6 +3606,20 @@ export function initializeSampleACLogsIfEmpty(): ACMaintenanceLog[] {
 export async function fetchACMaintenanceLogs(): Promise<ACMaintenanceLog[]> {
   const deletedIds = new Set(getDeletedACLogIds());
 
+  // 1. Coba ambil dari Server Backend API (/api/ac-logs)
+  try {
+    const res = await fetch(apiUrl("/api/ac-logs"));
+    if (res.ok) {
+      const json = await res.json();
+      if (json.ok && Array.isArray(json.logs) && json.logs.length > 0) {
+        const valid = json.logs.filter((l: any) => !deletedIds.has(l.log_id));
+        saveLocalACLogs(valid);
+        return valid;
+      }
+    }
+  } catch {}
+
+  // 2. Coba Supabase
   try {
     const { data, error } = await supabase
       .from("ac_maintenance_logs")
@@ -3451,6 +3654,15 @@ export async function createACMaintenanceLog(
   const updated = [record, ...current];
   saveLocalACLogs(updated);
 
+  // Kirim ke Server Backend API
+  try {
+    await fetch(apiUrl("/api/ac-logs"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(record),
+    });
+  } catch {}
+
   try {
     await supabase.from("ac_maintenance_logs").insert({
       log_id: record.log_id,
@@ -3473,6 +3685,145 @@ export async function createACMaintenanceLog(
   }
 
   return record;
+}
+
+// ----------------- SYNC ANTARA PREVIEW & LIVE DEPLOYMENT -----------------
+
+export async function syncWithRemoteLiveApp(targetUrl: string = "https://preventive-maint-eng.ai.studio"): Promise<{
+  success: boolean;
+  unitsCount: number;
+  usersCount: number;
+  message: string;
+}> {
+  const cleanUrl = targetUrl.trim().replace(/\/+$/, "");
+
+  // 1. Ambil paket ekspor data pengguna, admin & pengaturan dari URL remote
+  let pkgData: any = null;
+  try {
+    const res = await fetch(`${cleanUrl}/api/export-package`);
+    if (res.ok) {
+      pkgData = await res.json();
+    }
+  } catch (err) {
+    console.warn("Fetch export-package failed:", err);
+  }
+
+  // 2. Ambil master data AC units dari URL remote
+  let remoteUnits: ACUnitLocation[] | null = null;
+  try {
+    const res = await fetch(`${cleanUrl}/api/ac-units`);
+    if (res.ok) {
+      const json = await res.json();
+      if (json.ok && Array.isArray(json.units) && json.units.length > 0) {
+        remoteUnits = json.units;
+      }
+    }
+  } catch (err) {
+    console.warn("Fetch ac-units failed:", err);
+  }
+
+  // Jika remote units tersimpan di dalam package
+  if ((!remoteUnits || remoteUnits.length === 0) && pkgData?.ac_units?.length > 0) {
+    remoteUnits = pkgData.ac_units;
+  }
+
+  // 3. Panggil juga server proxy backend untuk menarik data
+  try {
+    const proxyRes = await fetch("/api/sync-from-remote", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url: cleanUrl }),
+    });
+    if (proxyRes.ok) {
+      const proxyJson = await proxyRes.json();
+      if (proxyJson.state?.ac_units && (!remoteUnits || remoteUnits.length === 0)) {
+        remoteUnits = proxyJson.state.ac_units;
+      }
+      if (proxyJson.state && !pkgData) {
+        pkgData = proxyJson.state;
+      }
+    }
+  } catch {}
+
+  let unitsCount = 0;
+  if (remoteUnits && remoteUnits.length > 0) {
+    const mapped = remoteUnits.map((u: any) => ({
+      ...u,
+      floor: u.floor || resolveFloorFromUnit(u),
+      category: normalizeACCategory(u.category),
+    }));
+    saveLocalACUnits(mapped);
+    unitsCount = mapped.length;
+
+    try {
+      await fetch("/api/ac-units/bulk", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ units: mapped }),
+      });
+    } catch {}
+  }
+
+  let usersCount = 0;
+  if (pkgData) {
+    importUsersAndAdminPackage(pkgData);
+    usersCount = pkgData.users?.length || 0;
+    try {
+      await fetch("/api/sync-all", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(pkgData),
+      });
+    } catch {}
+  }
+
+  if (!pkgData && !remoteUnits) {
+    throw new Error(`Gagal menghubungi ${cleanUrl}. Periksa koneksi atau URL live.`);
+  }
+
+  return {
+    success: true,
+    unitsCount,
+    usersCount,
+    message: `Berhasil menyinkronkan data dari ${cleanUrl}! (${usersCount} akun pengguna/admin, ${unitsCount} unit AC)`,
+  };
+}
+
+export async function pushCurrentDataToRemote(targetUrl: string = "https://preventive-maint-eng.ai.studio"): Promise<{
+  success: boolean;
+  message: string;
+}> {
+  const cleanUrl = targetUrl.trim().replace(/\/+$/, "");
+  const units = getLocalACUnits();
+  const pkg = exportUsersAndAdminPackage();
+  const fullPkg = {
+    ...pkg,
+    ac_units: units,
+    ac_logs: getLocalACLogs(),
+  };
+
+  const res = await fetch(`${cleanUrl}/api/sync-all`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(fullPkg),
+  });
+
+  if (!res.ok) {
+    throw new Error(`Server ${cleanUrl} menolak pengiriman data (HTTP ${res.status})`);
+  }
+
+  try {
+    await fetch(`${cleanUrl}/api/ac-units/bulk`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ units }),
+    });
+  } catch {}
+
+  return {
+    success: true,
+    message: `Berhasil mengunggah ${units.length} unit AC dan data pengguna ke ${cleanUrl}!`,
+  };
 }
 
 export async function updateACMaintenanceLog(
@@ -3508,7 +3859,12 @@ export async function deleteACMaintenanceLog(log_id: string): Promise<void> {
     localStorage.setItem(AC_LOGS_INITIALIZED_KEY, "true");
   }
 
-  // 4. Send delete and soft-delete update to Supabase
+  // 4. Send to Server Backend API
+  try {
+    await fetch(apiUrl(`/api/ac-logs/${log_id}`), { method: "DELETE" });
+  } catch {}
+
+  // 5. Send delete and soft-delete update to Supabase
   try {
     await supabase.from("ac_maintenance_logs").delete().eq("log_id", log_id);
   } catch (err) {

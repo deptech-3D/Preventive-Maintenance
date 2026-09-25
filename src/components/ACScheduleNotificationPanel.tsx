@@ -74,6 +74,28 @@ export function ACScheduleNotificationPanel({
 
   useEffect(() => {
     loadData();
+
+    // Auto-refresh saat tab atau layar HP dibuka kembali
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        loadData();
+      }
+    };
+    window.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("focus", handleVisibilityChange);
+
+    // Polling periodik tiap 20 detik agar perubahan dari HP teknisi lain otomatis tampil
+    const timer = setInterval(() => {
+      if (document.visibilityState === "visible") {
+        loadData();
+      }
+    }, 20000);
+
+    return () => {
+      window.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("focus", handleVisibilityChange);
+      clearInterval(timer);
+    };
   }, [loadData]);
 
   const handleRefresh = async () => {

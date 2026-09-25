@@ -1,0 +1,2434 @@
+[
+  {
+    "id": "unit_b1_genset",
+    "category": "Ruang Teknis & Utilitas",
+    "floor": "Basement",
+    "name": "Ruang Genset & Solar (B1)",
+    "code": "EQ-GEN",
+    "order": 2
+  },
+  {
+    "id": "unit_b1_laundry",
+    "category": "Ruang Teknis & Utilitas",
+    "floor": "Basement",
+    "name": "Ruang Laundry & Linen (B1)",
+    "code": "EQ-LND",
+    "order": 3
+  },
+  {
+    "id": "unit_b1_loading",
+    "category": "Area Operasional & Servis",
+    "floor": "Basement",
+    "name": "Office Loading Dock & Security (B1)",
+    "code": "OFF-B1",
+    "order": 4
+  },
+  {
+    "id": "unit_b2_pompa",
+    "category": "Ruang Teknis & Utilitas",
+    "floor": "Basement",
+    "name": "Ruang Pompa & Chiller (B2)",
+    "code": "EQ-PMP",
+    "order": 5
+  },
+  {
+    "id": "unit_b2_stp",
+    "category": "Ruang Teknis & Utilitas",
+    "floor": "Basement",
+    "name": "Ruang STP & GWT (B2)",
+    "code": "EQ-STP",
+    "order": 6
+  },
+  {
+    "id": "unit_b2_fan",
+    "category": "Ruang Teknis & Utilitas",
+    "floor": "Basement",
+    "name": "Ruang Exhaust Fan Parkir (B2)",
+    "code": "EQ-EXH",
+    "order": 7
+  },
+  {
+    "id": "unit_km_301",
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 3",
+    "name": "Kamar 307",
+    "code": "KM-307",
+    "order": 8,
+    "notes": "Daikin AC Split Duct"
+  },
+  {
+    "id": "unit_km_302",
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 3",
+    "name": "Kamar 308",
+    "code": "KM-308",
+    "order": 9,
+    "notes": "Daikin AC Split Duct"
+  },
+  {
+    "id": "unit_km_303",
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 3",
+    "name": "Kamar 309",
+    "code": "KM-309",
+    "order": 10,
+    "notes": "Daikin AC Split Duct"
+  },
+  {
+    "id": "unit_km_304",
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 3",
+    "name": "Kamar 310",
+    "code": "KM-310",
+    "order": 11,
+    "notes": "Daikin AC Split Duct"
+  },
+  {
+    "id": "unit_km_305",
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 3",
+    "name": "Kamar 311",
+    "code": "KM-311",
+    "order": 12,
+    "notes": "Daikin AC Split Duct"
+  },
+  {
+    "id": "unit_km_306",
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 3",
+    "name": "Kamar 312",
+    "code": "KM-312",
+    "order": 13,
+    "notes": "Daikin AC Split Duct"
+  },
+  {
+    "id": "unit_km_307",
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 3",
+    "name": "Kamar 315",
+    "code": "KM-315",
+    "order": 14,
+    "notes": "Daikin AC Split Duct"
+  },
+  {
+    "id": "unit_km_308",
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 3",
+    "name": "Kamar 316",
+    "code": "KM-316",
+    "order": 15,
+    "notes": "Daikin AC Split Duct"
+  },
+  {
+    "id": "unit_km_501",
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 5",
+    "name": "Kamar 501",
+    "code": "KM-501",
+    "order": 16,
+    "notes": "Daikin AC Split Duct",
+    "cycle_months": null,
+    "cycle_days": null
+  },
+  {
+    "id": "unit_km_502",
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 5",
+    "name": "Kamar 502",
+    "code": "KM-502",
+    "order": 17,
+    "notes": "Daikin AC Split Duct"
+  },
+  {
+    "id": "unit_km_503",
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 5",
+    "name": "Kamar 503",
+    "code": "KM-503",
+    "order": 18,
+    "notes": "Daikin AC Split Duct"
+  },
+  {
+    "id": "unit_km_505",
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 5",
+    "name": "Kamar 505",
+    "code": "KM-505",
+    "order": 20,
+    "notes": "Daikin AC Split Duct"
+  },
+  {
+    "id": "unit_km_506",
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 5",
+    "name": "Kamar 506",
+    "code": "KM-506",
+    "order": 21,
+    "notes": "Daikin AC Split Duct"
+  },
+  {
+    "id": "unit_km_601",
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 6",
+    "name": "Kamar 601",
+    "code": "KM-601",
+    "order": 22,
+    "notes": "Daikin AC Split Duct"
+  },
+  {
+    "id": "unit_km_602",
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 6",
+    "name": "Kamar 602",
+    "code": "KM-602",
+    "order": 23,
+    "notes": "Daikin AC Split Duct"
+  },
+  {
+    "id": "unit_km_603",
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 6",
+    "name": "Kamar 603",
+    "code": "KM-603",
+    "order": 24,
+    "notes": "Daikin AC Split Duct"
+  },
+  {
+    "id": "unit_km_604",
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 6",
+    "name": "Kamar 605",
+    "code": "KM-605",
+    "order": 25,
+    "notes": "Daikin AC Split Duct"
+  },
+  {
+    "id": "unit_km_701",
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 7",
+    "name": "Kamar 701",
+    "code": "KM-701",
+    "order": 26,
+    "notes": "Daikin AC Split Duct"
+  },
+  {
+    "id": "unit_km_702",
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 7",
+    "name": "Kamar 702",
+    "code": "KM-702",
+    "order": 27,
+    "notes": "Daikin AC Split Duct"
+  },
+  {
+    "id": "unit_km_703",
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 7",
+    "name": "Kamar 703",
+    "code": "KM-703",
+    "order": 28,
+    "notes": "Daikin AC Split Duct"
+  },
+  {
+    "id": "unit_km_704",
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 7",
+    "name": "Kamar 705",
+    "code": "KM-705",
+    "order": 29,
+    "notes": "Daikin AC Split Duct"
+  },
+  {
+    "id": "unit_km_801",
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 8",
+    "name": "Kamar 801",
+    "code": "KM-801",
+    "order": 30,
+    "notes": "Daikin AC Split Duct",
+    "cycle_months": null,
+    "cycle_days": null
+  },
+  {
+    "id": "unit_km_802",
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 8",
+    "name": "Kamar 802",
+    "code": "KM-802",
+    "order": 31,
+    "notes": "Daikin AC Split Duct",
+    "cycle_months": null,
+    "cycle_days": null
+  },
+  {
+    "id": "unit_km_803",
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 8",
+    "name": "Kamar 803",
+    "code": "KM-803",
+    "order": 32,
+    "notes": "Daikin AC Split Duct",
+    "cycle_months": null,
+    "cycle_days": null
+  },
+  {
+    "id": "unit_km_901",
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 9",
+    "name": "Kamar 901",
+    "code": "KM-901",
+    "order": 33,
+    "notes": "Daikin AC Split Duct",
+    "cycle_months": null,
+    "cycle_days": null
+  },
+  {
+    "id": "unit_km_902",
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 9",
+    "name": "Kamar 902",
+    "code": "KM-902",
+    "order": 34,
+    "notes": "Daikin AC Split Duct",
+    "cycle_months": null,
+    "cycle_days": null
+  },
+  {
+    "id": "unit_km_903",
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 9",
+    "name": "Kamar 903",
+    "code": "KM-903",
+    "order": 35,
+    "notes": "Daikin AC Split Duct",
+    "cycle_months": null,
+    "cycle_days": null
+  },
+  {
+    "id": "unit_km_1001",
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 10",
+    "name": "Kamar 1001",
+    "code": "KM-1001",
+    "order": 36,
+    "notes": "Daikin AC Split Duct",
+    "cycle_months": null,
+    "cycle_days": null
+  },
+  {
+    "id": "unit_km_1002",
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 10",
+    "name": "Kamar 1002",
+    "code": "KM-1002",
+    "order": 37,
+    "notes": "Daikin AC Split Duct",
+    "cycle_months": null,
+    "cycle_days": null
+  },
+  {
+    "id": "unit_km_1003",
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 10",
+    "name": "Kamar 1003",
+    "code": "KM-1003",
+    "order": 38,
+    "notes": "Daikin AC Split Duct",
+    "cycle_months": null,
+    "cycle_days": null
+  },
+  {
+    "id": "unit_km_1101",
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 11",
+    "name": "Kamar 1101",
+    "code": "KM-1101",
+    "order": 39,
+    "notes": "Daikin AC Split Duct",
+    "cycle_months": null,
+    "cycle_days": null
+  },
+  {
+    "id": "unit_km_1102",
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 11",
+    "name": "Kamar 1102",
+    "code": "KM-1102",
+    "order": 40,
+    "notes": "Daikin AC Split Duct",
+    "cycle_months": null,
+    "cycle_days": null
+  },
+  {
+    "id": "unit_km_1201",
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 12",
+    "name": "Kamar 1201 A",
+    "code": "MRV-1201 A",
+    "order": 41,
+    "notes": "Daikin AC Split Duct A (Area Living Room)",
+    "cycle_months": null,
+    "cycle_days": null
+  },
+  {
+    "id": "unit_rf_lift",
+    "category": "Ruang Teknis & Utilitas",
+    "floor": "Rooftop",
+    "name": "Ruang Motor Lift Rooftop A",
+    "code": "EQ-LIFT A",
+    "order": 44,
+    "notes": "Arah Lift Passenger",
+    "cycle_months": null,
+    "cycle_days": null
+  },
+  {
+    "id": "unit_rm_singhasari",
+    "category": "Area Publik & Komersial",
+    "floor": "Lantai Lain / VRV",
+    "name": "Ballroom Singhasari",
+    "code": "BLR-01",
+    "order": 46
+  },
+  {
+    "id": "unit_rm_aster1",
+    "category": "Area Publik & Komersial",
+    "floor": "Lantai Lain / VRV",
+    "name": "Meeting Room Aster 1",
+    "code": "MR-AST1",
+    "order": 47
+  },
+  {
+    "id": "unit_rm_aster2",
+    "category": "Area Publik & Komersial",
+    "floor": "Lantai Lain / VRV",
+    "name": "Meeting Room Aster 2",
+    "code": "MR-AST2",
+    "order": 48
+  },
+  {
+    "id": "unit_rm_tulip",
+    "category": "Area Publik & Komersial",
+    "floor": "Lantai Lain / VRV",
+    "name": "Meeting Room Tulip",
+    "code": "MR-TLP",
+    "order": 49
+  },
+  {
+    "id": "unit_rm_vip",
+    "category": "Area Publik & Komersial",
+    "floor": "Lantai Lain / VRV",
+    "name": "VIP Boardroom",
+    "code": "MR-VIP",
+    "order": 50
+  },
+  {
+    "id": "unit_off_gm",
+    "category": "Area Operasional & Servis",
+    "floor": "Lantai Lain / VRV",
+    "name": "Office General Manager",
+    "code": "OFF-GM",
+    "order": 51
+  },
+  {
+    "id": "unit_off_hrd",
+    "category": "Area Operasional & Servis",
+    "floor": "Lantai Lain / VRV",
+    "name": "Office HRD & GA",
+    "code": "OFF-HRD",
+    "order": 52
+  },
+  {
+    "id": "unit_off_acc",
+    "category": "Area Operasional & Servis",
+    "floor": "Lantai Lain / VRV",
+    "name": "Office Accounting & Finance",
+    "code": "OFF-ACC",
+    "order": 53
+  },
+  {
+    "id": "unit_off_sales",
+    "category": "Area Operasional & Servis",
+    "floor": "Lantai Lain / VRV",
+    "name": "Office Sales & Marketing",
+    "code": "OFF-SLS",
+    "order": 54
+  },
+  {
+    "id": "unit_off_eng",
+    "category": "Area Operasional & Servis",
+    "floor": "Lantai Lain / VRV",
+    "name": "Office Engineering",
+    "code": "OFF-ENG",
+    "order": 55
+  },
+  {
+    "id": "unit_eq_server",
+    "category": "Ruang Teknis & Utilitas",
+    "floor": "Lantai Lain / VRV",
+    "name": "Ruang Server IT & CCTV",
+    "code": "EQ-SRV",
+    "order": 56
+  },
+  {
+    "id": "unit_vrv_lt6",
+    "category": "Area Utilitas/Outdoor VRV",
+    "floor": "Lantai Lain / VRV",
+    "name": "Outdoor VRV Lantai 6",
+    "code": "VRV-LT6",
+    "order": 57
+  },
+  {
+    "id": "unit_vrv_lt5",
+    "category": "Area Utilitas/Outdoor VRV",
+    "floor": "Lantai Lain / VRV",
+    "name": "Outdoor VRV Lantai 5",
+    "code": "VRV-LT5",
+    "order": 58
+  },
+  {
+    "id": "unit_vrv_lt3",
+    "category": "Area Utilitas/Outdoor VRV",
+    "floor": "Lantai Lain / VRV",
+    "name": "Outdoor VRV Lantai 3",
+    "code": "VRV-LT3",
+    "order": 59
+  },
+  {
+    "id": "unit_vrv_podium",
+    "category": "Area Utilitas/Outdoor VRV",
+    "floor": "Lantai Lain / VRV",
+    "name": "Outdoor VRV Podium Barat",
+    "code": "VRV-POD",
+    "order": 60
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 3",
+    "name": "Kamar 317",
+    "code": "KM-317",
+    "notes": "Daikin AC Split Duct",
+    "order": 61,
+    "id": "unit_1789964738985_u2gpg",
+    "created_at": "2026-09-21T04:25:38.985Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 3",
+    "name": "Kamar 318",
+    "code": "KM-318",
+    "notes": "Daikin AC Split Duct",
+    "order": 62,
+    "id": "unit_1789964790418_gvm0t",
+    "created_at": "2026-09-21T04:26:30.418Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 3",
+    "name": "Kamar 319",
+    "code": "KM-319",
+    "notes": "Daikin AC Split Duct",
+    "order": 63,
+    "id": "unit_1789964850673_n2luh",
+    "created_at": "2026-09-21T04:27:30.673Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 3",
+    "name": "Kamar 320",
+    "code": "KM-320",
+    "notes": "Daikin AC Split Duct",
+    "order": 64,
+    "id": "unit_1789964880001_44o8a",
+    "created_at": "2026-09-21T04:28:00.001Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 3",
+    "name": "Kamar 321",
+    "code": "KM-321",
+    "notes": "Daikin AC Split Duct",
+    "order": 65,
+    "id": "unit_1789964940345_uj6yq",
+    "created_at": "2026-09-21T04:29:00.345Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 3",
+    "name": "Kamar 322",
+    "code": "KM-322",
+    "notes": "Daikin AC Split Duct",
+    "order": 66,
+    "id": "unit_1789964969265_krini",
+    "created_at": "2026-09-21T04:29:29.265Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 3",
+    "name": "Kamar 323",
+    "code": "KM-323",
+    "notes": "Daikin AC Split Duct",
+    "order": 67,
+    "id": "unit_1789965012034_wdti4",
+    "created_at": "2026-09-21T04:30:12.034Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 5",
+    "name": "Kamar 507",
+    "code": "KM-507",
+    "notes": "Daikin AC Split Duct",
+    "order": 67,
+    "id": "unit_1789970353708_a3may",
+    "created_at": "2026-09-21T05:59:13.708Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 5",
+    "name": "Kamar 508",
+    "code": "KM-508",
+    "notes": "Daikin AC Split Duct",
+    "order": 68,
+    "id": "unit_1789970393588_ujwgy",
+    "created_at": "2026-09-21T05:59:53.588Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 5",
+    "name": "Kamar 509",
+    "code": "KM-509",
+    "notes": "Daikin AC Split Duct",
+    "order": 69,
+    "id": "unit_1789970428900_2zc1h",
+    "created_at": "2026-09-21T06:00:28.900Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 5",
+    "name": "Kamar 510",
+    "code": "KM-510",
+    "notes": "Daikin AC Split Duct",
+    "order": 70,
+    "id": "unit_1789970502468_9ao1j",
+    "created_at": "2026-09-21T06:01:42.468Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 5",
+    "name": "Kamar 511",
+    "code": "KM-511",
+    "notes": "Daikin AC Split Duct",
+    "order": 71,
+    "id": "unit_1789970532652_rkw55",
+    "created_at": "2026-09-21T06:02:12.652Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 5",
+    "name": "Kamar 512",
+    "code": "KM-512",
+    "notes": "Daikin AC Split Duct",
+    "order": 72,
+    "id": "unit_1789970710636_8ydmz",
+    "created_at": "2026-09-21T06:05:10.636Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 5",
+    "name": "Kamar 515",
+    "code": "KM-515",
+    "notes": "Daikin AC Split Duct",
+    "order": 73,
+    "id": "unit_1789970833932_yqrzm",
+    "created_at": "2026-09-21T06:07:13.932Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 5",
+    "name": "Kamar 516",
+    "code": "KM-516",
+    "notes": "Daikin AC Split Duct",
+    "order": 74,
+    "id": "unit_1789971045012_k74f4",
+    "created_at": "2026-09-21T06:10:45.012Z",
+    "cycle_months": null,
+    "cycle_days": null
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 5",
+    "name": "Kamar 517",
+    "code": "KM-517",
+    "notes": "Daikin AC Split Duct",
+    "order": 75,
+    "id": "unit_1789971078876_5cpcz",
+    "created_at": "2026-09-21T06:11:18.876Z",
+    "cycle_months": null,
+    "cycle_days": null
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 5",
+    "name": "Kamar 518",
+    "code": "KM-518",
+    "notes": "Daikin AC Split Duct",
+    "order": 76,
+    "id": "unit_1789971113244_z03nu",
+    "created_at": "2026-09-21T06:11:53.244Z",
+    "cycle_months": null,
+    "cycle_days": null
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 5",
+    "name": "Kamar 519",
+    "code": "KM-519",
+    "notes": "Daikin AC Split Duct",
+    "order": 77,
+    "id": "unit_1789971151500_bx8pq",
+    "created_at": "2026-09-21T06:12:31.500Z",
+    "cycle_months": null,
+    "cycle_days": null
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 5",
+    "name": "Kamar 520",
+    "code": "KM-520",
+    "notes": "Daikin AC Split Duct",
+    "order": 78,
+    "id": "unit_1789971169909_xintm",
+    "created_at": "2026-09-21T06:12:49.909Z",
+    "cycle_months": null,
+    "cycle_days": null
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 5",
+    "name": "Kamar 521",
+    "code": "KM-521",
+    "notes": "Daikin AC Split Duct",
+    "order": 79,
+    "id": "unit_1789971192477_19di5",
+    "created_at": "2026-09-21T06:13:12.477Z",
+    "cycle_months": null,
+    "cycle_days": null
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 5",
+    "name": "Kamar 522",
+    "code": "KM-522",
+    "notes": "Daikin AC Split Duct",
+    "order": 80,
+    "id": "unit_1789971228180_zvbuj",
+    "created_at": "2026-09-21T06:13:48.180Z",
+    "cycle_months": null,
+    "cycle_days": null
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 5",
+    "name": "Kamar 523",
+    "code": "KM-523",
+    "notes": "Daikin AC Split Duct",
+    "order": 81,
+    "id": "unit_1789971258428_vmyag",
+    "created_at": "2026-09-21T06:14:18.428Z",
+    "cycle_months": null,
+    "cycle_days": null
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 5",
+    "name": "Kamar 525",
+    "code": "KM-525",
+    "notes": "Daikin AC Split Duct",
+    "order": 82,
+    "id": "unit_1789971281884_jtmtq",
+    "created_at": "2026-09-21T06:14:41.884Z",
+    "cycle_months": null,
+    "cycle_days": null
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 3",
+    "name": "Koridor Depan 312",
+    "code": "KRD-312",
+    "notes": "Daikin AC Split Duct",
+    "order": 83,
+    "id": "unit_1789971463332_my1lc",
+    "created_at": "2026-09-21T06:17:43.332Z",
+    "cycle_months": null,
+    "cycle_days": null
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 3",
+    "name": "Koridor Depan 316",
+    "code": "KRD-316",
+    "notes": "Daikin AC Split Duct",
+    "order": 84,
+    "id": "unit_1789971504108_1pan7",
+    "created_at": "2026-09-21T06:18:24.108Z",
+    "cycle_months": null,
+    "cycle_days": null
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 3",
+    "name": "Koridor Depan Lift",
+    "code": "KRD-Lift",
+    "notes": "Daikin AC Split Duct",
+    "order": 85,
+    "id": "unit_1789971562981_tqouv",
+    "created_at": "2026-09-21T06:19:22.981Z",
+    "cycle_months": null,
+    "cycle_days": null
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 5",
+    "name": "Kamar 526",
+    "code": "KM-526",
+    "notes": "Daikin AC Split Duct",
+    "order": 86,
+    "id": "unit_1789971634884_bdpp6",
+    "created_at": "2026-09-21T06:20:34.884Z",
+    "cycle_months": null,
+    "cycle_days": null
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 5",
+    "name": "Koridor Depan 506",
+    "code": "KRD-506",
+    "notes": "Daikin AC Split Duct",
+    "order": 87,
+    "id": "unit_1789971727404_1hidr",
+    "created_at": "2026-09-21T06:22:07.404Z",
+    "cycle_months": null,
+    "cycle_days": null
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 5",
+    "name": "Koridor Depan 516",
+    "code": "KRD-516",
+    "notes": "Daikin AC Split Duct",
+    "order": 88,
+    "id": "unit_1789971778940_4whif",
+    "created_at": "2026-09-21T06:22:58.940Z",
+    "cycle_months": null,
+    "cycle_days": null
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 6",
+    "name": "Kamar 606",
+    "code": "KM-606",
+    "notes": "Daikin AC Split Duct",
+    "order": 89,
+    "id": "unit_1789972017940_o6p77",
+    "created_at": "2026-09-21T06:26:57.940Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 6",
+    "name": "Kamar 607",
+    "code": "KM-607",
+    "notes": "Daikin AC Split Duct",
+    "order": 90,
+    "id": "unit_1789972037629_vgvt5",
+    "created_at": "2026-09-21T06:27:17.629Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 6",
+    "name": "Kamar 608",
+    "code": "KM-608",
+    "notes": "Daikin AC Split Duct",
+    "order": 91,
+    "id": "unit_1789972069852_lu1xl",
+    "created_at": "2026-09-21T06:27:49.852Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 6",
+    "name": "Kamar 609",
+    "code": "KM-609",
+    "notes": "Daikin AC Split Duct",
+    "order": 92,
+    "id": "unit_1789972092549_lp89k",
+    "created_at": "2026-09-21T06:28:12.549Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 6",
+    "name": "Kamar 610",
+    "code": "KM-610",
+    "notes": "Daikin AC Split Duct",
+    "order": 93,
+    "id": "unit_1789972136572_58t9c",
+    "created_at": "2026-09-21T06:28:56.572Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 6",
+    "name": "Kamar 611",
+    "code": "KM-611",
+    "notes": "Daikin AC Split Duct",
+    "order": 94,
+    "id": "unit_1789972697301_nmhpi",
+    "created_at": "2026-09-21T06:38:17.301Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 6",
+    "name": "Kamar 612",
+    "code": "KM-612",
+    "notes": "Daikin AC Split Duct",
+    "order": 95,
+    "id": "unit_1789972732478_8wccr",
+    "created_at": "2026-09-21T06:38:52.478Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 6",
+    "name": "Kamar 615",
+    "code": "KM-615",
+    "notes": "Daikin AC Split Duct",
+    "order": 96,
+    "id": "unit_1789972761621_ebu66",
+    "created_at": "2026-09-21T06:39:21.621Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 6",
+    "name": "Kamar 616",
+    "code": "KM-616",
+    "notes": "Daikin AC Split Duct",
+    "order": 97,
+    "id": "unit_1789972788717_tlp2d",
+    "created_at": "2026-09-21T06:39:48.717Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 6",
+    "name": "Kamar 617",
+    "code": "KM-617",
+    "notes": "Daikin AC Split Duct",
+    "order": 98,
+    "id": "unit_1789972850597_5fsw1",
+    "created_at": "2026-09-21T06:40:50.597Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 6",
+    "name": "Kamar 618",
+    "code": "KM-618",
+    "notes": "Daikin AC Split Duct",
+    "order": 99,
+    "id": "unit_1789972882309_dzaxk",
+    "created_at": "2026-09-21T06:41:22.309Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 6",
+    "name": "Kamar 619",
+    "code": "KM-619",
+    "notes": "Daikin AC Split Duct",
+    "order": 100,
+    "id": "unit_1789972903101_ykk9d",
+    "created_at": "2026-09-21T06:41:43.101Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 6",
+    "name": "Kamar 620",
+    "code": "KM-620",
+    "notes": "Daikin AC Split Duct",
+    "order": 102,
+    "id": "unit_1789972948757_0a30n",
+    "created_at": "2026-09-21T06:42:28.757Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 6",
+    "name": "Kamar 621",
+    "code": "KM-621",
+    "notes": "Daikin AC Split Duct",
+    "order": 103,
+    "id": "unit_1789972964532_yj3vi",
+    "created_at": "2026-09-21T06:42:44.532Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 6",
+    "name": "Kamar 622",
+    "code": "KM-622",
+    "notes": "Daikin AC Split Duct",
+    "order": 105,
+    "id": "unit_1789973006213_h2o8x",
+    "created_at": "2026-09-21T06:43:26.213Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 6",
+    "name": "Kamar 623",
+    "code": "KM-623",
+    "notes": "Daikin AC Split Duct",
+    "order": 106,
+    "id": "unit_1789973029309_w0gai",
+    "created_at": "2026-09-21T06:43:49.309Z",
+    "cycle_months": null,
+    "cycle_days": null
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 6",
+    "name": "Kamar 625",
+    "code": "KM-625",
+    "notes": "Daikin AC Split Duct",
+    "order": 107,
+    "id": "unit_1789973050773_oewcn",
+    "created_at": "2026-09-21T06:44:10.773Z",
+    "cycle_months": null,
+    "cycle_days": null
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 6",
+    "name": "Kamar 626",
+    "code": "KM-626",
+    "order": 108,
+    "id": "unit_1789973069068_4dfjs",
+    "created_at": "2026-09-21T06:44:29.068Z",
+    "notes": "Daikin AC Split Duct"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 6",
+    "name": "Koridor Depan 606",
+    "code": "KRD-606",
+    "notes": "Daikin AC Split Duct",
+    "order": 109,
+    "id": "unit_1789973182821_p4jbk",
+    "created_at": "2026-09-21T06:46:22.821Z",
+    "cycle_months": null,
+    "cycle_days": null
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 6",
+    "name": "Koridor Depan 616",
+    "code": "KRD-616",
+    "notes": "Daikin AC Split Duct",
+    "order": 110,
+    "id": "unit_1789973207597_2501q",
+    "created_at": "2026-09-21T06:46:47.597Z",
+    "cycle_months": null,
+    "cycle_days": null
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 6",
+    "name": "Koridor Depan Lift",
+    "code": "KRD-Lift",
+    "notes": "Daikin AC Split Duct",
+    "order": 111,
+    "id": "unit_1789973234821_kl7kq",
+    "created_at": "2026-09-21T06:47:14.821Z",
+    "cycle_months": null,
+    "cycle_days": null
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 7",
+    "name": "Kamar 706",
+    "code": "KM-706",
+    "notes": "Daikin AC Split Duct",
+    "order": 112,
+    "id": "unit_1789973793229_m65rp",
+    "created_at": "2026-09-21T06:56:33.229Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 7",
+    "name": "Kamar 707",
+    "code": "KM-707",
+    "notes": "Daikin AC Split Duct",
+    "order": 113,
+    "id": "unit_1789973833229_uxqii",
+    "created_at": "2026-09-21T06:57:13.229Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 7",
+    "name": "Kamar 708",
+    "code": "KM-708",
+    "notes": "Daikin AC Split Duct",
+    "order": 114,
+    "id": "unit_1789973940965_e0uir",
+    "created_at": "2026-09-21T06:59:00.965Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 7",
+    "name": "Kamar 709",
+    "code": "KM-709",
+    "notes": "Daikin AC Split Duct",
+    "order": 115,
+    "id": "unit_1789974015678_aovs5",
+    "created_at": "2026-09-21T07:00:15.678Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 7",
+    "name": "Kamar 710",
+    "code": "KM-710",
+    "notes": "Daikin AC Split Duct",
+    "order": 116,
+    "id": "unit_1789974053253_9noix",
+    "created_at": "2026-09-21T07:00:53.253Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 7",
+    "name": "Kamar 711",
+    "code": "KM-711",
+    "notes": "Daikin AC Split Duct",
+    "order": 117,
+    "id": "unit_1789974173069_qx1ae",
+    "created_at": "2026-09-21T07:02:53.069Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 7",
+    "name": "Kamar 712",
+    "code": "KM-712",
+    "notes": "Daikin AC Split Duct",
+    "order": 118,
+    "id": "unit_1789974246349_xuz0t",
+    "created_at": "2026-09-21T07:04:06.349Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 7",
+    "name": "Kamar 715",
+    "code": "KM-715",
+    "notes": "Daikin AC Split Duct",
+    "order": 119,
+    "id": "unit_1789974343557_k7ocr",
+    "created_at": "2026-09-21T07:05:43.557Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 7",
+    "name": "Kamar 716",
+    "code": "KM-716",
+    "notes": "Daikin AC Split Duct",
+    "order": 120,
+    "id": "unit_1789974654749_mm9fq",
+    "created_at": "2026-09-21T07:10:54.749Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 7",
+    "name": "Kamar 717",
+    "code": "KM-717",
+    "notes": "Daikin AC Split Duct",
+    "order": 121,
+    "id": "unit_1789974684102_uat9n",
+    "created_at": "2026-09-21T07:11:24.102Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 7",
+    "name": "Kamar 718",
+    "code": "KM-718",
+    "notes": "Daikin AC Split Duct",
+    "order": 122,
+    "id": "unit_1789974710773_pqmfr",
+    "created_at": "2026-09-21T07:11:50.773Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 7",
+    "name": "Kamar 719",
+    "code": "KM-719",
+    "notes": "Daikin AC Split Duct",
+    "order": 123,
+    "id": "unit_1789974839918_w6lgf",
+    "created_at": "2026-09-21T07:13:59.918Z"
+  },
+  {
+    "id": "unit_b_lvmdp",
+    "category": "Ruang Teknis & Utilitas",
+    "floor": "Basement",
+    "name": "Ruang Panel Utama LVMDP (Basement)",
+    "code": "EQ-LVMDP",
+    "order": 1
+  },
+  {
+    "id": "unit_b_genset",
+    "category": "Ruang Teknis & Utilitas",
+    "floor": "Basement",
+    "name": "Ruang Genset & Solar (Basement)",
+    "code": "EQ-GEN",
+    "order": 2
+  },
+  {
+    "id": "unit_b_laundry",
+    "category": "Ruang Teknis & Utilitas",
+    "floor": "Basement",
+    "name": "Ruang Laundry & Linen (Basement)",
+    "code": "EQ-LND",
+    "order": 3
+  },
+  {
+    "id": "unit_b_loading",
+    "category": "Area Operasional & Servis",
+    "floor": "Basement",
+    "name": "Office Security (Basement)",
+    "code": "OFF-B",
+    "order": 4,
+    "notes": "Split 2 PK"
+  },
+  {
+    "id": "unit_b_pompa",
+    "category": "Ruang Teknis & Utilitas",
+    "floor": "Basement",
+    "name": "Ruang Pompa & Chiller (Basement)",
+    "code": "EQ-PMP",
+    "order": 5
+  },
+  {
+    "id": "unit_b_stp",
+    "category": "Ruang Teknis & Utilitas",
+    "floor": "Basement",
+    "name": "Ruang STP & GWT (Basement)",
+    "code": "EQ-STP",
+    "order": 6
+  },
+  {
+    "id": "unit_b_fan",
+    "category": "Ruang Teknis & Utilitas",
+    "floor": "Basement",
+    "name": "Ruang Exhaust Fan Parkir (Basement)",
+    "code": "EQ-EXH",
+    "order": 7
+  },
+  {
+    "id": "unit_l1_lobby",
+    "category": "Ruang Teknis & Utilitas",
+    "floor": "Lobby / Lantai 1",
+    "name": "Lobby & Reception Area",
+    "code": "LOB-01",
+    "order": 8
+  },
+  {
+    "id": "unit_l1_resto",
+    "category": "Ruang Teknis & Utilitas",
+    "floor": "Lobby / Lantai 1",
+    "name": "Restoran / Coffee Shop",
+    "code": "RST-01",
+    "order": 9,
+    "notes": "Coffee Shop"
+  },
+  {
+    "id": "unit_l1_fo",
+    "category": "Area Operasional & Servis",
+    "floor": "Lobby / Lantai 1",
+    "name": "Office Front Desk & Back Office",
+    "code": "OFF-FO",
+    "order": 10
+  },
+  {
+    "id": "unit_l2_ballroom",
+    "category": "Area Publik & Komersial",
+    "floor": "Lantai 2",
+    "name": "Ballroom (Lantai 2)",
+    "code": "BLR-L2",
+    "order": 11,
+    "cycle_months": null,
+    "cycle_days": null
+  },
+  {
+    "id": "unit_l2_meeting",
+    "category": "Area Publik & Komersial",
+    "floor": "Lantai 2",
+    "name": "Ruang Meeting Tulip (Lantai 2)",
+    "code": "MR-TLP",
+    "order": 12
+  },
+  {
+    "id": "unit_l2_office",
+    "category": "Area Operasional & Servis",
+    "floor": "Lantai 2",
+    "name": "Office Management & Sales (Lantai 2)",
+    "code": "OFF-L2",
+    "order": 13
+  },
+  {
+    "category": "Ruang Teknis & Utilitas",
+    "floor": "Lobby / Lantai 1",
+    "name": "Ruang Panel Utama LVMDP",
+    "code": "EQ-LVMDP 1",
+    "notes": "Split 2 PK A",
+    "order": 138,
+    "id": "unit_1789975453999_m9fbd",
+    "created_at": "2026-09-21T07:24:13.999Z",
+    "cycle_months": null,
+    "cycle_days": null
+  },
+  {
+    "category": "Ruang Teknis & Utilitas",
+    "floor": "Lobby / Lantai 1",
+    "name": "Ruang Panel Utama LVMDP",
+    "code": "EQ-LVMDP 2",
+    "notes": "Split B Atas Pintu",
+    "order": 139,
+    "id": "unit_1789975478038_m9kdo",
+    "created_at": "2026-09-21T07:24:38.038Z",
+    "cycle_months": null,
+    "cycle_days": null
+  },
+  {
+    "category": "Area Publik & Komersial",
+    "floor": "Lobby / Lantai 1",
+    "name": "Restoran / Coffee Shop",
+    "code": "RST-02",
+    "notes": "Depan Kaca",
+    "order": 139,
+    "id": "unit_1790041097855_itva6",
+    "created_at": "2026-09-22T01:38:17.855Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 7",
+    "name": "Kamar 720",
+    "code": "KM-720",
+    "notes": "Daikin AC Split Duct",
+    "order": 139,
+    "id": "unit_1790046637129_ncall",
+    "created_at": "2026-09-22T03:10:37.129Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 7",
+    "name": "Kamar 721",
+    "code": "KM-721",
+    "notes": "Daikin AC Split Duct",
+    "order": 140,
+    "id": "unit_1790046687385_rqe5y",
+    "created_at": "2026-09-22T03:11:27.385Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 7",
+    "name": "Kamar 722",
+    "code": "KM-722",
+    "notes": "Daikin AC Split Duct",
+    "order": 141,
+    "id": "unit_1790046706961_3az8v",
+    "created_at": "2026-09-22T03:11:46.961Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 7",
+    "name": "Kamar 723",
+    "code": "KM-723",
+    "notes": "Daikin AC Split Duct",
+    "order": 142,
+    "id": "unit_1790046726353_del1b",
+    "created_at": "2026-09-22T03:12:06.353Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 7",
+    "name": "Kamar 725",
+    "code": "KM-725",
+    "notes": "Daikin AC Split Duct",
+    "order": 143,
+    "id": "unit_1790046744410_0mtr3",
+    "created_at": "2026-09-22T03:12:24.410Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 7",
+    "name": "Kamar 726",
+    "code": "KM-726",
+    "notes": "Daikin AC Split Duct",
+    "order": 144,
+    "id": "unit_1790046764138_ahtkn",
+    "created_at": "2026-09-22T03:12:44.138Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 7",
+    "name": "Koridor Depan 706",
+    "code": "KRD-706",
+    "notes": "Daikin AC Split Duct",
+    "order": 145,
+    "id": "unit_1790046866969_z410q",
+    "created_at": "2026-09-22T03:14:26.969Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 7",
+    "name": "Koridor Depan 716",
+    "code": "KRD-716",
+    "notes": "Daikin AC Split Duct",
+    "order": 146,
+    "id": "unit_1790046890169_q2125",
+    "created_at": "2026-09-22T03:14:50.169Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 7",
+    "name": "Koridor Depan Lift",
+    "code": "KRD-Lift",
+    "notes": "Daikin AC Split Duct",
+    "order": 147,
+    "id": "unit_1790046918889_wj2j3",
+    "created_at": "2026-09-22T03:15:18.889Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 8",
+    "name": "Kamar 805",
+    "code": "KM-805",
+    "notes": "Daikin AC Split Duct",
+    "order": 146,
+    "id": "unit_1790047333385_0vjn0",
+    "created_at": "2026-09-22T03:22:13.385Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 8",
+    "name": "Kamar 806",
+    "code": "KM-806",
+    "notes": "Daikin AC Split Duct",
+    "order": 147,
+    "id": "unit_1790047385073_mx8nh",
+    "created_at": "2026-09-22T03:23:05.073Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 8",
+    "name": "Kamar 807",
+    "code": "KM-807",
+    "notes": "Daikin AC Split Duct",
+    "order": 148,
+    "id": "unit_1790047407097_x73xa",
+    "created_at": "2026-09-22T03:23:27.097Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 8",
+    "name": "Kamar 808",
+    "code": "KM-808",
+    "notes": "Daikin AC Split Duct",
+    "order": 149,
+    "id": "unit_1790047454865_vi62i",
+    "created_at": "2026-09-22T03:24:14.865Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 8",
+    "name": "Kamar 809",
+    "code": "KM-809",
+    "notes": "Daikin AC Split Duct",
+    "order": 150,
+    "id": "unit_1790047488163_vnckw",
+    "created_at": "2026-09-22T03:24:48.163Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 8",
+    "name": "Kamar 810",
+    "code": "KM-810",
+    "notes": "Daikin AC Split Duct",
+    "order": 151,
+    "id": "unit_1790047567321_e7syn",
+    "created_at": "2026-09-22T03:26:07.321Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 8",
+    "name": "Kamar 811",
+    "code": "KM-811",
+    "notes": "Daikin AC Split Duct",
+    "order": 152,
+    "id": "unit_1790047621730_1da1f",
+    "created_at": "2026-09-22T03:27:01.730Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 8",
+    "name": "Kamar 812",
+    "code": "KM-812",
+    "notes": "Daikin AC Split Duct",
+    "order": 153,
+    "id": "unit_1790047653970_tzide",
+    "created_at": "2026-09-22T03:27:33.970Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 8",
+    "name": "Kamar 815",
+    "code": "KM-815",
+    "notes": "Daikin AC Split Duct",
+    "order": 154,
+    "id": "unit_1790047682450_v1zz2",
+    "created_at": "2026-09-22T03:28:02.450Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 8",
+    "name": "Kamar 816",
+    "code": "KM-816",
+    "notes": "Daikin AC Split Duct",
+    "order": 155,
+    "id": "unit_1790047704785_a8ab6",
+    "created_at": "2026-09-22T03:28:24.785Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 8",
+    "name": "Kamar 817",
+    "code": "KM-817",
+    "notes": "Daikin AC Split Duct",
+    "order": 156,
+    "id": "unit_1790047716858_o4nfb",
+    "created_at": "2026-09-22T03:28:36.858Z",
+    "cycle_months": null,
+    "cycle_days": null
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 8",
+    "name": "Kamar 818",
+    "code": "KM-818",
+    "notes": "Daikin AC Split Duct",
+    "order": 157,
+    "id": "unit_1790047798769_qk02q",
+    "created_at": "2026-09-22T03:29:58.770Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 8",
+    "name": "Kamar 819",
+    "code": "KM-819",
+    "notes": "Daikin AC Split Duct",
+    "order": 158,
+    "id": "unit_1790047822866_0qt8m",
+    "created_at": "2026-09-22T03:30:22.866Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 8",
+    "name": "Kamar 820",
+    "code": "KM-820",
+    "notes": "Daikin AC Split Duct",
+    "order": 159,
+    "id": "unit_1790047850578_mruq6",
+    "created_at": "2026-09-22T03:30:50.578Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 8",
+    "name": "Kamar 821",
+    "code": "KM-821",
+    "notes": "Daikin AC Split Duct",
+    "order": 160,
+    "id": "unit_1790047891482_8xapk",
+    "created_at": "2026-09-22T03:31:31.482Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 8",
+    "name": "Kamar 822",
+    "code": "KM-822",
+    "notes": "Daikin AC Split Duct",
+    "order": 161,
+    "id": "unit_1790047911346_omly3",
+    "created_at": "2026-09-22T03:31:51.346Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 8",
+    "name": "Kamar 823",
+    "code": "KM-823",
+    "notes": "Daikin AC Split Duct",
+    "order": 162,
+    "id": "unit_1790047930866_1efw4",
+    "created_at": "2026-09-22T03:32:10.866Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 8",
+    "name": "Kamar 825",
+    "code": "KM-825",
+    "notes": "Daikin AC Split Duct",
+    "order": 163,
+    "id": "unit_1790047953314_t0m23",
+    "created_at": "2026-09-22T03:32:33.314Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 8",
+    "name": "Kamar 826",
+    "code": "KM-826",
+    "notes": "Daikin AC Split Duct",
+    "order": 164,
+    "id": "unit_1790047977547_ufobq",
+    "created_at": "2026-09-22T03:32:57.547Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 8",
+    "name": "Koridor Depan 806",
+    "code": "KRD-806",
+    "notes": "Daikin AC Split Duct",
+    "order": 165,
+    "id": "unit_1790048180818_u90oh",
+    "created_at": "2026-09-22T03:36:20.818Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 8",
+    "name": "Koridor Depan 816",
+    "code": "KRD-816",
+    "notes": "Daikin AC Split Duct",
+    "order": 166,
+    "id": "unit_1790048219938_sk9r0",
+    "created_at": "2026-09-22T03:36:59.938Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 8",
+    "name": "Koridor Depan Lift",
+    "code": "KRD-Lift",
+    "notes": "Daikin AC Split Duct",
+    "order": 167,
+    "id": "unit_1790048254554_acl68",
+    "created_at": "2026-09-22T03:37:34.554Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 9",
+    "name": "Kamar 905",
+    "code": "KM-905",
+    "notes": "Daikin AC Split Duct",
+    "order": 168,
+    "id": "unit_1790048968042_8x2t9",
+    "created_at": "2026-09-22T03:49:28.042Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 9",
+    "name": "Kamar 906",
+    "code": "KM-906",
+    "notes": "Daikin AC Split Duct",
+    "order": 169,
+    "id": "unit_1790049010210_vi9k6",
+    "created_at": "2026-09-22T03:50:10.210Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 9",
+    "name": "Kamar 908",
+    "code": "KM-908",
+    "notes": "Daikin AC Split Duct",
+    "order": 170,
+    "id": "unit_1790049045666_9q2wh",
+    "created_at": "2026-09-22T03:50:45.666Z",
+    "cycle_months": null,
+    "cycle_days": null
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 9",
+    "name": "Kamar 909",
+    "code": "KM-909",
+    "notes": "Daikin AC Split Duct",
+    "order": 171,
+    "id": "unit_1790049110746_gt6qg",
+    "created_at": "2026-09-22T03:51:50.746Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 9",
+    "name": "Kamar 910",
+    "code": "KM-910",
+    "notes": "Daikin AC Split Duct",
+    "order": 172,
+    "id": "unit_1790049140666_0vmb9",
+    "created_at": "2026-09-22T03:52:20.666Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 9",
+    "name": "Kamar 911",
+    "code": "KM-911",
+    "notes": "Daikin AC Split Duct",
+    "order": 173,
+    "id": "unit_1790049160290_b6em1",
+    "created_at": "2026-09-22T03:52:40.290Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 9",
+    "name": "Kamar 912",
+    "code": "KM-912",
+    "notes": "Daikin AC Split Duct",
+    "order": 174,
+    "id": "unit_1790049182074_2qhjo",
+    "created_at": "2026-09-22T03:53:02.074Z",
+    "cycle_months": null,
+    "cycle_days": null
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 9",
+    "name": "Kamar 915",
+    "code": "KM-915",
+    "notes": "Daikin AC Split Duct",
+    "order": 175,
+    "id": "unit_1790049242715_z781i",
+    "created_at": "2026-09-22T03:54:02.715Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 9",
+    "name": "Kamar 916",
+    "code": "KM-916",
+    "notes": "Daikin AC Split Duct",
+    "order": 176,
+    "id": "unit_1790049274762_a9i3g",
+    "created_at": "2026-09-22T03:54:34.762Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 9",
+    "name": "Kamar 917",
+    "code": "KM-917",
+    "notes": "Daikin AC Split Duct",
+    "order": 177,
+    "id": "unit_1790049292666_yclq4",
+    "created_at": "2026-09-22T03:54:52.666Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 9",
+    "name": "Kamar 918",
+    "code": "KM-918",
+    "notes": "Daikin AC Split Duct",
+    "order": 178,
+    "id": "unit_1790049311250_x1987",
+    "created_at": "2026-09-22T03:55:11.250Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 9",
+    "name": "Kamar 919",
+    "code": "KM-919",
+    "notes": "Daikin AC Split Duct",
+    "order": 180,
+    "id": "unit_1790049384163_82f5r",
+    "created_at": "2026-09-22T03:56:24.163Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 9",
+    "name": "Kamar 920",
+    "code": "KM-920",
+    "notes": "Daikin AC Split Duct",
+    "order": 181,
+    "id": "unit_1790049415514_gjj5c",
+    "created_at": "2026-09-22T03:56:55.514Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 9",
+    "name": "Kamar 921",
+    "code": "KM-921",
+    "notes": "Daikin AC Split Duct",
+    "order": 182,
+    "id": "unit_1790049448690_katgr",
+    "created_at": "2026-09-22T03:57:28.690Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 9",
+    "name": "Kamar 922",
+    "code": "KM-922",
+    "notes": "Daikin AC Split Duct",
+    "order": 183,
+    "id": "unit_1790049465531_w6tpf",
+    "created_at": "2026-09-22T03:57:45.531Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 9",
+    "name": "Kamar 923",
+    "code": "KM-923",
+    "notes": "Daikin AC Split Duct",
+    "order": 184,
+    "id": "unit_1790049485706_tsxre",
+    "created_at": "2026-09-22T03:58:05.706Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 9",
+    "name": "Kamar 925",
+    "code": "KM-925",
+    "notes": "Daikin AC Split Duct",
+    "order": 185,
+    "id": "unit_1790049506810_2vu4a",
+    "created_at": "2026-09-22T03:58:26.810Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 9",
+    "name": "Kamar 926",
+    "code": "KM-926",
+    "notes": "Daikin AC Split Duct",
+    "order": 186,
+    "id": "unit_1790049526514_gd2ty",
+    "created_at": "2026-09-22T03:58:46.514Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 9",
+    "name": "Koridor Depan 906",
+    "code": "KRD-906",
+    "notes": "Daikin AC Split Duct",
+    "order": 187,
+    "id": "unit_1790049626370_pb8uo",
+    "created_at": "2026-09-22T04:00:26.370Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 9",
+    "name": "Koridor Depan 916",
+    "code": "KRD-916",
+    "notes": "Daikin AC Split Duct",
+    "order": 188,
+    "id": "unit_1790049667938_dbzjs",
+    "created_at": "2026-09-22T04:01:07.938Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 9",
+    "name": "Koridor Depan Lift",
+    "code": "KRD-Lift",
+    "notes": "Daikin AC Split Duct",
+    "order": 189,
+    "id": "unit_1790049706682_5se6b",
+    "created_at": "2026-09-22T04:01:46.682Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 10",
+    "name": "Kamar 1005",
+    "code": "KM-1005",
+    "notes": "Daikin AC Split Duct",
+    "order": 189,
+    "id": "unit_1790051816515_ncwhi",
+    "created_at": "2026-09-22T04:36:56.515Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 10",
+    "name": "Kamar 1006",
+    "code": "KM-1006",
+    "notes": "Daikin AC Split Duct",
+    "order": 190,
+    "id": "unit_1790051834411_692ag",
+    "created_at": "2026-09-22T04:37:14.411Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 10",
+    "name": "Kamar 1008",
+    "code": "KM-1008",
+    "notes": "Daikin AC Split Duct",
+    "order": 191,
+    "id": "unit_1790051854731_9yh99",
+    "created_at": "2026-09-22T04:37:34.731Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 10",
+    "name": "Kamar 1009",
+    "code": "KM-1009",
+    "notes": "Daikin AC Split Duct",
+    "order": 192,
+    "id": "unit_1790051882939_89gz2",
+    "created_at": "2026-09-22T04:38:02.939Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 10",
+    "name": "Kamar 1010",
+    "code": "KM-1010",
+    "notes": "Daikin AC Split Duct",
+    "order": 193,
+    "id": "unit_1790051908371_4eqyd",
+    "created_at": "2026-09-22T04:38:28.371Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 10",
+    "name": "Kamar 1011",
+    "code": "KM-1011",
+    "notes": "Daikin AC Split Duct",
+    "order": 194,
+    "id": "unit_1790051925443_3au2v",
+    "created_at": "2026-09-22T04:38:45.443Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 10",
+    "name": "Kamar 1012",
+    "code": "KM-1012",
+    "notes": "Daikin AC Split Duct",
+    "order": 195,
+    "id": "unit_1790051938555_n9zp6",
+    "created_at": "2026-09-22T04:38:58.555Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 10",
+    "name": "Kamar 1015",
+    "code": "KM-1015",
+    "notes": "Daikin AC Split Duct",
+    "order": 196,
+    "id": "unit_1790051953051_geuen",
+    "created_at": "2026-09-22T04:39:13.051Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 10",
+    "name": "Kamar 1016",
+    "code": "KM-1016",
+    "notes": "Daikin AC Split Duct",
+    "order": 197,
+    "id": "unit_1790051973235_jrb82",
+    "created_at": "2026-09-22T04:39:33.235Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 10",
+    "name": "Kamar 1017",
+    "code": "KM-1017",
+    "notes": "Daikin AC Split Duct",
+    "order": 198,
+    "id": "unit_1790052002484_4vkr5",
+    "created_at": "2026-09-22T04:40:02.484Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 10",
+    "name": "Kamar 1018",
+    "code": "KM-1018",
+    "notes": "Daikin AC Split Duct",
+    "order": 199,
+    "id": "unit_1790053935813_ae3jp",
+    "created_at": "2026-09-22T05:12:15.813Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 10",
+    "name": "Kamar 1019",
+    "code": "KM-1019",
+    "notes": "Daikin AC Split Duct",
+    "order": 200,
+    "id": "unit_1790053954805_2gyh2",
+    "created_at": "2026-09-22T05:12:34.805Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 10",
+    "name": "Kamar 1020",
+    "code": "KM-1020",
+    "notes": "Daikin AC Split Duct",
+    "order": 201,
+    "id": "unit_1790053981773_7lb71",
+    "created_at": "2026-09-22T05:13:01.773Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 10",
+    "name": "Kamar 1021",
+    "code": "KM-1021",
+    "notes": "Daikin AC Split Duct",
+    "order": 202,
+    "id": "unit_1790054023260_cad3y",
+    "created_at": "2026-09-22T05:13:43.260Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 10",
+    "name": "Kamar 1022",
+    "code": "KM-1022",
+    "notes": "Daikin AC Split Duct",
+    "order": 203,
+    "id": "unit_1790054038476_sa11x",
+    "created_at": "2026-09-22T05:13:58.476Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 10",
+    "name": "Kamar 1023",
+    "code": "KM-1023",
+    "notes": "Daikin AC Split Duct",
+    "order": 204,
+    "id": "unit_1790054055101_70lsd",
+    "created_at": "2026-09-22T05:14:15.101Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 10",
+    "name": "Kamar 1025",
+    "code": "KM-1025",
+    "notes": "Daikin AC Split Duct",
+    "order": 205,
+    "id": "unit_1790054076412_6zf7v",
+    "created_at": "2026-09-22T05:14:36.412Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 10",
+    "name": "Kamar 1026",
+    "code": "KM-1026",
+    "notes": "Daikin AC Split Duct",
+    "order": 206,
+    "id": "unit_1790054099205_n6u1f",
+    "created_at": "2026-09-22T05:14:59.205Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 10",
+    "name": "Koridor Depan 1006",
+    "code": "KDR-1006",
+    "notes": "Daikin AC Split Duct",
+    "order": 207,
+    "id": "unit_1790054171260_q4mf4",
+    "created_at": "2026-09-22T05:16:11.260Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 10",
+    "name": "Koridor Depan 1016",
+    "code": "KDR-1016",
+    "notes": "Daikin AC Split Duct",
+    "order": 208,
+    "id": "unit_1790054194292_of59l",
+    "created_at": "2026-09-22T05:16:34.292Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 10",
+    "name": "Koridor Depan Lift",
+    "code": "KDR-Lift",
+    "notes": "Daikin AC Split Duct",
+    "order": 209,
+    "id": "unit_1790054229284_y5c4d",
+    "created_at": "2026-09-22T05:17:09.284Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 11",
+    "name": "Kamar 1103",
+    "code": "KM-1103",
+    "notes": "Daikin AC Split Duct",
+    "order": 210,
+    "id": "unit_1790054340533_geeun",
+    "created_at": "2026-09-22T05:19:00.533Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 11",
+    "name": "Kamar 1105",
+    "code": "KM-1105",
+    "notes": "Daikin AC Split Duct",
+    "order": 211,
+    "id": "unit_1790054367868_5hew2",
+    "created_at": "2026-09-22T05:19:27.868Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 11",
+    "name": "Kamar 1106",
+    "code": "KM-1106",
+    "notes": "Daikin AC Split Duct",
+    "order": 212,
+    "id": "unit_1790054385380_sbr2h",
+    "created_at": "2026-09-22T05:19:45.380Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 11",
+    "name": "Kamar 1108",
+    "code": "KM-1108",
+    "notes": "Daikin AC Split Duct",
+    "order": 213,
+    "id": "unit_1790054416373_64g8i",
+    "created_at": "2026-09-22T05:20:16.373Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 11",
+    "name": "Kamar 1109",
+    "code": "KM-1109",
+    "notes": "Daikin AC Split Duct",
+    "order": 214,
+    "id": "unit_1790054431852_iuqw4",
+    "created_at": "2026-09-22T05:20:31.852Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 11",
+    "name": "Kamar 1110",
+    "code": "KM-1110",
+    "notes": "Daikin AC Split Duct",
+    "order": 215,
+    "id": "unit_1790054461724_v16ma",
+    "created_at": "2026-09-22T05:21:01.724Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 11",
+    "name": "Kamar 1111",
+    "code": "KM-1111",
+    "notes": "Daikin AC Split Duct",
+    "order": 216,
+    "id": "unit_1790054478860_dgj8f",
+    "created_at": "2026-09-22T05:21:18.860Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 11",
+    "name": "Kamar 1112",
+    "code": "KM-1112",
+    "notes": "Daikin AC Split Duct",
+    "order": 217,
+    "id": "unit_1790054494660_313hp",
+    "created_at": "2026-09-22T05:21:34.660Z",
+    "cycle_months": null,
+    "cycle_days": null
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 11",
+    "name": "Kamar 1115",
+    "code": "KM-1115",
+    "notes": "Daikin AC Split Duct",
+    "order": 218,
+    "id": "unit_1790054538916_q9m76",
+    "created_at": "2026-09-22T05:22:18.916Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 11",
+    "name": "Kamar 1116",
+    "code": "KM-1116",
+    "notes": "Daikin AC Split Duct",
+    "order": 219,
+    "id": "unit_1790054556588_jw77m",
+    "created_at": "2026-09-22T05:22:36.588Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 11",
+    "name": "Kamar 1117",
+    "code": "KM-1117",
+    "notes": "Daikin AC Split Duct",
+    "order": 220,
+    "id": "unit_1790054570596_ihidr",
+    "created_at": "2026-09-22T05:22:50.596Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 11",
+    "name": "Kamar 1118",
+    "code": "KM-1118",
+    "notes": "Daikin AC Split Duct",
+    "order": 221,
+    "id": "unit_1790054597541_6assw",
+    "created_at": "2026-09-22T05:23:17.541Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 11",
+    "name": "Kamar 1119",
+    "code": "KM-1119",
+    "notes": "Daikin AC Split Duct",
+    "order": 222,
+    "id": "unit_1790054627173_gqixq",
+    "created_at": "2026-09-22T05:23:47.173Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 11",
+    "name": "Kamar 1120",
+    "code": "KM-1120",
+    "notes": "Daikin AC Split Duct",
+    "order": 223,
+    "id": "unit_1790054649444_gbxla",
+    "created_at": "2026-09-22T05:24:09.444Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 11",
+    "name": "Kamar 1121",
+    "code": "KM-1121",
+    "notes": "Daikin AC Split Duct",
+    "order": 224,
+    "id": "unit_1790054665838_y354v",
+    "created_at": "2026-09-22T05:24:25.838Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 11",
+    "name": "Kamar 1122",
+    "code": "KM-1122",
+    "notes": "Daikin AC Split Duct",
+    "order": 225,
+    "id": "unit_1790054687477_xcvcp",
+    "created_at": "2026-09-22T05:24:47.477Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 11",
+    "name": "Kamar 1123",
+    "code": "KM-1123",
+    "notes": "Daikin AC Split Duct",
+    "order": 226,
+    "id": "unit_1790054702173_dnc8w",
+    "created_at": "2026-09-22T05:25:02.173Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 11",
+    "name": "Kamar 1125",
+    "code": "KM-1125",
+    "notes": "Daikin AC Split Duct",
+    "order": 227,
+    "id": "unit_1790054734973_7fqwh",
+    "created_at": "2026-09-22T05:25:34.973Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 11",
+    "name": "Kamar 1126",
+    "code": "KM-1126",
+    "notes": "Daikin AC Split Duct",
+    "order": 228,
+    "id": "unit_1790054854276_ayxcr",
+    "created_at": "2026-09-22T05:27:34.276Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 11",
+    "name": "Koridor Depan 1106",
+    "code": "KDR-1106",
+    "notes": "Daikin AC Split Duct",
+    "order": 229,
+    "id": "unit_1790054893509_kiunc",
+    "created_at": "2026-09-22T05:28:13.509Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 11",
+    "name": "Koridor Depan 1116",
+    "code": "KDR-1116",
+    "notes": "Daikin AC Split Duct",
+    "order": 230,
+    "id": "unit_1790054929269_nqxta",
+    "created_at": "2026-09-22T05:28:49.269Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 11",
+    "name": "Koridor Depan Lift",
+    "code": "KDR-Lift",
+    "notes": "Daikin AC Split Duct",
+    "order": 231,
+    "id": "unit_1790054951805_uxpxu",
+    "created_at": "2026-09-22T05:29:11.805Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 12",
+    "name": "Kamar 1201 B",
+    "code": "MRV-1201 B",
+    "notes": "Daikin AC Split Duct B (Area Bed Room)",
+    "order": 232,
+    "id": "unit_1790055197485_36p7x",
+    "created_at": "2026-09-22T05:33:17.485Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 12",
+    "name": "Kamar 1202 A",
+    "code": "MRV-1202 A",
+    "notes": "Daikin AC Split Duct A (Area Living Room)",
+    "order": 232,
+    "id": "unit_1790055364389_p9ouk",
+    "created_at": "2026-09-22T05:36:04.389Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 12",
+    "name": "Kamar 1202 B",
+    "code": "MRV-1202 B",
+    "notes": "Daikin AC Split Duct B (Area Bed Room)",
+    "order": 233,
+    "id": "unit_1790055413949_bc318",
+    "created_at": "2026-09-22T05:36:53.949Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 12",
+    "name": "Kamar 1203",
+    "code": "KM-1203",
+    "notes": "Daikin AC Split Duct",
+    "order": 234,
+    "id": "unit_1790055467748_rklzo",
+    "created_at": "2026-09-22T05:37:47.749Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 12",
+    "name": "Kamar 1205",
+    "code": "KM-1205",
+    "notes": "Daikin AC Split Duct",
+    "order": 235,
+    "id": "unit_1790055505580_vp0tw",
+    "created_at": "2026-09-22T05:38:25.580Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 12",
+    "name": "Kamar 1206",
+    "code": "KM-1206",
+    "notes": "Daikin AC Split Duct",
+    "order": 236,
+    "id": "unit_1790055549181_kb2nd",
+    "created_at": "2026-09-22T05:39:09.181Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 12",
+    "name": "Kamar 1207",
+    "code": "KM-1207",
+    "notes": "Daikin AC Split Duct",
+    "order": 237,
+    "id": "unit_1790055566373_j2ntc",
+    "created_at": "2026-09-22T05:39:26.373Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 12",
+    "name": "Kamar 1208 A",
+    "code": "MRV-1208 A",
+    "notes": "Daikin AC Split Duct (Area Living Room)",
+    "order": 238,
+    "id": "unit_1790055602085_7cksf",
+    "created_at": "2026-09-22T05:40:02.085Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 12",
+    "name": "Kamar 1208 B",
+    "code": "MRV-1208 B",
+    "notes": "Daikin AC Split Duct B (Area Bed Room)",
+    "order": 240,
+    "id": "unit_1790055731093_4173h",
+    "created_at": "2026-09-22T05:42:11.093Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 12",
+    "name": "Kamar 1209",
+    "code": "KM-1209",
+    "notes": "Daikin AC Split Duct",
+    "order": 241,
+    "id": "unit_1790055800893_7684c",
+    "created_at": "2026-09-22T05:43:20.893Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 12",
+    "name": "Kamar 1210",
+    "code": "KM-1210",
+    "notes": "Daikin AC Split Duct",
+    "order": 242,
+    "id": "unit_1790055927301_wkn75",
+    "created_at": "2026-09-22T05:45:27.301Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 12",
+    "name": "Koridor Depan 1202",
+    "code": "KDR-1202",
+    "notes": "Daikin AC Split Duct",
+    "order": 243,
+    "id": "unit_1790055989757_6pamu",
+    "created_at": "2026-09-22T05:46:29.757Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 12",
+    "name": "Koridor Depan Lift",
+    "code": "KDR-Lift",
+    "notes": "Daikin AC Split Duct",
+    "order": 244,
+    "id": "unit_1790056065948_m33cq",
+    "created_at": "2026-09-22T05:47:45.949Z"
+  },
+  {
+    "category": "Area Publik & Komersial",
+    "floor": "Lantai 3",
+    "name": "GYM",
+    "code": "GYM-01",
+    "notes": "Daikin AC Split Duct",
+    "order": 245,
+    "id": "unit_1790056288886_yob78",
+    "created_at": "2026-09-22T05:51:28.886Z"
+  },
+  {
+    "category": "Area Publik & Komersial",
+    "floor": "Lantai 3",
+    "name": "Caffe Bar",
+    "code": "CFE-02",
+    "notes": "Daikin AC Split Duct",
+    "order": 246,
+    "id": "unit_1790056372109_pis4q",
+    "created_at": "2026-09-22T05:52:52.109Z"
+  },
+  {
+    "category": "Area Privat / Kamar Hotel",
+    "floor": "Lantai 5",
+    "name": "Koridor Depan Lift",
+    "code": "KDR-Lift",
+    "notes": "Daikin AC Split Duct",
+    "order": 246,
+    "id": "unit_1790057518406_hnpum",
+    "created_at": "2026-09-22T06:11:58.406Z"
+  },
+  {
+    "category": "Area Utilitas/Outdoor VRV",
+    "floor": "Rooftop",
+    "name": "Ruang Motor Lift Rooftop B",
+    "code": "EQ-LIFT B",
+    "notes": "Arah Lift Service",
+    "order": 245,
+    "id": "unit_1790058409790_5rrkt",
+    "created_at": "2026-09-22T06:26:49.790Z"
+  }
+]

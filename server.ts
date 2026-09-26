@@ -151,6 +151,14 @@ function writeState(state: ServerState): void {
     const file = getEffectiveDataFile();
     state.last_updated = new Date().toISOString();
     fs.writeFileSync(file, JSON.stringify(state, null, 2), "utf-8");
+
+    // Persist ac_units permanently into data/default_ac_units.json
+    if (Array.isArray(state.ac_units) && state.ac_units.length > 0) {
+      try {
+        const defaultUnitsFile = path.join(process.cwd(), "data", "default_ac_units.json");
+        fs.writeFileSync(defaultUnitsFile, JSON.stringify(state.ac_units, null, 2), "utf-8");
+      } catch {}
+    }
   } catch (err) {
     console.error("Notice writing server state file:", err);
   }

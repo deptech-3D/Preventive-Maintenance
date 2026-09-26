@@ -3090,29 +3090,80 @@ export async function restoreSystemFromJSON(jsonData: any): Promise<{ ok: boolea
 
 export const DEFAULT_AC_UNITS: ACUnitLocation[] = OFFICIAL_AC_UNITS;
 export const AC_UNITS_DATA_VERSION = "v3_official_midtown_ac_172_units";
+const DELETED_AC_UNITS_KEY = "ac_pm_deleted_unit_ids";
+const AC_UNITS_VAULT_KEY = "ac_pm_units_master_vault";
+
+export function getDeletedACUnitIds(): string[] {
+  if (typeof localStorage === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(DELETED_AC_UNITS_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed;
+    }
+  } catch {}
+  return [];
+}
+
+export function addDeletedACUnitId(id: string): void {
+  if (typeof localStorage === "undefined" || !id) return;
+  try {
+    const current = new Set(getDeletedACUnitIds());
+    current.add(id);
+    localStorage.setItem(DELETED_AC_UNITS_KEY, JSON.stringify(Array.from(current)));
+  } catch {}
+}
 
 export function getLocalACUnits(): ACUnitLocation[] {
   if (typeof localStorage === "undefined") return DEFAULT_AC_UNITS;
   try {
-    const version = localStorage.getItem("ac_pm_units_version");
+    const deletedSet = new Set(getDeletedACUnitIds());
     const raw = localStorage.getItem("ac_pm_units_master");
+    const vaultRaw = localStorage.getItem(AC_UNITS_VAULT_KEY);
 
-    // Jika versi belum diperbarui ke data resmi hotel 172 unit, tanamkan otomatis
-    if (version !== AC_UNITS_DATA_VERSION || !raw) {
-      localStorage.setItem("ac_pm_units_master", JSON.stringify(DEFAULT_AC_UNITS));
-      localStorage.setItem("ac_pm_units_version", AC_UNITS_DATA_VERSION);
-      return DEFAULT_AC_UNITS;
+    let primaryList: ACUnitLocation[] = [];
+    if (raw) {
+      try {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) primaryList = parsed;
+      } catch {}
     }
 
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed.map((u: ACUnitLocation) => ({
-          ...u,
-          floor: u.floor || resolveFloorFromUnit(u),
-          category: normalizeACCategory(u.category),
-        }));
+    let vaultList: ACUnitLocation[] = [];
+    if (vaultRaw) {
+      try {
+        const parsed = JSON.parse(vaultRaw);
+        if (Array.isArray(parsed)) vaultList = parsed;
+      } catch {}
+    }
+
+    // Utamakan urutan dari primaryList (ac_pm_units_master) agar hasil pindah urutan tidak kembali ke posisi awal!
+    const mergedMap = new Map<string, ACUnitLocation>();
+    for (const u of primaryList) {
+      if (u && u.id && !deletedSet.has(u.id)) mergedMap.set(u.id, u);
+    }
+    for (const u of vaultList) {
+      if (u && u.id && !deletedSet.has(u.id) && !mergedMap.has(u.id)) {
+        mergedMap.set(u.id, u);
       }
+    }
+    for (const u of DEFAULT_AC_UNITS) {
+      if (u && u.id && !deletedSet.has(u.id) && !mergedMap.has(u.id)) {
+        mergedMap.set(u.id, u);
+      }
+    }
+
+    const combined = Array.from(mergedMap.values()).map((u: ACUnitLocation) => ({
+      ...u,
+      floor: u.floor || resolveFloorFromUnit(u),
+      category: normalizeACCategory(u.category),
+    }));
+
+    if (combined.length > 0) {
+      localStorage.setItem("ac_pm_units_master", JSON.stringify(combined));
+      localStorage.setItem(AC_UNITS_VAULT_KEY, JSON.stringify(combined));
+      localStorage.setItem("ac_pm_units_version", AC_UNITS_DATA_VERSION);
+      return combined;
     }
   } catch {}
   return DEFAULT_AC_UNITS;
@@ -3173,24 +3224,77 @@ export function importACUnitsFromJSON(jsonData: any): { count: number } {
 export function saveLocalACUnits(units: ACUnitLocation[]) {
   if (typeof localStorage === "undefined") return;
   try {
-    localStorage.setItem("ac_pm_units_master", JSON.stringify(units));
+    const deletedSet = new Set(getDeletedACUnitIds());
+    const valid = units.filter((u) => u && u.id && !deletedSet.has(u.id));
+    localStorage.setItem("ac_pm_units_master", JSON.stringify(valid));
+    localStorage.setItem(AC_UNITS_VAULT_KEY, JSON.stringify(valid));
   } catch {}
 }
 
 export async function fetchACUnits(): Promise<ACUnitLocation[]> {
+  const deletedSet = new Set(getDeletedACUnitIds());
+  const hasLocalMaster =
+    typeof localStorage !== "undefined" && Boolean(localStorage.getItem("ac_pm_units_master"));
+  const localUnits = getLocalACUnits();
+
   // 1. Coba ambil dari Server Backend API (/api/ac-units)
   try {
     const res = await fetch(apiUrl("/api/ac-units"));
     if (res.ok) {
       const json = await res.json();
       if (json.ok && Array.isArray(json.units) && json.units.length > 0) {
-        const mapped = json.units.map((u: any) => ({
+        const serverUnits: ACUnitLocation[] = json.units.map((u: any) => ({
           ...u,
           floor: u.floor || resolveFloorFromUnit(u),
           category: normalizeACCategory(u.category),
         }));
-        saveLocalACUnits(mapped);
-        return mapped;
+
+        // Utamakan urutan localUnits jika sudah ada di browser supaya posisi yang baru dipindah tidak tertimpa urutan lama server
+        const mergedMap = new Map<string, ACUnitLocation>();
+        let needsServerSync = false;
+
+        if (hasLocalMaster && localUnits.length > 0) {
+          for (const u of localUnits) {
+            if (u && u.id && !deletedSet.has(u.id)) {
+              mergedMap.set(u.id, u);
+            }
+          }
+          for (const u of serverUnits) {
+            if (u && u.id && !deletedSet.has(u.id) && !mergedMap.has(u.id)) {
+              mergedMap.set(u.id, u);
+            }
+          }
+          if (mergedMap.size !== serverUnits.length) {
+            needsServerSync = true;
+          }
+        } else {
+          for (const u of serverUnits) {
+            if (u && u.id && !deletedSet.has(u.id)) {
+              mergedMap.set(u.id, u);
+            }
+          }
+          for (const u of localUnits) {
+            if (u && u.id && !deletedSet.has(u.id) && !mergedMap.has(u.id)) {
+              mergedMap.set(u.id, u);
+              needsServerSync = true;
+            }
+          }
+        }
+
+        const merged = Array.from(mergedMap.values());
+        saveLocalACUnits(merged);
+
+        if (needsServerSync) {
+          try {
+            fetch(apiUrl("/api/ac-units/bulk"), {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ units: merged }),
+            }).catch(() => {});
+          } catch {}
+        }
+
+        return merged;
       }
     }
   } catch {}
@@ -3203,19 +3307,37 @@ export async function fetchACUnits(): Promise<ACUnitLocation[]> {
       .order("order", { ascending: true });
 
     if (!error && data && data.length > 0) {
-      const mapped = data.map((u: any) => ({
-        ...u,
-        floor: u.floor || resolveFloorFromUnit(u),
-        category: normalizeACCategory(u.category),
-      }));
-      saveLocalACUnits(mapped);
-      return mapped;
+      const mapped = data
+        .filter((u: any) => u && u.id && !deletedSet.has(u.id))
+        .map((u: any) => ({
+          ...u,
+          floor: u.floor || resolveFloorFromUnit(u),
+          category: normalizeACCategory(u.category),
+        }));
+      const mergedMap = new Map<string, ACUnitLocation>();
+      if (hasLocalMaster && localUnits.length > 0) {
+        for (const u of localUnits) {
+          if (u && u.id && !deletedSet.has(u.id)) mergedMap.set(u.id, u);
+        }
+        for (const u of mapped) {
+          if (!mergedMap.has(u.id)) mergedMap.set(u.id, u);
+        }
+      } else {
+        for (const u of mapped) mergedMap.set(u.id, u);
+        for (const u of localUnits) {
+          if (u && u.id && !deletedSet.has(u.id) && !mergedMap.has(u.id)) {
+            mergedMap.set(u.id, u);
+          }
+        }
+      }
+      const merged = Array.from(mergedMap.values());
+      saveLocalACUnits(merged);
+      return merged;
     }
   } catch {}
 
   // 3. Cadangan dari LocalStorage
-  const cached = getLocalACUnits();
-  return cached;
+  return localUnits;
 }
 
 export async function createACUnit(item: Omit<ACUnitLocation, "id">): Promise<ACUnitLocation> {
@@ -3329,6 +3451,7 @@ export async function updateBulkACUnits(
 }
 
 export async function deleteACUnit(id: string): Promise<void> {
+  addDeletedACUnitId(id);
   const current = getLocalACUnits();
   const filtered = current.filter((u) => u.id !== id);
   saveLocalACUnits(filtered);
@@ -3395,20 +3518,21 @@ export async function reorderFloorACUnits(
 
   saveLocalACUnits(nextUnits);
 
-  // Kirim ke Server Backend API
+  // Kirim ke Server Backend API di latar belakang agar UI langsung berubah instan tanpa jeda
   try {
-    await fetch(apiUrl("/api/ac-units/bulk"), {
+    fetch(apiUrl("/api/ac-units/bulk"), {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ units: nextUnits }),
-    });
+    }).catch(() => {});
   } catch {}
 
-  try {
-    for (const u of reorderedThisFloor) {
-      await supabase.from("ac_unit_locations").update({ order: u.order }).eq("id", u.id);
-    }
-  } catch {}
+  // Update ke Supabase di latar belakang tanpa memblokir UI
+  Promise.all(
+    reorderedThisFloor.map((u) =>
+      supabase.from("ac_unit_locations").update({ order: u.order }).eq("id", u.id)
+    )
+  ).catch(() => {});
 
   return nextUnits;
 }
@@ -3842,11 +3966,26 @@ export async function syncWithRemoteLiveApp(targetUrl: string = "https://prevent
 
   let unitsCount = 0;
   if (remoteUnits && remoteUnits.length > 0) {
-    const mapped = remoteUnits.map((u: any) => ({
-      ...u,
-      floor: u.floor || resolveFloorFromUnit(u),
-      category: normalizeACCategory(u.category),
-    }));
+    const deletedSet = new Set(getDeletedACUnitIds());
+    const localUnits = getLocalACUnits();
+    const mergedMap = new Map<string, ACUnitLocation>();
+
+    for (const u of remoteUnits) {
+      if (u && u.id && !deletedSet.has(u.id)) {
+        mergedMap.set(u.id, {
+          ...u,
+          floor: u.floor || resolveFloorFromUnit(u),
+          category: normalizeACCategory(u.category),
+        });
+      }
+    }
+    for (const u of localUnits) {
+      if (u && u.id && !deletedSet.has(u.id) && !mergedMap.has(u.id)) {
+        mergedMap.set(u.id, u);
+      }
+    }
+
+    const mapped = Array.from(mergedMap.values());
     saveLocalACUnits(mapped);
     unitsCount = mapped.length;
 

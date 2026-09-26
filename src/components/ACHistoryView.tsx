@@ -22,6 +22,7 @@ import {
   FileText,
   CheckSquare,
   Square,
+  Camera,
 } from "lucide-react";
 import {
   ACCategory,
@@ -53,6 +54,7 @@ export function ACHistoryView() {
 
   // Modals & Selection
   const [selectedLog, setSelectedLog] = useState<ACMaintenanceLog | null>(null);
+  const [viewingPhoto, setViewingPhoto] = useState<{ title: string; src: string } | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<ACMaintenanceLog | null>(null);
   const [deleting, setDeleting] = useState<boolean>(false);
   const [showAddModal, setShowAddModal] = useState<boolean>(false);
@@ -417,6 +419,7 @@ export function ACHistoryView() {
                   <th className="py-3 px-4">Teknisi</th>
                   <th className="py-3 px-4">Suhu (°C)</th>
                   <th className="py-3 px-4">Anemometer (m/s)</th>
+                  <th className="py-3 px-4">Foto Before / After</th>
                   <th className="py-3 px-4">Catatan Kondisi</th>
                   <th className="py-3 px-4 text-right">Aksi</th>
                 </tr>
@@ -515,6 +518,91 @@ export function ACHistoryView() {
                             {anemoDiff > 0 ? `+${anemoDiff}` : `${anemoDiff}`}
                           </span>
                         </div>
+                      </td>
+
+                      {/* Dokumentasi Foto Before / After (Suhu & Anemo) */}
+                      <td className="py-3 px-4 whitespace-nowrap">
+                        {(log.photo_temp_before ||
+                          log.photo_before ||
+                          log.photo_temp_after ||
+                          log.photo_after ||
+                          log.photo_anemo_before ||
+                          log.photo_anemo_after) ? (
+                          <div className="flex flex-col gap-1">
+                            {(log.photo_temp_before || log.photo_before || log.photo_temp_after || log.photo_after) && (
+                              <div className="flex items-center gap-1">
+                                <span className="text-[9px] font-bold text-amber-700 w-9">Suhu:</span>
+                                {(log.photo_temp_before || log.photo_before) && (
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      setViewingPhoto({
+                                        title: `Foto BEFORE Suhu - ${log.unit_name}`,
+                                        src: (log.photo_temp_before || log.photo_before)!,
+                                      })
+                                    }
+                                    className="px-1.5 py-0.5 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 rounded text-[9px] font-bold flex items-center gap-0.5 cursor-pointer transition"
+                                  >
+                                    <Camera className="w-2.5 h-2.5 text-amber-600" />
+                                    <span>Before</span>
+                                  </button>
+                                )}
+                                {(log.photo_temp_after || log.photo_after) && (
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      setViewingPhoto({
+                                        title: `Foto AFTER Suhu - ${log.unit_name}`,
+                                        src: (log.photo_temp_after || log.photo_after)!,
+                                      })
+                                    }
+                                    className="px-1.5 py-0.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 rounded text-[9px] font-bold flex items-center gap-0.5 cursor-pointer transition"
+                                  >
+                                    <Camera className="w-2.5 h-2.5 text-emerald-600" />
+                                    <span>After</span>
+                                  </button>
+                                )}
+                              </div>
+                            )}
+                            {(log.photo_anemo_before || log.photo_anemo_after) && (
+                              <div className="flex items-center gap-1">
+                                <span className="text-[9px] font-bold text-cyan-700 w-9">Anemo:</span>
+                                {log.photo_anemo_before && (
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      setViewingPhoto({
+                                        title: `Foto BEFORE Anemometer - ${log.unit_name}`,
+                                        src: log.photo_anemo_before!,
+                                      })
+                                    }
+                                    className="px-1.5 py-0.5 bg-cyan-50 hover:bg-cyan-100 text-cyan-800 border border-cyan-200 rounded text-[9px] font-bold flex items-center gap-0.5 cursor-pointer transition"
+                                  >
+                                    <Camera className="w-2.5 h-2.5 text-cyan-600" />
+                                    <span>Before</span>
+                                  </button>
+                                )}
+                                {log.photo_anemo_after && (
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      setViewingPhoto({
+                                        title: `Foto AFTER Anemometer - ${log.unit_name}`,
+                                        src: log.photo_anemo_after!,
+                                      })
+                                    }
+                                    className="px-1.5 py-0.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 rounded text-[9px] font-bold flex items-center gap-0.5 cursor-pointer transition"
+                                  >
+                                    <Camera className="w-2.5 h-2.5 text-emerald-600" />
+                                    <span>After</span>
+                                  </button>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-slate-300 text-[11px]">-</span>
+                        )}
                       </td>
 
                       {/* Catatan */}
@@ -671,6 +759,156 @@ export function ACHistoryView() {
                 </div>
               </div>
 
+              {/* Dokumentasi Foto Before & After (4 Foto: Suhu & Anemometer) */}
+              {(selectedLog.photo_temp_before ||
+                selectedLog.photo_before ||
+                selectedLog.photo_temp_after ||
+                selectedLog.photo_after ||
+                selectedLog.photo_anemo_before ||
+                selectedLog.photo_anemo_after) && (
+                <div className="space-y-2.5">
+                  <span className="block text-[10px] font-bold uppercase text-slate-500 flex items-center gap-1">
+                    <Camera className="w-3.5 h-3.5 text-blue-600" />
+                    Dokumentasi Foto (Before & After):
+                  </span>
+
+                  {/* 1. Foto Suhu */}
+                  {(selectedLog.photo_temp_before ||
+                    selectedLog.photo_before ||
+                    selectedLog.photo_temp_after ||
+                    selectedLog.photo_after) && (
+                    <div className="space-y-1">
+                      <span className="block text-[10px] font-bold text-amber-900">
+                        1. Foto Before & After Suhu (°C)
+                      </span>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="bg-amber-50/50 p-1.5 rounded-lg border border-amber-200 space-y-1">
+                          <span className="block text-[9px] font-bold text-amber-800 uppercase">
+                            Before Suhu
+                          </span>
+                          {selectedLog.photo_temp_before || selectedLog.photo_before ? (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setViewingPhoto({
+                                  title: `Foto BEFORE Suhu - ${selectedLog.unit_name}`,
+                                  src: (selectedLog.photo_temp_before || selectedLog.photo_before)!,
+                                })
+                              }
+                              className="w-full h-20 rounded-md overflow-hidden bg-slate-900 border border-amber-300 block cursor-pointer hover:opacity-90 transition"
+                            >
+                              <img
+                                src={selectedLog.photo_temp_before || selectedLog.photo_before}
+                                alt="Before Suhu"
+                                className="w-full h-full object-cover"
+                              />
+                            </button>
+                          ) : (
+                            <div className="h-20 rounded-md bg-slate-100 flex items-center justify-center text-[9px] text-slate-400">
+                              Tidak ada foto
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="bg-emerald-50/50 p-1.5 rounded-lg border border-emerald-200 space-y-1">
+                          <span className="block text-[9px] font-bold text-emerald-800 uppercase">
+                            After Suhu
+                          </span>
+                          {selectedLog.photo_temp_after || selectedLog.photo_after ? (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setViewingPhoto({
+                                  title: `Foto AFTER Suhu - ${selectedLog.unit_name}`,
+                                  src: (selectedLog.photo_temp_after || selectedLog.photo_after)!,
+                                })
+                              }
+                              className="w-full h-20 rounded-md overflow-hidden bg-slate-900 border border-emerald-300 block cursor-pointer hover:opacity-90 transition"
+                            >
+                              <img
+                                src={selectedLog.photo_temp_after || selectedLog.photo_after}
+                                alt="After Suhu"
+                                className="w-full h-full object-cover"
+                              />
+                            </button>
+                          ) : (
+                            <div className="h-20 rounded-md bg-slate-100 flex items-center justify-center text-[9px] text-slate-400">
+                              Tidak ada foto
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 2. Foto Anemometer */}
+                  {(selectedLog.photo_anemo_before || selectedLog.photo_anemo_after) && (
+                    <div className="space-y-1">
+                      <span className="block text-[10px] font-bold text-cyan-900">
+                        2. Foto Before & After Anemometer (m/s)
+                      </span>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="bg-cyan-50/50 p-1.5 rounded-lg border border-cyan-200 space-y-1">
+                          <span className="block text-[9px] font-bold text-cyan-800 uppercase">
+                            Before Anemometer
+                          </span>
+                          {selectedLog.photo_anemo_before ? (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setViewingPhoto({
+                                  title: `Foto BEFORE Anemometer - ${selectedLog.unit_name}`,
+                                  src: selectedLog.photo_anemo_before!,
+                                })
+                              }
+                              className="w-full h-20 rounded-md overflow-hidden bg-slate-900 border border-cyan-300 block cursor-pointer hover:opacity-90 transition"
+                            >
+                              <img
+                                src={selectedLog.photo_anemo_before}
+                                alt="Before Anemometer"
+                                className="w-full h-full object-cover"
+                              />
+                            </button>
+                          ) : (
+                            <div className="h-20 rounded-md bg-slate-100 flex items-center justify-center text-[9px] text-slate-400">
+                              Tidak ada foto
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="bg-emerald-50/50 p-1.5 rounded-lg border border-emerald-200 space-y-1">
+                          <span className="block text-[9px] font-bold text-emerald-800 uppercase">
+                            After Anemometer
+                          </span>
+                          {selectedLog.photo_anemo_after ? (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setViewingPhoto({
+                                  title: `Foto AFTER Anemometer - ${selectedLog.unit_name}`,
+                                  src: selectedLog.photo_anemo_after!,
+                                })
+                              }
+                              className="w-full h-20 rounded-md overflow-hidden bg-slate-900 border border-emerald-300 block cursor-pointer hover:opacity-90 transition"
+                            >
+                              <img
+                                src={selectedLog.photo_anemo_after}
+                                alt="After Anemometer"
+                                className="w-full h-full object-cover"
+                              />
+                            </button>
+                          ) : (
+                            <div className="h-20 rounded-md bg-slate-100 flex items-center justify-center text-[9px] text-slate-400">
+                              Tidak ada foto
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
               <div className="pt-2 flex items-center justify-between">
                 {(user?.role === "admin" || !user || user?.user_id === selectedLog.user_id) ? (
                   <button
@@ -802,6 +1040,40 @@ export function ACHistoryView() {
               >
                 {clearingAll ? "Membersihkan..." : "Ya, Kosongkan Semua"}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* PHOTO LIGHTBOX MODAL */}
+      {viewingPhoto && (
+        <div
+          className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-xs"
+          onClick={() => setViewingPhoto(null)}
+        >
+          <div
+            className="bg-slate-900 border border-slate-700 rounded-2xl max-w-2xl w-full overflow-hidden shadow-2xl animate-in fade-in zoom-in-95"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-4 py-3 border-b border-slate-800 flex items-center justify-between text-white">
+              <div className="flex items-center gap-2 text-xs font-bold">
+                <Camera className="w-4 h-4 text-blue-400" />
+                <span>{viewingPhoto.title}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setViewingPhoto(null)}
+                className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="p-3 flex items-center justify-center bg-black max-h-[75vh]">
+              <img
+                src={viewingPhoto.src}
+                alt={viewingPhoto.title}
+                className="max-w-full max-h-[70vh] object-contain rounded-lg"
+              />
             </div>
           </div>
         </div>

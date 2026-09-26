@@ -3603,8 +3603,34 @@ export function initializeSampleACLogsIfEmpty(): ACMaintenanceLog[] {
   return filteredSamples;
 }
 
+function stripOlderUnitPhotos(logs: ACMaintenanceLog[]): ACMaintenanceLog[] {
+  const sorted = [...logs].sort(
+    (a, b) => new Date(b.recorded_at).getTime() - new Date(a.recorded_at).getTime()
+  );
+  const seenUnits = new Set<string>();
+  return sorted.map((log) => {
+    const unitKey = log.unit_id || log.unit_name;
+    if (seenUnits.has(unitKey)) {
+      const {
+        photo_temp_before,
+        photo_temp_after,
+        photo_anemo_before,
+        photo_anemo_after,
+        photo_before,
+        photo_after,
+        photo_url,
+        ...rest
+      } = log;
+      return rest as ACMaintenanceLog;
+    }
+    seenUnits.add(unitKey);
+    return log;
+  });
+}
+
 export async function fetchACMaintenanceLogs(): Promise<ACMaintenanceLog[]> {
   const deletedIds = new Set(getDeletedACLogIds());
+  const localLogsMap = new Map(getLocalACLogs().map((l) => [l.log_id, l]));
 
   // 1. Coba ambil dari Server Backend API (/api/ac-logs)
   try {
@@ -3612,7 +3638,9 @@ export async function fetchACMaintenanceLogs(): Promise<ACMaintenanceLog[]> {
     if (res.ok) {
       const json = await res.json();
       if (json.ok && Array.isArray(json.logs) && json.logs.length > 0) {
-        const valid = json.logs.filter((l: any) => !deletedIds.has(l.log_id));
+        const valid = stripOlderUnitPhotos(
+          json.logs.filter((l: any) => !deletedIds.has(l.log_id))
+        );
         saveLocalACLogs(valid);
         return valid;
       }
@@ -3627,15 +3655,31 @@ export async function fetchACMaintenanceLogs(): Promise<ACMaintenanceLog[]> {
       .order("recorded_at", { ascending: false });
 
     if (!error && data && data.length > 0) {
-      const validData = data.filter((item) => !deletedIds.has(item.log_id) && !(item as any).deleted);
+      const merged = data
+        .filter((item) => !deletedIds.has(item.log_id) && !(item as any).deleted)
+        .map((item) => {
+          const local = localLogsMap.get(item.log_id);
+          return {
+            ...item,
+            photo_temp_before: item.photo_temp_before ?? local?.photo_temp_before ?? item.photo_before ?? local?.photo_before,
+            photo_temp_after: item.photo_temp_after ?? local?.photo_temp_after ?? item.photo_after ?? local?.photo_after,
+            photo_anemo_before: item.photo_anemo_before ?? local?.photo_anemo_before,
+            photo_anemo_after: item.photo_anemo_after ?? local?.photo_anemo_after,
+            photo_before: item.photo_before ?? local?.photo_before,
+            photo_after: item.photo_after ?? local?.photo_after,
+          } as ACMaintenanceLog;
+        });
+      const validData = stripOlderUnitPhotos(merged);
       saveLocalACLogs(validData);
       return validData;
     }
   } catch {}
 
   const cached = initializeSampleACLogsIfEmpty();
-  const validCached = cached.filter((item) => !deletedIds.has(item.log_id));
-  return validCached.sort((a, b) => new Date(b.recorded_at).getTime() - new Date(a.recorded_at).getTime());
+  const validCached = stripOlderUnitPhotos(
+    cached.filter((item) => !deletedIds.has(item.log_id))
+  );
+  return validCached;
 }
 
 export async function createACMaintenanceLog(
@@ -3651,7 +3695,24 @@ export async function createACMaintenanceLog(
   };
 
   const current = getLocalACLogs();
-  const updated = [record, ...current];
+  // Otomatis hapus foto lama dari cleaning sebelumnya untuk unit/kamar yang sama agar hemat penyimpanan
+  const cleanedPastLogs = current.map((item) => {
+    if (item.unit_id === record.unit_id || item.unit_name === record.unit_name) {
+      const {
+        photo_temp_before,
+        photo_temp_after,
+        photo_anemo_before,
+        photo_anemo_after,
+        photo_before,
+        photo_after,
+        photo_url,
+        ...rest
+      } = item;
+      return rest as ACMaintenanceLog;
+    }
+    return item;
+  });
+  const updated = [record, ...cleanedPastLogs];
   saveLocalACLogs(updated);
 
   // Kirim ke Server Backend API
@@ -3664,7 +3725,7 @@ export async function createACMaintenanceLog(
   } catch {}
 
   try {
-    await supabase.from("ac_maintenance_logs").insert({
+    const { error } = await supabase.from("ac_maintenance_logs").insert({
       log_id: record.log_id,
       recorded_at: record.recorded_at,
       user_id: record.user_id,
@@ -3677,12 +3738,46 @@ export async function createACMaintenanceLog(
       anemo_before: record.anemo_before,
       anemo_after: record.anemo_after,
       notes: record.notes || "",
+      photo_temp_before: record.photo_temp_before || null,
+      photo_temp_after: record.photo_temp_after || null,
+      photo_anemo_before: record.photo_anemo_before || null,
+      photo_anemo_after: record.photo_anemo_after || null,
+      photo_before: record.photo_temp_before || record.photo_before || null,
+      photo_after: record.photo_temp_after || record.photo_after || null,
       photo_url: record.photo_url || null,
       created_at: record.created_at,
     });
+    if (error) {
+      // Fallback jika kolom photo_before/photo_after belum ada di skema tabel Supabase
+      await supabase.from("ac_maintenance_logs").insert({
+        log_id: record.log_id,
+        recorded_at: record.recorded_at,
+        user_id: record.user_id,
+        user_name: record.user_name,
+        category: record.category,
+        unit_id: record.unit_id,
+        unit_name: record.unit_name,
+        temp_before: record.temp_before,
+        temp_after: record.temp_after,
+        anemo_before: record.anemo_before,
+        anemo_after: record.anemo_after,
+        notes: record.notes || "",
+        photo_url: record.photo_before || record.photo_after || record.photo_url || null,
+        created_at: record.created_at,
+      });
+    }
   } catch (err) {
     console.warn("Supabase insert ac_maintenance_logs error (falling back to local resilient storage):", err);
   }
+
+  // Hapus foto lama di Supabase untuk unit_id ini (hanya menyisakan log teks)
+  try {
+    await supabase
+      .from("ac_maintenance_logs")
+      .update({ photo_before: null, photo_after: null, photo_url: null })
+      .eq("unit_id", record.unit_id)
+      .neq("log_id", record.log_id);
+  } catch {}
 
   return record;
 }
@@ -4019,6 +4114,8 @@ export function exportACLogsToExcel(logs: ACMaintenanceLog[], propertyName = "En
       "Anemometer Before (m/s)": l.anemo_before,
       "Anemometer After (m/s)": l.anemo_after,
       "Peningkatan Hembusan (m/s)": anemoDiff > 0 ? `+${anemoDiff} m/s` : `${anemoDiff} m/s`,
+      "Foto Before": l.photo_before ? "Ada Foto (Tersimpan)" : "-",
+      "Foto After": l.photo_after ? "Ada Foto (Tersimpan)" : "-",
       "Catatan Kondisi": l.notes || "-",
     };
   });
@@ -4038,6 +4135,8 @@ export function exportACLogsToExcel(logs: ACMaintenanceLog[], propertyName = "En
     { wch: 22 }, // Anemo Before
     { wch: 22 }, // Anemo After
     { wch: 24 }, // Peningkatan Hembusan
+    { wch: 20 }, // Foto Before
+    { wch: 20 }, // Foto After
     { wch: 38 }, // Catatan
   ];
 
@@ -4223,6 +4322,8 @@ export function exportACMasterReportToExcel(
       "Anemometer Before (m/s)": l.anemo_before,
       "Anemometer After (m/s)": l.anemo_after,
       "Peningkatan Hembusan (m/s)": anemoDiff > 0 ? `+${anemoDiff} m/s` : `${anemoDiff} m/s`,
+      "Foto Before": l.photo_before ? "Ada Foto (Tersimpan)" : "-",
+      "Foto After": l.photo_after ? "Ada Foto (Tersimpan)" : "-",
       "Catatan Kondisi": l.notes || "-",
     };
   });
@@ -4230,7 +4331,8 @@ export function exportACMasterReportToExcel(
   const wsLogs = XLSX.utils.json_to_sheet(logRows);
   wsLogs["!cols"] = [
     { wch: 5 }, { wch: 18 }, { wch: 10 }, { wch: 22 }, { wch: 26 }, { wch: 20 },
-    { wch: 16 }, { wch: 16 }, { wch: 18 }, { wch: 22 }, { wch: 22 }, { wch: 24 }, { wch: 38 }
+    { wch: 16 }, { wch: 16 }, { wch: 18 }, { wch: 22 }, { wch: 22 }, { wch: 24 },
+    { wch: 20 }, { wch: 20 }, { wch: 38 }
   ];
   XLSX.utils.book_append_sheet(workbook, wsLogs, "Riwayat Cuci AC");
 

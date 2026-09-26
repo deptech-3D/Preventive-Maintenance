@@ -45,6 +45,7 @@ import {
 import { ACMasterUnitsManager } from "./ACMasterUnitsManager";
 import { ACMaintenanceCycleSettings } from "./ACMaintenanceCycleSettings";
 import { ACIntegrationReportPanel } from "./ACIntegrationReportPanel";
+import { ACDataBackupSyncCard } from "./ACDataBackupSyncCard";
 import { User, AppSettings } from "../types";
 import { useAuth } from "../auth";
 import { useI18n, Lang } from "../i18n";
@@ -1293,6 +1294,9 @@ export function Settings() {
           )}
         </>
       )}
+
+      {/* CADANGAN & SINKRONISASI DATA AC PERLANTAI */}
+      <ACDataBackupSyncCard />
 
       {/* Versi & Perbarui Aplikasi Langsung */}
       <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-5 rounded-2xl border border-blue-200 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">

@@ -640,6 +640,24 @@ app.post("/api/ac-logs", (req: Request, res: Response) => {
   if (existingIdx >= 0) {
     state.ac_logs[existingIdx] = record;
   } else {
+    // Otomatis hapus foto lama dari pembersihan sebelumnya di kamar/unit yang sama
+    if (record.unit_id || record.unit_name) {
+      state.ac_logs = state.ac_logs.map((pastLog: any) => {
+        if (
+          (pastLog.unit_id === record.unit_id || pastLog.unit_name === record.unit_name) &&
+          pastLog.log_id !== log_id
+        ) {
+          delete pastLog.photo_temp_before;
+          delete pastLog.photo_temp_after;
+          delete pastLog.photo_anemo_before;
+          delete pastLog.photo_anemo_after;
+          delete pastLog.photo_before;
+          delete pastLog.photo_after;
+          delete pastLog.photo_url;
+        }
+        return pastLog;
+      });
+    }
     state.ac_logs.unshift(record);
   }
 

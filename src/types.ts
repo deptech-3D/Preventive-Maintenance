@@ -274,6 +274,12 @@ export interface ACMaintenanceLog {
   anemo_before: number; // Anemometer Sebelum Cleaning (m/s)
   anemo_after: number; // Anemometer Sesudah Cleaning (m/s)
   notes: string; // Catatan Tambahan kondisi sebelum dan sesudah
+  photo_temp_before?: string; // Foto Before Suhu (°C)
+  photo_temp_after?: string; // Foto After Suhu (°C)
+  photo_anemo_before?: string; // Foto Before Anemometer (m/s)
+  photo_anemo_after?: string; // Foto After Anemometer (m/s)
+  photo_before?: string; // Legacy alias
+  photo_after?: string; // Legacy alias
   photo_url?: string;
   created_at?: string;
 }

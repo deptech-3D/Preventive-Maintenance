@@ -38,6 +38,10 @@ import {
   moveACUnitInFloor,
   swapACUnitInFloor,
 } from "../supabaseService";
+import {
+  getSmartUnitSuggestions,
+  smartFilterAndSortUnits,
+} from "../utils/smartSearch";
 
 export function ACMasterUnitsManager() {
   const [units, setUnits] = useState<ACUnitLocation[]>(() => getLocalACUnits());
@@ -284,15 +288,25 @@ export function ACMasterUnitsManager() {
     setDraggedUnitId(null);
   };
 
-  // Filtered unit list strictly per selected real floor
-  const filteredUnits = floorUnits.filter((u) => {
-    const matchCategory = selectedCategory === "all" || normalizeACCategory(u.category) === selectedCategory;
-    const matchSearch =
-      !searchTerm ||
-      u.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (u.code && u.code.toLowerCase().includes(searchTerm.toLowerCase()));
-    return matchCategory && matchSearch;
-  });
+  // Smart suggestions across ALL floors when user types in searchTerm
+  const smartSuggestions = React.useMemo(() => {
+    if (!searchTerm.trim()) return [];
+    return getSmartUnitSuggestions(units, (u) => u, searchTerm, 8);
+  }, [units, searchTerm]);
+
+  // Filtered unit list per selected real floor (or across all floors if searching a room on another floor)
+  const filteredUnits = React.useMemo(() => {
+    const catFiltered = floorUnits.filter(
+      (u) => selectedCategory === "all" || normalizeACCategory(u.category) === selectedCategory
+    );
+    if (!searchTerm.trim()) return catFiltered;
+
+    const matchedInFloor = smartFilterAndSortUnits(catFiltered, (u) => u, searchTerm);
+    if (matchedInFloor.length > 0) return matchedInFloor;
+
+    // Jika kamar yang dicari ada di lantai lain, tampilkan otomatis agar langsung ditemukan
+    return smartFilterAndSortUnits(units, (u) => u, searchTerm);
+  }, [floorUnits, units, selectedCategory, searchTerm]);
 
   return (
     <div className="space-y-4">
@@ -412,19 +426,59 @@ export function ACMasterUnitsManager() {
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder={`Cari kamar atau unit di ${selectedFloor}...`}
-              className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 placeholder-slate-400 focus:outline-hidden focus:ring-2 focus:ring-blue-500 min-h-[40px]"
+              placeholder="Ketik nomor kamar saja (misal: 502, 301, 06) atau area..."
+              className="w-full pl-9 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 placeholder-slate-400 focus:outline-hidden focus:ring-2 focus:ring-blue-500 min-h-[40px]"
             />
             {searchTerm && (
               <button
                 onClick={() => setSearchTerm("")}
-                className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600"
+                className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600 cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
             )}
           </div>
         </div>
+
+        {/* Smart Clickable Suggestions ("Persamaan Kamar / Unit untuk diklik") */}
+        {searchTerm.trim() && smartSuggestions.length > 0 && (
+          <div className="bg-blue-50/70 border border-blue-200 rounded-xl p-2.5 space-y-1.5">
+            <span className="text-[11px] font-bold text-blue-900 block">
+              Persamaan Kamar / Unit (Klik untuk lompat & pilih):
+            </span>
+            <div className="flex flex-wrap items-center gap-1.5">
+              {smartSuggestions.map(({ unit: u, score }) => {
+                const uFloor = resolveFloorFromUnit(u);
+                const isPrimary = score >= 900;
+                return (
+                  <button
+                    key={u.id}
+                    type="button"
+                    onClick={() => {
+                      setSelectedFloor(uFloor);
+                      setSelectedCategory("all");
+                      setSearchTerm(u.name);
+                    }}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1.5 border cursor-pointer shadow-2xs ${
+                      isPrimary
+                        ? "bg-blue-600 text-white border-blue-600 hover:bg-blue-700"
+                        : "bg-white text-slate-800 border-blue-200 hover:border-blue-500 hover:text-blue-700"
+                    }`}
+                  >
+                    <span>{u.name}</span>
+                    <span
+                      className={`text-[10px] px-1.5 py-0.2 rounded font-semibold ${
+                        isPrimary ? "bg-white/20 text-white" : "bg-slate-100 text-slate-600"
+                      }`}
+                    >
+                      {uFloor}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Units Table / Grid for Selected Floor */}

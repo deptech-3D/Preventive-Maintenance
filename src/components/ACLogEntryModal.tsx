@@ -29,9 +29,14 @@ import {
 import { useAuth } from "../auth";
 import {
   fetchACUnits,
+  getLocalACUnits,
   createACMaintenanceLog,
 } from "../supabaseService";
 import { compressImageFile } from "../utils/imageCompressor";
+import {
+  getSmartUnitSuggestions,
+  smartFilterAndSortUnits,
+} from "../utils/smartSearch";
 
 interface ACLogEntryModalProps {
   initialUnitId?: string | null;
@@ -47,8 +52,8 @@ export function ACLogEntryModal({
   const { user } = useAuth();
 
   // Master Units & Selection
-  const [units, setUnits] = useState<ACUnitLocation[]>([]);
-  const [selectedUnitId, setSelectedUnitId] = useState<string>("");
+  const [units, setUnits] = useState<ACUnitLocation[]>(() => getLocalACUnits());
+  const [selectedUnitId, setSelectedUnitId] = useState<string>(initialUnitId || "");
   const [category, setCategory] = useState<ACCategory>("Area Privat / Kamar Hotel");
 
   // Quick Search States
@@ -109,7 +114,7 @@ export function ACLogEntryModal({
     }
   };
 
-  const [loadingUnits, setLoadingUnits] = useState<boolean>(true);
+  const [loadingUnits, setLoadingUnits] = useState<boolean>(false);
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -117,7 +122,6 @@ export function ACLogEntryModal({
   useEffect(() => {
     (async () => {
       try {
-        setLoadingUnits(true);
         const data = await fetchACUnits();
         setUnits(data);
 
@@ -151,22 +155,26 @@ export function ACLogEntryModal({
     return REAL_FLOORS.filter((f) => floorSet.has(f));
   }, [units]);
 
-  // Filter units dynamically based on Quick Search and Floor Filter
+  // Smart clickable suggestions across all units
+  const smartSuggestions = useMemo(() => {
+    if (!searchQuery.trim()) return [];
+    return getSmartUnitSuggestions(units, (u) => u, searchQuery, 8);
+  }, [units, searchQuery]);
+
+  // Filter units dynamically based on Smart Search and Floor Filter
   const searchResults = useMemo(() => {
-    const q = searchQuery.toLowerCase().trim();
-    return units.filter((u) => {
-      const uFloor = resolveFloorFromUnit(u);
-      if (selectedFloorFilter !== "all" && uFloor !== selectedFloorFilter) {
-        return false;
-      }
-      if (!q) return true;
-      return (
-        u.name.toLowerCase().includes(q) ||
-        (u.code && u.code.toLowerCase().includes(q)) ||
-        uFloor.toLowerCase().includes(q) ||
-        u.category.toLowerCase().includes(q)
-      );
-    });
+    const floorFiltered =
+      selectedFloorFilter === "all"
+        ? units
+        : units.filter((u) => resolveFloorFromUnit(u) === selectedFloorFilter);
+
+    if (!searchQuery.trim()) return floorFiltered;
+
+    const matched = smartFilterAndSortUnits(floorFiltered, (u) => u, searchQuery);
+    if (matched.length === 0) {
+      return smartFilterAndSortUnits(units, (u) => u, searchQuery);
+    }
+    return matched;
   }, [units, searchQuery, selectedFloorFilter]);
 
   // Calculations for delta comparison
@@ -373,24 +381,67 @@ export function ACLogEntryModal({
               /* Quick Search Bar & Live Results */
               <div className="space-y-2.5">
                 {/* Search Bar Input */}
-                <div className="relative">
-                  <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3 pointer-events-none" />
-                  <input
-                    type="text"
-                    autoFocus={isChangingUnit || !selectedUnitId}
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Ketik nomor kamar / unit (contoh: 301, Resto, Lobby, VRV, AHU)..."
-                    className="w-full pl-9 pr-9 py-2.5 bg-white border border-slate-300 rounded-xl text-xs font-semibold text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-hidden shadow-2xs"
-                  />
-                  {searchQuery && (
-                    <button
-                      type="button"
-                      onClick={() => setSearchQuery("")}
-                      className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
-                    >
-                      <X className="w-3.5 h-3.5" />
-                    </button>
+                <div className="space-y-2">
+                  <div className="relative">
+                    <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3 pointer-events-none" />
+                    <input
+                      type="text"
+                      autoFocus={isChangingUnit || !selectedUnitId}
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder="Ketik nomor kamar saja (contoh: 502, 301, 06) atau nama area..."
+                      className="w-full pl-9 pr-9 py-2.5 bg-white border border-slate-300 rounded-xl text-xs font-semibold text-slate-900 placeholder:text-slate-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-hidden shadow-2xs"
+                    />
+                    {searchQuery && (
+                      <button
+                        type="button"
+                        onClick={() => setSearchQuery("")}
+                        className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Smart Clickable Suggestions ("Persamaan Kamar / Unit untuk diklik") */}
+                  {searchQuery.trim() && smartSuggestions.length > 0 && (
+                    <div className="bg-blue-50/90 border border-blue-200 rounded-xl p-2 space-y-1.5">
+                      <span className="text-[10px] font-bold text-blue-900 block">
+                        Persamaan Kamar / Unit (Klik langsung untuk memilih):
+                      </span>
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        {smartSuggestions.map(({ unit: u, score }) => {
+                          const uFloor = resolveFloorFromUnit(u);
+                          const isPrimary = score >= 900;
+                          return (
+                            <button
+                              key={u.id}
+                              type="button"
+                              onClick={() => {
+                                setSelectedUnitId(u.id);
+                                setCategory(normalizeACCategory(u.category));
+                                setIsChangingUnit(false);
+                                setSearchQuery("");
+                              }}
+                              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1.5 border cursor-pointer shadow-2xs ${
+                                isPrimary
+                                  ? "bg-blue-600 text-white border-blue-600 hover:bg-blue-700"
+                                  : "bg-white text-slate-800 border-blue-200 hover:border-blue-500 hover:text-blue-700"
+                              }`}
+                            >
+                              <span>{u.name}</span>
+                              <span
+                                className={`text-[10px] px-1.5 py-0.2 rounded font-semibold ${
+                                  isPrimary ? "bg-white/20 text-white" : "bg-slate-100 text-slate-600"
+                                }`}
+                              >
+                                {uFloor}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
                   )}
                 </div>
 

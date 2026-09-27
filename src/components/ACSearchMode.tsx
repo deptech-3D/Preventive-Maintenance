@@ -27,6 +27,10 @@ import {
   formatUnitCycleLabel,
 } from "../types";
 import { getACScheduleOverview, getLocalACScheduleOverview } from "../supabaseService";
+import {
+  getSmartUnitSuggestions,
+  smartFilterAndSortUnits,
+} from "../utils/smartSearch";
 
 interface ACSearchModeProps {
   onOpenACLog: (unitId?: string) => void;
@@ -63,44 +67,44 @@ export function ACSearchMode({ onOpenACLog }: ACSearchModeProps) {
     };
   }, []);
 
-  // Filtered and searched data
+  // Smart clickable suggestions ("Persamaan untuk diklik") across all units
+  const smartSuggestions = useMemo(() => {
+    if (!query.trim()) return [];
+    return getSmartUnitSuggestions(scheduleList, (item) => item.unit, query, 8);
+  }, [scheduleList, query]);
+
+  // Filtered and smart-ranked data
   const filteredList = useMemo(() => {
-    return scheduleList.filter((item) => {
-      const unit = item.unit;
-      const unitFloor = resolveFloorFromUnit(unit);
+    const applyBaseFilters = (list: ACUnitScheduleStatus[]) =>
+      list.filter((item) => {
+        const unit = item.unit;
+        const unitFloor = resolveFloorFromUnit(unit);
 
-      // Floor Filter
-      if (selectedFloor !== "all" && unitFloor !== selectedFloor) {
-        return false;
-      }
+        if (selectedFloor !== "all" && unitFloor !== selectedFloor) {
+          return false;
+        }
+        if (selectedCategory !== "all" && normalizeACCategory(unit.category) !== selectedCategory) {
+          return false;
+        }
+        if (statusFilter === "urgent") {
+          if (item.status !== "overdue" && item.status !== "approaching") return false;
+        } else if (statusFilter !== "all" && item.status !== statusFilter) {
+          return false;
+        }
+        return true;
+      });
 
-      // Category Filter
-      if (selectedCategory !== "all" && normalizeACCategory(unit.category) !== selectedCategory) {
-        return false;
-      }
+    const baseFiltered = applyBaseFilters(scheduleList);
+    if (!query.trim()) {
+      return baseFiltered;
+    }
 
-      // Status Filter
-      if (statusFilter === "urgent") {
-        if (item.status !== "overdue" && item.status !== "approaching") return false;
-      } else if (statusFilter !== "all" && item.status !== statusFilter) {
-        return false;
-      }
-
-      // Real-time Text Search (matches room number, area name, code, notes, floor)
-      if (query.trim()) {
-        const q = query.toLowerCase().trim();
-        const matchName = unit.name.toLowerCase().includes(q);
-        const matchCode = unit.code ? unit.code.toLowerCase().includes(q) : false;
-        const matchCat =
-          normalizeACCategory(unit.category).toLowerCase().includes(q) ||
-          unit.category.toLowerCase().includes(q);
-        const matchFloor = unitFloor.toLowerCase().includes(q);
-        const matchNotes = unit.notes ? unit.notes.toLowerCase().includes(q) : false;
-        if (!matchName && !matchCode && !matchCat && !matchFloor && !matchNotes) return false;
-      }
-
-      return true;
-    });
+    const smartMatched = smartFilterAndSortUnits(baseFiltered, (item) => item.unit, query);
+    // Jika user mengetik nomor kamar yang berada di lantai/kategori lain, tetap tampilkan agar tidak kosong
+    if (smartMatched.length === 0) {
+      return smartFilterAndSortUnits(scheduleList, (item) => item.unit, query);
+    }
+    return smartMatched;
   }, [scheduleList, query, selectedFloor, selectedCategory, statusFilter]);
 
   const handleResetFilters = () => {
@@ -152,26 +156,80 @@ export function ACSearchMode({ onOpenACLog }: ACSearchModeProps) {
         </div>
 
         {/* Search Input Bar (Prominent & Real-time) */}
-        <div className="relative">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5 pointer-events-none" />
-          <input
-            ref={searchInputRef}
-            id="search-mode-input"
-            type="text"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Ketik nomor kamar (misal: 502, 301) atau area (Meeting, Server, VRV)..."
-            className="w-full pl-10 pr-9 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm font-semibold text-slate-900 placeholder-slate-400 focus:outline-hidden focus:ring-2 focus:ring-blue-500 focus:bg-white transition min-h-[46px]"
-          />
-          {query && (
-            <button
-              type="button"
-              onClick={() => setQuery("")}
-              className="absolute right-3 top-3 text-slate-400 hover:text-slate-600 p-1 rounded-full transition cursor-pointer"
-              title="Hapus pencarian"
-            >
-              <X className="w-4 h-4" />
-            </button>
+        <div className="space-y-2">
+          <div className="relative">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5 pointer-events-none" />
+            <input
+              ref={searchInputRef}
+              id="search-mode-input"
+              type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Ketik nomor kamar saja (misal: 502, 301, 06) atau nama area..."
+              className="w-full pl-10 pr-9 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm font-semibold text-slate-900 placeholder-slate-400 focus:outline-hidden focus:ring-2 focus:ring-blue-500 focus:bg-white transition min-h-[46px]"
+            />
+            {query && (
+              <button
+                type="button"
+                onClick={() => setQuery("")}
+                className="absolute right-3 top-3 text-slate-400 hover:text-slate-600 p-1 rounded-full transition cursor-pointer"
+                title="Hapus pencarian"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+
+          {/* Smart Clickable Suggestions ("Persamaan Kamar / Unit untuk diklik") */}
+          {query.trim() && smartSuggestions.length > 0 && (
+            <div className="bg-blue-50/70 border border-blue-200/80 rounded-xl p-2.5 space-y-1.5 animate-in fade-in duration-150">
+              <div className="flex items-center justify-between text-[11px]">
+                <span className="font-bold text-blue-900 flex items-center gap-1">
+                  <Sparkles className="w-3.5 h-3.5 text-blue-600" />
+                  <span>Persamaan Kamar / Unit (Klik untuk pilih):</span>
+                </span>
+                <span className="text-[10px] font-semibold text-blue-700">
+                  {smartSuggestions.length} saran ditemukan
+                </span>
+              </div>
+              <div className="flex flex-wrap items-center gap-1.5">
+                {smartSuggestions.map(({ unit, score }) => {
+                  const uFloor = resolveFloorFromUnit(unit);
+                  const isExact = query.trim().toLowerCase() === unit.name.toLowerCase();
+                  const isPrimary = score >= 900;
+                  return (
+                    <button
+                      key={unit.id}
+                      type="button"
+                      onClick={() => {
+                        setQuery(unit.name);
+                        setSelectedFloor("all");
+                        setSelectedCategory("all");
+                        setStatusFilter("all");
+                      }}
+                      className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 border cursor-pointer shadow-2xs ${
+                        isExact
+                          ? "bg-blue-600 text-white border-blue-600"
+                          : isPrimary
+                          ? "bg-white text-blue-800 border-blue-300 hover:bg-blue-600 hover:text-white hover:border-blue-600"
+                          : "bg-white/90 text-slate-700 border-slate-200 hover:border-blue-400 hover:text-blue-700"
+                      }`}
+                    >
+                      <span>{unit.name}</span>
+                      <span
+                        className={`text-[10px] px-1.5 py-0.2 rounded font-semibold ${
+                          isExact
+                            ? "bg-white/20 text-white"
+                            : "bg-slate-100 text-slate-600"
+                        }`}
+                      >
+                        {uFloor}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
           )}
         </div>
 

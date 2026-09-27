@@ -34,8 +34,13 @@ import {
   fetchAppSettings,
   updateAppSettings,
   fetchACUnits,
+  getLocalACUnits,
   updateBulkACUnits,
 } from "../supabaseService";
+import {
+  getSmartUnitSuggestions,
+  smartFilterAndSortUnits,
+} from "../utils/smartSearch";
 
 export const CLEAN_CYCLE_OPTIONS = [
   { value: "default", label: "Default Sistem" },
@@ -186,9 +191,15 @@ export function ACMaintenanceCycleSettings() {
     });
   };
 
+  // Smart suggestions across all units
+  const smartSuggestions = useMemo(() => {
+    if (!unitSearch.trim()) return [];
+    return getSmartUnitSuggestions(units, (u) => u, unitSearch, 8);
+  }, [units, unitSearch]);
+
   // Filtered unit list for duration table
   const filteredUnits = useMemo(() => {
-    return units.filter((u) => {
+    const baseFiltered = units.filter((u) => {
       const floor = resolveFloorFromUnit(u);
       if (unitFloorFilter !== "all" && floor !== unitFloorFilter) {
         return false;
@@ -196,16 +207,14 @@ export function ACMaintenanceCycleSettings() {
       if (unitCatFilter !== "all" && normalizeACCategory(u.category) !== unitCatFilter) {
         return false;
       }
-      if (unitSearch.trim()) {
-        const q = unitSearch.toLowerCase().trim();
-        const matchName = u.name.toLowerCase().includes(q);
-        const matchFloor = floor.toLowerCase().includes(q);
-        const matchCat = normalizeACCategory(u.category).toLowerCase().includes(q);
-        const matchCode = u.code ? u.code.toLowerCase().includes(q) : false;
-        if (!matchName && !matchFloor && !matchCat && !matchCode) return false;
-      }
       return true;
     });
+
+    if (!unitSearch.trim()) return baseFiltered;
+
+    const matched = smartFilterAndSortUnits(baseFiltered, (u) => u, unitSearch);
+    if (matched.length > 0) return matched;
+    return smartFilterAndSortUnits(units, (u) => u, unitSearch);
   }, [units, unitCatFilter, unitFloorFilter, unitSearch]);
 
   const isAllFilteredSelected = useMemo(() => {
@@ -783,9 +792,18 @@ export function ACMaintenanceCycleSettings() {
                 type="text"
                 value={unitSearch}
                 onChange={(e) => setUnitSearch(e.target.value)}
-                placeholder="Cari nama ruangan (misal: Kamar 301, Tulip, VRV, Office)..."
-                className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-indigo-500 font-medium min-h-[40px]"
+                placeholder="Ketik nomor kamar saja (misal: 502, 301, 06) atau nama ruangan..."
+                className="w-full pl-9 pr-8 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-indigo-500 font-semibold min-h-[40px]"
               />
+              {unitSearch && (
+                <button
+                  type="button"
+                  onClick={() => setUnitSearch("")}
+                  className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600 cursor-pointer"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                </button>
+              )}
             </div>
 
             {/* Floor Filter Dropdown */}
@@ -833,6 +851,46 @@ export function ACMaintenanceCycleSettings() {
               </button>
             </div>
           </div>
+
+          {/* Smart Clickable Suggestions ("Persamaan Kamar / Unit untuk diklik") */}
+          {unitSearch.trim() && smartSuggestions.length > 0 && (
+            <div className="bg-indigo-50/70 border border-indigo-200 rounded-xl p-2.5 space-y-1.5">
+              <span className="text-[11px] font-bold text-indigo-950 block">
+                Persamaan Kamar / Unit (Klik untuk memilih):
+              </span>
+              <div className="flex flex-wrap items-center gap-1.5">
+                {smartSuggestions.map(({ unit: u, score }) => {
+                  const uFloor = resolveFloorFromUnit(u);
+                  const isPrimary = score >= 900;
+                  return (
+                    <button
+                      key={u.id}
+                      type="button"
+                      onClick={() => {
+                        setUnitSearch(u.name);
+                        setUnitFloorFilter("all");
+                        setUnitCatFilter("all");
+                      }}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1.5 border cursor-pointer shadow-2xs ${
+                        isPrimary
+                          ? "bg-indigo-600 text-white border-indigo-600 hover:bg-indigo-700"
+                          : "bg-white text-slate-800 border-indigo-200 hover:border-indigo-500 hover:text-indigo-700"
+                      }`}
+                    >
+                      <span>{u.name}</span>
+                      <span
+                        className={`text-[10px] px-1.5 py-0.2 rounded font-semibold ${
+                          isPrimary ? "bg-white/20 text-white" : "bg-slate-100 text-slate-600"
+                        }`}
+                      >
+                        {uFloor}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {/* Category Tabs Filter */}
           <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none text-xs pt-1 border-t border-slate-100">

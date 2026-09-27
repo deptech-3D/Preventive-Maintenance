@@ -52,6 +52,8 @@ interface ServerState {
   };
   users: StoredUser[];
   deleted_user_ids: string[];
+  deleted_ac_unit_ids?: string[];
+  deleted_ac_log_ids?: string[];
   settings: Record<string, any>;
   ac_units?: any[];
   ac_logs?: any[];
@@ -90,6 +92,8 @@ const DEFAULT_SERVER_STATE: ServerState = {
     },
   ],
   deleted_user_ids: [],
+  deleted_ac_unit_ids: [],
+  deleted_ac_log_ids: [],
   settings: {
     settings_id: "global",
     property_name: "Midtown Hotel Samarinda",
@@ -122,8 +126,11 @@ function readState(): ServerState {
       parsed = JSON.parse(raw);
     }
 
+    const deletedUnitSet = new Set<string>(Array.isArray(parsed.deleted_ac_unit_ids) ? parsed.deleted_ac_unit_ids : []);
+    const deletedLogSet = new Set<string>(Array.isArray(parsed.deleted_ac_log_ids) ? parsed.deleted_ac_log_ids : []);
+
     let units = parsed.ac_units;
-    if (!Array.isArray(units) || units.length === 0) {
+    if (!Array.isArray(units) || (units.length === 0 && deletedUnitSet.size === 0)) {
       const defaultUnitsFile = path.join(process.cwd(), "data", "default_ac_units.json");
       if (fs.existsSync(defaultUnitsFile)) {
         try {
@@ -132,13 +139,22 @@ function readState(): ServerState {
       }
     }
 
+    const filteredUnits = Array.isArray(units)
+      ? units.filter((u: any) => u && u.id && !deletedUnitSet.has(u.id))
+      : [];
+    const filteredLogs = Array.isArray(parsed.ac_logs)
+      ? parsed.ac_logs.filter((l: any) => l && l.log_id && !deletedLogSet.has(l.log_id))
+      : [];
+
     return {
       ...DEFAULT_SERVER_STATE,
       ...parsed,
       admin: { ...DEFAULT_SERVER_STATE.admin, ...(parsed.admin || {}) },
       settings: { ...DEFAULT_SERVER_STATE.settings, ...(parsed.settings || {}) },
-      ac_units: Array.isArray(units) ? units : [],
-      ac_logs: Array.isArray(parsed.ac_logs) ? parsed.ac_logs : [],
+      deleted_ac_unit_ids: Array.from(deletedUnitSet),
+      deleted_ac_log_ids: Array.from(deletedLogSet),
+      ac_units: filteredUnits,
+      ac_logs: filteredLogs,
     };
   } catch (err) {
     console.error("Notice reading server state file:", err);
@@ -153,7 +169,7 @@ function writeState(state: ServerState): void {
     fs.writeFileSync(file, JSON.stringify(state, null, 2), "utf-8");
 
     // Persist ac_units permanently into data/default_ac_units.json
-    if (Array.isArray(state.ac_units) && state.ac_units.length > 0) {
+    if (Array.isArray(state.ac_units)) {
       try {
         const defaultUnitsFile = path.join(process.cwd(), "data", "default_ac_units.json");
         fs.writeFileSync(defaultUnitsFile, JSON.stringify(state.ac_units, null, 2), "utf-8");
@@ -558,6 +574,7 @@ app.get("/api/ac-units", (_req: Request, res: Response) => {
   res.json({
     ok: true,
     units: state.ac_units || [],
+    deleted_unit_ids: state.deleted_ac_unit_ids || [],
     count: (state.ac_units || []).length,
     last_updated: state.last_updated,
   });
@@ -571,8 +588,10 @@ app.post("/api/ac-units", (req: Request, res: Response) => {
   }
   const state = readState();
   if (!state.ac_units) state.ac_units = [];
+  if (!state.deleted_ac_unit_ids) state.deleted_ac_unit_ids = [];
 
   const id = unit.id || `unit_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+  state.deleted_ac_unit_ids = state.deleted_ac_unit_ids.filter((delId) => delId !== id);
   const existingIdx = state.ac_units.findIndex((u) => u.id === id);
 
   const record = {
@@ -596,18 +615,21 @@ app.put("/api/ac-units/bulk", (req: Request, res: Response) => {
   const { units, updates } = req.body;
   const state = readState();
   if (!state.ac_units) state.ac_units = [];
+  const deletedUnitSet = new Set<string>(state.deleted_ac_unit_ids || []);
 
   if (Array.isArray(units)) {
-    state.ac_units = units;
+    state.ac_units = units.filter((u: any) => u && u.id && !deletedUnitSet.has(u.id));
   } else if (Array.isArray(updates)) {
     const map = new Map(updates.map((u: any) => [u.id, u]));
-    state.ac_units = state.ac_units.map((item: any) => {
-      const patch = map.get(item.id);
-      if (patch) {
-        return { ...item, ...patch };
-      }
-      return item;
-    });
+    state.ac_units = state.ac_units
+      .filter((item: any) => item && item.id && !deletedUnitSet.has(item.id))
+      .map((item: any) => {
+        const patch = map.get(item.id);
+        if (patch) {
+          return { ...item, ...patch };
+        }
+        return item;
+      });
   }
 
   writeState(state);
@@ -619,15 +641,23 @@ app.delete("/api/ac-units/:id", (req: Request, res: Response) => {
   const { id } = req.params;
   const state = readState();
   if (!state.ac_units) state.ac_units = [];
+  if (!state.deleted_ac_unit_ids) state.deleted_ac_unit_ids = [];
+  if (id && !state.deleted_ac_unit_ids.includes(id)) {
+    state.deleted_ac_unit_ids.push(id);
+  }
   state.ac_units = state.ac_units.filter((u) => u.id !== id);
   writeState(state);
-  res.json({ ok: true, deleted: id });
+  res.json({ ok: true, deleted: id, deleted_unit_ids: state.deleted_ac_unit_ids });
 });
 
 // GET all AC maintenance logs
 app.get("/api/ac-logs", (_req: Request, res: Response) => {
   const state = readState();
-  res.json({ ok: true, logs: state.ac_logs || [] });
+  res.json({
+    ok: true,
+    logs: state.ac_logs || [],
+    deleted_log_ids: state.deleted_ac_log_ids || [],
+  });
 });
 
 // POST single AC maintenance log
@@ -636,8 +666,10 @@ app.post("/api/ac-logs", (req: Request, res: Response) => {
   if (!log) return res.status(400).json({ ok: false, error: "Data log wajib diisi" });
   const state = readState();
   if (!state.ac_logs) state.ac_logs = [];
+  if (!state.deleted_ac_log_ids) state.deleted_ac_log_ids = [];
 
   const log_id = log.log_id || `log_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+  state.deleted_ac_log_ids = state.deleted_ac_log_ids.filter((delId) => delId !== log_id);
   const existingIdx = state.ac_logs.findIndex((l) => l.log_id === log_id);
   const record = {
     ...log,
@@ -678,9 +710,48 @@ app.delete("/api/ac-logs/:id", (req: Request, res: Response) => {
   const { id } = req.params;
   const state = readState();
   if (!state.ac_logs) state.ac_logs = [];
+  if (!state.deleted_ac_log_ids) state.deleted_ac_log_ids = [];
+  if (id && !state.deleted_ac_log_ids.includes(id)) {
+    state.deleted_ac_log_ids.push(id);
+  }
   state.ac_logs = state.ac_logs.filter((l) => l.log_id !== id);
   writeState(state);
   res.json({ ok: true, deleted: id });
+});
+
+// POST bulk delete AC maintenance logs
+app.post("/api/ac-logs/bulk-delete", (req: Request, res: Response) => {
+  const { log_ids } = req.body;
+  const state = readState();
+  if (!state.ac_logs) state.ac_logs = [];
+  if (!state.deleted_ac_log_ids) state.deleted_ac_log_ids = [];
+  if (Array.isArray(log_ids)) {
+    const idSet = new Set<string>(log_ids);
+    for (const id of log_ids) {
+      if (id && !state.deleted_ac_log_ids.includes(id)) {
+        state.deleted_ac_log_ids.push(id);
+      }
+    }
+    state.ac_logs = state.ac_logs.filter((l) => !idSet.has(l.log_id));
+    writeState(state);
+  }
+  res.json({ ok: true, remaining: state.ac_logs.length });
+});
+
+// POST clear all AC maintenance logs
+app.post("/api/ac-logs/clear", (_req: Request, res: Response) => {
+  const state = readState();
+  if (!state.deleted_ac_log_ids) state.deleted_ac_log_ids = [];
+  if (Array.isArray(state.ac_logs)) {
+    for (const l of state.ac_logs) {
+      if (l?.log_id && !state.deleted_ac_log_ids.includes(l.log_id)) {
+        state.deleted_ac_log_ids.push(l.log_id);
+      }
+    }
+  }
+  state.ac_logs = [];
+  writeState(state);
+  res.json({ ok: true, remaining: 0 });
 });
 
 // POST Sync from Remote URL (e.g. https://preventive-maint-eng.ai.studio)

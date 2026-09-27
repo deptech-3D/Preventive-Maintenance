@@ -415,6 +415,18 @@ export function clearSavedSupabaseUser() {
 
 // ----------------- Supabase App Settings -----------------
 
+export function getLocalAppSettings(): AppSettings {
+  if (typeof localStorage !== "undefined") {
+    try {
+      const raw = localStorage.getItem("meter_app_settings");
+      if (raw) {
+        return { ...DEFAULT_SETTINGS, ...JSON.parse(raw) };
+      }
+    } catch {}
+  }
+  return DEFAULT_SETTINGS;
+}
+
 export async function fetchAppSettings(): Promise<AppSettings> {
   let cached: AppSettings | null = null;
   if (typeof localStorage !== "undefined") {
@@ -424,46 +436,31 @@ export async function fetchAppSettings(): Promise<AppSettings> {
     } catch {}
   }
 
+  // 1. Ambil cepat dari Server Backend API (/api/settings)
   try {
-    const { data, error } = await supabase
-      .from("app_settings")
-      .select("*")
-      .eq("id", "global")
-      .maybeSingle();
-
-    if (error || !data) {
-      return cached || DEFAULT_SETTINGS;
+    const res = await fetch(apiUrl("/api/settings"));
+    if (res.ok) {
+      const json = await res.json();
+      const s = json?.settings || json;
+      if (s && typeof s === "object") {
+        const merged: AppSettings = {
+          ...DEFAULT_SETTINGS,
+          ...(cached || {}),
+          ...s,
+          ac_maintenance_cycle: (s.ac_maintenance_cycle || cached?.ac_maintenance_cycle || "1 Bulan Sekali") as any,
+          ac_maintenance_cycle_months: Number(s.ac_maintenance_cycle_months ?? cached?.ac_maintenance_cycle_months ?? 1),
+        };
+        if (typeof localStorage !== "undefined") {
+          try {
+            localStorage.setItem("meter_app_settings", JSON.stringify(merged));
+          } catch {}
+        }
+        return merged;
+      }
     }
+  } catch {}
 
-    const fetched: AppSettings = {
-      settings_id: data.id || "global",
-      property_name: data.property_name || cached?.property_name || DEFAULT_SETTINGS.property_name,
-      dashboard_bg_url: data.dashboard_bg_url || cached?.dashboard_bg_url || DEFAULT_SETTINGS.dashboard_bg_url,
-      threshold_percent: Number(data.threshold_percent ?? cached?.threshold_percent ?? 30),
-      shift_pagi_start: data.shift_pagi_start || cached?.shift_pagi_start || "06:00",
-      shift_sore_start: data.shift_sore_start || cached?.shift_sore_start || "14:00",
-      shift_malam_start: normalizeShiftTime(data.shift_malam_start || cached?.shift_malam_start, "22:00", true),
-      alert_emails: data.alert_emails || cached?.alert_emails || [],
-      report_emails: data.report_emails || cached?.report_emails || [],
-      plant_report_emails: data.plant_report_emails || cached?.plant_report_emails || ["engmidtownhotelsmd@gmail.com"],
-      reset_emails: data.reset_emails || cached?.reset_emails || [],
-      chart_days_count: Number(data.chart_days_count ?? cached?.chart_days_count ?? 2),
-      chart_months_count: Number(data.chart_months_count ?? cached?.chart_months_count ?? 2),
-      chart_years_count: Number(data.chart_years_count ?? cached?.chart_years_count ?? 2),
-      ac_maintenance_cycle: (data.ac_maintenance_cycle || cached?.ac_maintenance_cycle || "1 Bulan Sekali") as any,
-      ac_maintenance_cycle_months: Number(data.ac_maintenance_cycle_months ?? cached?.ac_maintenance_cycle_months ?? 1),
-    };
-
-    if (typeof localStorage !== "undefined") {
-      try {
-        localStorage.setItem("meter_app_settings", JSON.stringify(fetched));
-      } catch {}
-    }
-
-    return fetched;
-  } catch {
-    return cached || DEFAULT_SETTINGS;
-  }
+  return cached || DEFAULT_SETTINGS;
 }
 
 export async function updateAppSettings(patch: Partial<AppSettings>): Promise<AppSettings> {
@@ -3114,6 +3111,17 @@ export function addDeletedACUnitId(id: string): void {
   } catch {}
 }
 
+export function addDeletedACUnitIds(ids: string[]): void {
+  if (typeof localStorage === "undefined" || !Array.isArray(ids) || ids.length === 0) return;
+  try {
+    const current = new Set(getDeletedACUnitIds());
+    ids.forEach((id) => {
+      if (id) current.add(id);
+    });
+    localStorage.setItem(DELETED_AC_UNITS_KEY, JSON.stringify(Array.from(current)));
+  } catch {}
+}
+
 export function getLocalACUnits(): ACUnitLocation[] {
   if (typeof localStorage === "undefined") return DEFAULT_AC_UNITS;
   try {
@@ -3122,10 +3130,14 @@ export function getLocalACUnits(): ACUnitLocation[] {
     const vaultRaw = localStorage.getItem(AC_UNITS_VAULT_KEY);
 
     let primaryList: ACUnitLocation[] = [];
+    let hasPrimary = false;
     if (raw) {
       try {
         const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed)) primaryList = parsed;
+        if (Array.isArray(parsed)) {
+          primaryList = parsed;
+          hasPrimary = true;
+        }
       } catch {}
     }
 
@@ -3137,19 +3149,18 @@ export function getLocalACUnits(): ACUnitLocation[] {
       } catch {}
     }
 
-    // Utamakan urutan dari primaryList (ac_pm_units_master) agar hasil pindah urutan tidak kembali ke posisi awal!
     const mergedMap = new Map<string, ACUnitLocation>();
-    for (const u of primaryList) {
-      if (u && u.id && !deletedSet.has(u.id)) mergedMap.set(u.id, u);
-    }
-    for (const u of vaultList) {
-      if (u && u.id && !deletedSet.has(u.id) && !mergedMap.has(u.id)) {
-        mergedMap.set(u.id, u);
+    if (hasPrimary && primaryList.length > 0) {
+      for (const u of primaryList) {
+        if (u && u.id && !deletedSet.has(u.id)) mergedMap.set(u.id, u);
       }
-    }
-    for (const u of DEFAULT_AC_UNITS) {
-      if (u && u.id && !deletedSet.has(u.id) && !mergedMap.has(u.id)) {
-        mergedMap.set(u.id, u);
+    } else if (vaultList.length > 0) {
+      for (const u of vaultList) {
+        if (u && u.id && !deletedSet.has(u.id)) mergedMap.set(u.id, u);
+      }
+    } else {
+      for (const u of DEFAULT_AC_UNITS) {
+        if (u && u.id && !deletedSet.has(u.id)) mergedMap.set(u.id, u);
       }
     }
 
@@ -3159,14 +3170,14 @@ export function getLocalACUnits(): ACUnitLocation[] {
       category: normalizeACCategory(u.category),
     }));
 
-    if (combined.length > 0) {
+    if (combined.length > 0 || deletedSet.size > 0) {
       localStorage.setItem("ac_pm_units_master", JSON.stringify(combined));
       localStorage.setItem(AC_UNITS_VAULT_KEY, JSON.stringify(combined));
       localStorage.setItem("ac_pm_units_version", AC_UNITS_DATA_VERSION);
       return combined;
     }
   } catch {}
-  return DEFAULT_AC_UNITS;
+  return DEFAULT_AC_UNITS.filter((u) => !getDeletedACUnitIds().includes(u.id));
 }
 
 export function exportACUnitsToJSON(): void {
@@ -3232,26 +3243,31 @@ export function saveLocalACUnits(units: ACUnitLocation[]) {
 }
 
 export async function fetchACUnits(): Promise<ACUnitLocation[]> {
-  const deletedSet = new Set(getDeletedACUnitIds());
   const hasLocalMaster =
     typeof localStorage !== "undefined" && Boolean(localStorage.getItem("ac_pm_units_master"));
   const localUnits = getLocalACUnits();
 
-  // 1. Coba ambil dari Server Backend API (/api/ac-units)
+  // 1. Ambil cepat dari Server Backend API (/api/ac-units)
   try {
     const res = await fetch(apiUrl("/api/ac-units"));
     if (res.ok) {
       const json = await res.json();
-      if (json.ok && Array.isArray(json.units) && json.units.length > 0) {
-        const serverUnits: ACUnitLocation[] = json.units.map((u: any) => ({
-          ...u,
-          floor: u.floor || resolveFloorFromUnit(u),
-          category: normalizeACCategory(u.category),
-        }));
+      if (json.ok && Array.isArray(json.units)) {
+        if (Array.isArray(json.deleted_unit_ids) && json.deleted_unit_ids.length > 0) {
+          addDeletedACUnitIds(json.deleted_unit_ids);
+        }
+        const deletedSet = new Set(getDeletedACUnitIds());
+
+        const serverUnits: ACUnitLocation[] = json.units
+          .filter((u: any) => u && u.id && !deletedSet.has(u.id))
+          .map((u: any) => ({
+            ...u,
+            floor: u.floor || resolveFloorFromUnit(u),
+            category: normalizeACCategory(u.category),
+          }));
 
         // Utamakan urutan localUnits jika sudah ada di browser supaya posisi yang baru dipindah tidak tertimpa urutan lama server
         const mergedMap = new Map<string, ACUnitLocation>();
-        let needsServerSync = false;
 
         if (hasLocalMaster && localUnits.length > 0) {
           for (const u of localUnits) {
@@ -3264,79 +3280,22 @@ export async function fetchACUnits(): Promise<ACUnitLocation[]> {
               mergedMap.set(u.id, u);
             }
           }
-          if (mergedMap.size !== serverUnits.length) {
-            needsServerSync = true;
-          }
         } else {
           for (const u of serverUnits) {
             if (u && u.id && !deletedSet.has(u.id)) {
               mergedMap.set(u.id, u);
             }
           }
-          for (const u of localUnits) {
-            if (u && u.id && !deletedSet.has(u.id) && !mergedMap.has(u.id)) {
-              mergedMap.set(u.id, u);
-              needsServerSync = true;
-            }
-          }
         }
 
         const merged = Array.from(mergedMap.values());
         saveLocalACUnits(merged);
-
-        if (needsServerSync) {
-          try {
-            fetch(apiUrl("/api/ac-units/bulk"), {
-              method: "PUT",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ units: merged }),
-            }).catch(() => {});
-          } catch {}
-        }
-
         return merged;
       }
     }
   } catch {}
 
-  // 2. Coba ambil dari Supabase
-  try {
-    const { data, error } = await supabase
-      .from("ac_unit_locations")
-      .select("*")
-      .order("order", { ascending: true });
-
-    if (!error && data && data.length > 0) {
-      const mapped = data
-        .filter((u: any) => u && u.id && !deletedSet.has(u.id))
-        .map((u: any) => ({
-          ...u,
-          floor: u.floor || resolveFloorFromUnit(u),
-          category: normalizeACCategory(u.category),
-        }));
-      const mergedMap = new Map<string, ACUnitLocation>();
-      if (hasLocalMaster && localUnits.length > 0) {
-        for (const u of localUnits) {
-          if (u && u.id && !deletedSet.has(u.id)) mergedMap.set(u.id, u);
-        }
-        for (const u of mapped) {
-          if (!mergedMap.has(u.id)) mergedMap.set(u.id, u);
-        }
-      } else {
-        for (const u of mapped) mergedMap.set(u.id, u);
-        for (const u of localUnits) {
-          if (u && u.id && !deletedSet.has(u.id) && !mergedMap.has(u.id)) {
-            mergedMap.set(u.id, u);
-          }
-        }
-      }
-      const merged = Array.from(mergedMap.values());
-      saveLocalACUnits(merged);
-      return merged;
-    }
-  } catch {}
-
-  // 3. Cadangan dari LocalStorage
+  // 2. Cadangan langsung dari LocalStorage (tanpa menunggu timeout Supabase)
   return localUnits;
 }
 
@@ -3458,12 +3417,11 @@ export async function deleteACUnit(id: string): Promise<void> {
 
   // Kirim ke Server Backend API
   try {
-    await fetch(apiUrl(`/api/ac-units/${id}`), { method: "DELETE" });
+    await fetch(apiUrl(`/api/ac-units/${encodeURIComponent(id)}`), { method: "DELETE" });
   } catch {}
 
-  try {
-    await supabase.from("ac_unit_locations").delete().eq("id", id);
-  } catch {}
+  // Non-blocking ke Supabase
+  Promise.resolve(supabase.from("ac_unit_locations").delete().eq("id", id)).catch(() => {});
 }
 
 export async function reorderFloorACUnits(
@@ -3752,58 +3710,43 @@ function stripOlderUnitPhotos(logs: ACMaintenanceLog[]): ACMaintenanceLog[] {
   });
 }
 
-export async function fetchACMaintenanceLogs(): Promise<ACMaintenanceLog[]> {
-  const deletedIds = new Set(getDeletedACLogIds());
-  const localLogsMap = new Map(getLocalACLogs().map((l) => [l.log_id, l]));
+export function addDeletedACLogIds(log_ids: string[]): void {
+  if (typeof localStorage === "undefined" || !Array.isArray(log_ids) || log_ids.length === 0) return;
+  try {
+    const set = new Set(getDeletedACLogIds());
+    log_ids.forEach((id) => {
+      if (id) set.add(id);
+    });
+    localStorage.setItem(DELETED_AC_LOGS_KEY, JSON.stringify(Array.from(set)));
+  } catch {}
+}
 
-  // 1. Coba ambil dari Server Backend API (/api/ac-logs)
+export async function fetchACMaintenanceLogs(): Promise<ACMaintenanceLog[]> {
+  // 1. Ambil cepat dari Server Backend API (/api/ac-logs)
   try {
     const res = await fetch(apiUrl("/api/ac-logs"));
     if (res.ok) {
       const json = await res.json();
-      if (json.ok && Array.isArray(json.logs) && json.logs.length > 0) {
+      if (json.ok && Array.isArray(json.logs)) {
+        if (Array.isArray(json.deleted_log_ids) && json.deleted_log_ids.length > 0) {
+          addDeletedACLogIds(json.deleted_log_ids);
+        }
+        const deletedIds = new Set(getDeletedACLogIds());
         const valid = stripOlderUnitPhotos(
-          json.logs.filter((l: any) => !deletedIds.has(l.log_id))
+          json.logs.filter((l: any) => l && l.log_id && !deletedIds.has(l.log_id))
         );
         saveLocalACLogs(valid);
+        if (typeof localStorage !== "undefined") {
+          localStorage.setItem(AC_LOGS_INITIALIZED_KEY, "true");
+        }
         return valid;
       }
     }
   } catch {}
 
-  // 2. Coba Supabase
-  try {
-    const { data, error } = await supabase
-      .from("ac_maintenance_logs")
-      .select("*")
-      .order("recorded_at", { ascending: false });
-
-    if (!error && data && data.length > 0) {
-      const merged = data
-        .filter((item) => !deletedIds.has(item.log_id) && !(item as any).deleted)
-        .map((item) => {
-          const local = localLogsMap.get(item.log_id);
-          return {
-            ...item,
-            photo_temp_before: item.photo_temp_before ?? local?.photo_temp_before ?? item.photo_before ?? local?.photo_before,
-            photo_temp_after: item.photo_temp_after ?? local?.photo_temp_after ?? item.photo_after ?? local?.photo_after,
-            photo_anemo_before: item.photo_anemo_before ?? local?.photo_anemo_before,
-            photo_anemo_after: item.photo_anemo_after ?? local?.photo_anemo_after,
-            photo_before: item.photo_before ?? local?.photo_before,
-            photo_after: item.photo_after ?? local?.photo_after,
-          } as ACMaintenanceLog;
-        });
-      const validData = stripOlderUnitPhotos(merged);
-      saveLocalACLogs(validData);
-      return validData;
-    }
-  } catch {}
-
-  const cached = initializeSampleACLogsIfEmpty();
-  const validCached = stripOlderUnitPhotos(
-    cached.filter((item) => !deletedIds.has(item.log_id))
-  );
-  return validCached;
+  const deletedIds = new Set(getDeletedACLogIds());
+  const cached = getLocalACLogs();
+  return stripOlderUnitPhotos(cached.filter((item) => !deletedIds.has(item.log_id)));
 }
 
 export async function createACMaintenanceLog(
@@ -4095,21 +4038,17 @@ export async function deleteACMaintenanceLog(log_id: string): Promise<void> {
 
   // 4. Send to Server Backend API
   try {
-    await fetch(apiUrl(`/api/ac-logs/${log_id}`), { method: "DELETE" });
+    await fetch(apiUrl(`/api/ac-logs/${encodeURIComponent(log_id)}`), { method: "DELETE" });
   } catch {}
 
-  // 5. Send delete and soft-delete update to Supabase
-  try {
-    await supabase.from("ac_maintenance_logs").delete().eq("log_id", log_id);
-  } catch (err) {
-    console.warn("Supabase delete ac_maintenance_logs error:", err);
-  }
+  // 5. Non-blocking delete to Supabase
+  Promise.resolve(supabase.from("ac_maintenance_logs").delete().eq("log_id", log_id)).catch(() => {});
 }
 
 export async function deleteBulkACMaintenanceLogs(log_ids: string[]): Promise<void> {
   if (!log_ids || log_ids.length === 0) return;
   const idSet = new Set(log_ids);
-  log_ids.forEach((id) => addDeletedACLogId(id));
+  addDeletedACLogIds(log_ids);
 
   const current = getLocalACLogs();
   const filtered = current.filter((l) => !idSet.has(l.log_id));
@@ -4119,32 +4058,40 @@ export async function deleteBulkACMaintenanceLogs(log_ids: string[]): Promise<vo
     localStorage.setItem(AC_LOGS_INITIALIZED_KEY, "true");
   }
 
+  // Hapus permanen di Server Backend API
   try {
-    await supabase.from("ac_maintenance_logs").delete().in("log_id", log_ids);
-  } catch (err) {
-    console.warn("Supabase bulk delete ac_maintenance_logs error:", err);
-  }
+    await fetch(apiUrl("/api/ac-logs/bulk-delete"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ log_ids }),
+    });
+  } catch {}
+
+  Promise.resolve(supabase.from("ac_maintenance_logs").delete().in("log_id", log_ids)).catch(() => {});
 }
 
 export async function clearAllACMaintenanceLogs(): Promise<void> {
   const current = getLocalACLogs();
-  current.forEach((l) => addDeletedACLogId(l.log_id));
-
-  // Also blacklist default sample IDs
-  ["aclog_sample_1", "aclog_sample_2", "aclog_sample_3", "aclog_sample_4"].forEach((id) =>
-    addDeletedACLogId(id)
-  );
+  const allIds = [
+    ...current.map((l) => l.log_id),
+    "aclog_sample_1",
+    "aclog_sample_2",
+    "aclog_sample_3",
+    "aclog_sample_4",
+  ];
+  addDeletedACLogIds(allIds);
 
   saveLocalACLogs([]);
   if (typeof localStorage !== "undefined") {
     localStorage.setItem(AC_LOGS_INITIALIZED_KEY, "true");
   }
 
+  // Bersihkan seluruh log di Server Backend API
   try {
-    await supabase.from("ac_maintenance_logs").delete().neq("log_id", "");
-  } catch (err) {
-    console.warn("Supabase clear all ac_maintenance_logs error:", err);
-  }
+    await fetch(apiUrl("/api/ac-logs/clear"), { method: "POST" });
+  } catch {}
+
+  Promise.resolve(supabase.from("ac_maintenance_logs").delete().neq("log_id", "")).catch(() => {});
 }
 
 // ------------------- CALCULATION OF MAINTENANCE SCHEDULE STATUS -------------------
@@ -4218,6 +4165,14 @@ export function calculateACScheduleStatus(
       status_label,
     };
   });
+}
+
+export function getLocalACScheduleOverview(): ACUnitScheduleStatus[] {
+  const units = getLocalACUnits();
+  const logs = getLocalACLogs();
+  const settings = getLocalAppSettings();
+  const cycle = settings?.ac_maintenance_cycle_months || 1;
+  return calculateACScheduleStatus(units, logs, cycle);
 }
 
 export async function getACScheduleOverview(): Promise<ACUnitScheduleStatus[]> {

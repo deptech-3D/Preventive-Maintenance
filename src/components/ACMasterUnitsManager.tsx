@@ -31,6 +31,7 @@ import {
 } from "../types";
 import {
   fetchACUnits,
+  getLocalACUnits,
   createACUnit,
   updateACUnit,
   deleteACUnit,
@@ -39,8 +40,8 @@ import {
 } from "../supabaseService";
 
 export function ACMasterUnitsManager() {
-  const [units, setUnits] = useState<ACUnitLocation[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [units, setUnits] = useState<ACUnitLocation[]>(() => getLocalACUnits());
+  const [loading, setLoading] = useState<boolean>(false);
   const [selectedFloor, setSelectedFloor] = useState<RealFloor>("Lantai 3");
   const [selectedCategory, setSelectedCategory] = useState<ACCategory | "all">("all");
   const [searchTerm, setSearchTerm] = useState<string>("");
@@ -76,7 +77,6 @@ export function ACMasterUnitsManager() {
 
   const loadUnits = async () => {
     try {
-      setLoading(true);
       const data = await fetchACUnits();
       setUnits(data);
     } catch (err) {
@@ -198,11 +198,14 @@ export function ACMasterUnitsManager() {
 
   const handleDelete = async () => {
     if (!deleteTarget) return;
+    const targetId = deleteTarget.id;
+    const targetName = deleteTarget.name;
     try {
       setDeleting(true);
-      await deleteACUnit(deleteTarget.id);
-      setSuccessMsg(`Berhasil menghapus "${deleteTarget.name}"`);
+      setUnits((prev) => prev.filter((u) => u.id !== targetId));
       setDeleteTarget(null);
+      await deleteACUnit(targetId);
+      setSuccessMsg(`Berhasil menghapus "${targetName}"`);
       await loadUnits();
       setTimeout(() => setSuccessMsg(null), 3500);
     } catch (err: any) {

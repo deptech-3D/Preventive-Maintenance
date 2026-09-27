@@ -33,6 +33,7 @@ import {
 import { useAuth } from "../auth";
 import {
   fetchACMaintenanceLogs,
+  getLocalACLogs,
   deleteACMaintenanceLog,
   deleteBulkACMaintenanceLogs,
   clearAllACMaintenanceLogs,
@@ -43,8 +44,8 @@ import { ACLogEntryModal } from "./ACLogEntryModal";
 
 export function ACHistoryView() {
   const { user } = useAuth();
-  const [logs, setLogs] = useState<ACMaintenanceLog[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [logs, setLogs] = useState<ACMaintenanceLog[]>(() => getLocalACLogs());
+  const [loading, setLoading] = useState<boolean>(false);
   const [refreshing, setRefreshing] = useState<boolean>(false);
 
   // Filters
@@ -70,7 +71,6 @@ export function ACHistoryView() {
 
   const loadLogs = useCallback(async () => {
     try {
-      setLoading(true);
       const data = await fetchACMaintenanceLogs();
       setLogs(data);
     } catch (err) {

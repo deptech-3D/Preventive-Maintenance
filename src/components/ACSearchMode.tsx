@@ -26,15 +26,17 @@ import {
   normalizeACCategory,
   formatUnitCycleLabel,
 } from "../types";
-import { getACScheduleOverview } from "../supabaseService";
+import { getACScheduleOverview, getLocalACScheduleOverview } from "../supabaseService";
 
 interface ACSearchModeProps {
   onOpenACLog: (unitId?: string) => void;
 }
 
 export function ACSearchMode({ onOpenACLog }: ACSearchModeProps) {
-  const [scheduleList, setScheduleList] = useState<ACUnitScheduleStatus[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [scheduleList, setScheduleList] = useState<ACUnitScheduleStatus[]>(() =>
+    getLocalACScheduleOverview()
+  );
+  const [loading, setLoading] = useState<boolean>(false);
 
   // Search query & filters
   const [query, setQuery] = useState<string>("");
@@ -48,7 +50,6 @@ export function ACSearchMode({ onOpenACLog }: ACSearchModeProps) {
     let mounted = true;
     (async () => {
       try {
-        setLoading(true);
         const data = await getACScheduleOverview();
         if (mounted) setScheduleList(data);
       } catch (e) {

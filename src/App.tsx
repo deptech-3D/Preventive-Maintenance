@@ -93,9 +93,12 @@ export function App() {
             <nav className="hidden md:flex items-center gap-1 bg-slate-100/80 p-1 rounded-xl border border-slate-200/60">
               <button
                 id="header-tab-dashboard"
-                onClick={() => setActiveTab("dashboard")}
+                onClick={() => {
+                  setShowACLogModal(false);
+                  setActiveTab("dashboard");
+                }}
                 className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
-                  activeTab === "dashboard"
+                  !showACLogModal && activeTab === "dashboard"
                     ? "bg-white text-blue-600 shadow-xs"
                     : "text-slate-600 hover:text-slate-900"
                 }`}
@@ -107,17 +110,24 @@ export function App() {
               <button
                 id="header-tab-catat-ac"
                 onClick={() => handleOpenACLog()}
-                className="px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer bg-blue-600 text-white hover:bg-blue-700 shadow-xs"
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                  showACLogModal
+                    ? "bg-white text-blue-600 shadow-xs"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
               >
                 <Plus className="w-3.5 h-3.5" />
-                <span>Catat Cuci AC</span>
+                <span>Catat AC</span>
               </button>
 
               <button
                 id="header-tab-search"
-                onClick={() => setActiveTab("search")}
+                onClick={() => {
+                  setShowACLogModal(false);
+                  setActiveTab("search");
+                }}
                 className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
-                  activeTab === "search"
+                  !showACLogModal && activeTab === "search"
                     ? "bg-white text-blue-600 shadow-xs"
                     : "text-slate-600 hover:text-slate-900"
                 }`}
@@ -128,9 +138,12 @@ export function App() {
 
               <button
                 id="header-tab-history"
-                onClick={() => setActiveTab("history")}
+                onClick={() => {
+                  setShowACLogModal(false);
+                  setActiveTab("history");
+                }}
                 className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
-                  activeTab === "history"
+                  !showACLogModal && activeTab === "history"
                     ? "bg-white text-blue-600 shadow-xs"
                     : "text-slate-600 hover:text-slate-900"
                 }`}
@@ -141,9 +154,12 @@ export function App() {
 
               <button
                 id="header-tab-settings"
-                onClick={() => setActiveTab("settings")}
+                onClick={() => {
+                  setShowACLogModal(false);
+                  setActiveTab("settings");
+                }}
                 className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
-                  activeTab === "settings"
+                  !showACLogModal && activeTab === "settings"
                     ? "bg-white text-blue-600 shadow-xs"
                     : "text-slate-600 hover:text-slate-900"
                 }`}
@@ -194,9 +210,12 @@ export function App() {
           {/* 1. Dashboard */}
           <button
             id="tab-dashboard"
-            onClick={() => setActiveTab("dashboard")}
+            onClick={() => {
+              setShowACLogModal(false);
+              setActiveTab("dashboard");
+            }}
             className={`flex-1 flex flex-col items-center justify-center py-1 transition cursor-pointer ${
-              activeTab === "dashboard"
+              !showACLogModal && activeTab === "dashboard"
                 ? "text-blue-600 font-bold"
                 : "text-slate-500 hover:text-slate-800 font-medium"
             }`}
@@ -209,20 +228,25 @@ export function App() {
           <button
             id="tab-catat-ac"
             onClick={() => handleOpenACLog()}
-            className="flex-1 flex flex-col items-center justify-center -mt-5 cursor-pointer group"
+            className={`flex-1 flex flex-col items-center justify-center py-1 transition cursor-pointer ${
+              showACLogModal
+                ? "text-blue-600 font-bold"
+                : "text-slate-500 hover:text-slate-800 font-medium"
+            }`}
           >
-            <div className="w-10 h-10 rounded-full bg-blue-600 group-hover:bg-blue-700 text-white flex items-center justify-center shadow-lg shadow-blue-500/30 transition transform group-active:scale-95 border-2 border-white">
-              <Plus className="w-6 h-6 stroke-[2.5]" />
-            </div>
-            <span className="text-[10px] font-bold text-blue-600 mt-0.5 whitespace-nowrap">Catat AC</span>
+            <Plus className="w-5 h-5 mb-0.5" />
+            <span className="text-[10px] whitespace-nowrap">Catat AC</span>
           </button>
 
           {/* 3. Mode Pencarian Langsung (Di antara Catat AC dan Riwayat) */}
           <button
             id="tab-search"
-            onClick={() => setActiveTab("search")}
+            onClick={() => {
+              setShowACLogModal(false);
+              setActiveTab("search");
+            }}
             className={`flex-1 flex flex-col items-center justify-center py-1 transition cursor-pointer ${
-              activeTab === "search"
+              !showACLogModal && activeTab === "search"
                 ? "text-blue-600 font-bold"
                 : "text-slate-500 hover:text-slate-800 font-medium"
             }`}
@@ -234,9 +258,12 @@ export function App() {
           {/* 4. Riwayat */}
           <button
             id="tab-history"
-            onClick={() => setActiveTab("history")}
+            onClick={() => {
+              setShowACLogModal(false);
+              setActiveTab("history");
+            }}
             className={`flex-1 flex flex-col items-center justify-center py-1 transition cursor-pointer ${
-              activeTab === "history"
+              !showACLogModal && activeTab === "history"
                 ? "text-blue-600 font-bold"
                 : "text-slate-500 hover:text-slate-800 font-medium"
             }`}
@@ -248,9 +275,12 @@ export function App() {
           {/* 5. Pengaturan */}
           <button
             id="tab-settings"
-            onClick={() => setActiveTab("settings")}
+            onClick={() => {
+              setShowACLogModal(false);
+              setActiveTab("settings");
+            }}
             className={`flex-1 flex flex-col items-center justify-center py-1 transition cursor-pointer ${
-              activeTab === "settings"
+              !showACLogModal && activeTab === "settings"
                 ? "text-blue-600 font-bold"
                 : "text-slate-500 hover:text-slate-800 font-medium"
             }`}

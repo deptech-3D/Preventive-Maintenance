@@ -32,6 +32,7 @@ import {
 import {
   fetchACUnits,
   getLocalACUnits,
+  getLocalAppSettings,
   createACUnit,
   updateACUnit,
   deleteACUnit,
@@ -45,6 +46,9 @@ import {
 
 export function ACMasterUnitsManager() {
   const [units, setUnits] = useState<ACUnitLocation[]>(() => getLocalACUnits());
+  const [defaultCycleMonths, setDefaultCycleMonths] = useState<number>(
+    () => getLocalAppSettings().ac_maintenance_cycle_months || 1
+  );
   const [loading, setLoading] = useState<boolean>(false);
   const [selectedFloor, setSelectedFloor] = useState<RealFloor>("Lantai 3");
   const [selectedCategory, setSelectedCategory] = useState<ACCategory | "all">("all");
@@ -59,6 +63,7 @@ export function ACMasterUnitsManager() {
   const [formCode, setFormCode] = useState<string>("");
   const [formNotes, setFormNotes] = useState<string>("");
   const [formCycleSelect, setFormCycleSelect] = useState<string>("default");
+  const [initialCycleSelect, setInitialCycleSelect] = useState<string>("default");
   const [saving, setSaving] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -95,8 +100,15 @@ export function ACMasterUnitsManager() {
     const handleSynced = () => {
       setUnits(getLocalACUnits());
     };
+    const handleSettingsSynced = () => {
+      setDefaultCycleMonths(getLocalAppSettings().ac_maintenance_cycle_months || 1);
+    };
     window.addEventListener("ac-data-synced", handleSynced);
-    return () => window.removeEventListener("ac-data-synced", handleSynced);
+    window.addEventListener("app-settings-synced", handleSettingsSynced);
+    return () => {
+      window.removeEventListener("ac-data-synced", handleSynced);
+      window.removeEventListener("app-settings-synced", handleSettingsSynced);
+    };
   }, []);
 
   // All units strictly on selected real floor
@@ -126,24 +138,26 @@ export function ACMasterUnitsManager() {
 
   const openEditModal = (unit: ACUnitLocation) => {
     setErrorMsg(null);
-    const uFloor = resolveFloorFromUnit(unit);
-    setFormCategory(normalizeACCategory(unit.category));
+    const freshUnit = getLocalACUnits().find((x) => x.id === unit.id) || unit;
+    const uFloor = resolveFloorFromUnit(freshUnit);
+    setFormCategory(normalizeACCategory(freshUnit.category));
     setFormFloor(uFloor);
-    setFormName(unit.name);
-    setFormCode(unit.code || "");
-    setFormNotes(unit.notes || "");
-    
-    if (unit.cycle_days && unit.cycle_days > 0 && unit.cycle_days % 30 !== 0) {
-      setFormCycleSelect(`days_${unit.cycle_days}`);
-    } else if (unit.cycle_months && unit.cycle_months > 0) {
-      setFormCycleSelect(`months_${unit.cycle_months}`);
-    } else if (unit.cycle_days && unit.cycle_days > 0) {
-      setFormCycleSelect(`months_${Math.round(unit.cycle_days / 30)}`);
-    } else {
-      setFormCycleSelect("default");
-    }
+    setFormName(freshUnit.name);
+    setFormCode(freshUnit.code || "");
+    setFormNotes(freshUnit.notes || "");
 
-    setEditingUnit(unit);
+    let detectedCycle = "default";
+    if (freshUnit.cycle_days && freshUnit.cycle_days > 0 && freshUnit.cycle_days % 30 !== 0) {
+      detectedCycle = `days_${freshUnit.cycle_days}`;
+    } else if (freshUnit.cycle_months && freshUnit.cycle_months > 0) {
+      detectedCycle = `months_${freshUnit.cycle_months}`;
+    } else if (freshUnit.cycle_days && freshUnit.cycle_days > 0) {
+      detectedCycle = `months_${Math.round(freshUnit.cycle_days / 30)}`;
+    }
+    setFormCycleSelect(detectedCycle);
+    setInitialCycleSelect(detectedCycle);
+
+    setEditingUnit(freshUnit);
     setModalMode("edit");
   };
 
@@ -182,14 +196,17 @@ export function ACMasterUnitsManager() {
         });
         setSuccessMsg(`Berhasil menambahkan "${cleanName}" di ${formFloor}`);
       } else if (modalMode === "edit" && editingUnit) {
+        const explicitlyClearedToDefault =
+          formCycleSelect === "default" && initialCycleSelect !== "default";
         await updateACUnit(editingUnit.id, {
           category: formCategory,
           floor: formFloor,
           name: cleanName,
           code: formCode.trim() || undefined,
           notes: formNotes.trim() || undefined,
-          cycle_months: cycle_months || (null as any),
-          cycle_days: cycle_days || (null as any),
+          cycle_months: cycle_months ?? (explicitlyClearedToDefault ? (null as any) : undefined),
+          cycle_days: cycle_days ?? (explicitlyClearedToDefault ? (null as any) : undefined),
+          clear_cycle: explicitlyClearedToDefault,
         });
 
         setSuccessMsg(`Berhasil memperbarui "${cleanName}" (${formFloor})`);
@@ -658,7 +675,7 @@ export function ACMasterUnitsManager() {
                           }`}
                         >
                           <Clock className="w-3 h-3 text-slate-400" />
-                          {formatUnitCycleLabel(u, 1)}
+                          {formatUnitCycleLabel(u, defaultCycleMonths)}
                         </span>
                       </td>
                       <td className="py-3 px-4">

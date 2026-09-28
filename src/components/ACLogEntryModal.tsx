@@ -14,24 +14,33 @@ import {
   Building2,
   Check,
   ChevronDown,
+  ChevronUp,
   Search,
   RotateCcw,
   MapPin,
   Camera,
   ImageIcon,
+  History as HistoryIcon,
 } from "lucide-react";
 import {
   ACCategory,
   ACUnitLocation,
   ACMaintenanceLog,
+  ACUnitScheduleStatus,
   normalizeACCategory,
   REAL_FLOORS,
   resolveFloorFromUnit,
+  formatUnitCycleLabel,
 } from "../types";
 import { useAuth } from "../auth";
 import {
   fetchACUnits,
   getLocalACUnits,
+  fetchACMaintenanceLogs,
+  getLocalACLogs,
+  fetchAppSettings,
+  getLocalAppSettings,
+  calculateACScheduleStatus,
   createACMaintenanceLog,
   fetchUsers,
   getRegisteredUserOptions,
@@ -71,10 +80,15 @@ export function ACLogEntryModal({
   });
   const [selectedTech2, setSelectedTech2] = useState<string>("");
 
-  // Master Units & Selection
+  // Master Units, Maintenance Logs & Selection
   const [units, setUnits] = useState<ACUnitLocation[]>(() => getLocalACUnits());
+  const [maintenanceLogs, setMaintenanceLogs] = useState<ACMaintenanceLog[]>(() => getLocalACLogs());
+  const [defaultCycleMonths, setDefaultCycleMonths] = useState<number>(
+    () => getLocalAppSettings().ac_maintenance_cycle_months || 1
+  );
   const [selectedUnitId, setSelectedUnitId] = useState<string>(initialUnitId || "");
   const [category, setCategory] = useState<ACCategory>("Area Privat / Kamar Hotel");
+  const [showAllUnitHistory, setShowAllUnitHistory] = useState<boolean>(false);
 
   // Quick Search States
   const [searchQuery, setSearchQuery] = useState<string>("");
@@ -138,15 +152,21 @@ export function ACLogEntryModal({
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // Load all units & registered users
+  // Load all units, logs, settings & registered users
   useEffect(() => {
     (async () => {
       try {
-        const [data, fetchedUsers] = await Promise.all([
+        const [data, fetchedLogs, fetchedSettings, fetchedUsers] = await Promise.all([
           fetchACUnits(),
+          fetchACMaintenanceLogs().catch(() => getLocalACLogs()),
+          fetchAppSettings().catch(() => getLocalAppSettings()),
           fetchUsers().catch(() => []),
         ]);
         setUnits(data);
+        setMaintenanceLogs(fetchedLogs);
+        if (fetchedSettings?.ac_maintenance_cycle_months) {
+          setDefaultCycleMonths(fetchedSettings.ac_maintenance_cycle_months);
+        }
         if (fetchedUsers.length > 0) {
           const opts = getRegisteredUserOptions(fetchedUsers);
           setRegisteredUsers(opts);
@@ -178,8 +198,19 @@ export function ACLogEntryModal({
       const opts = getRegisteredUserOptions(Array.isArray(detail) ? detail : undefined);
       setRegisteredUsers(opts);
     };
+    const handleACDataSynced = () => {
+      setUnits(getLocalACUnits());
+      setMaintenanceLogs(getLocalACLogs());
+      setDefaultCycleMonths(getLocalAppSettings().ac_maintenance_cycle_months || 1);
+    };
     window.addEventListener("users-data-synced", handleUsersSynced);
-    return () => window.removeEventListener("users-data-synced", handleUsersSynced);
+    window.addEventListener("ac-data-synced", handleACDataSynced);
+    window.addEventListener("app-settings-synced", handleACDataSynced);
+    return () => {
+      window.removeEventListener("users-data-synced", handleUsersSynced);
+      window.removeEventListener("ac-data-synced", handleACDataSynced);
+      window.removeEventListener("app-settings-synced", handleACDataSynced);
+    };
   }, [initialUnitId]);
 
   const handleQuickToggleTech = (name: string) => {
@@ -220,6 +251,90 @@ export function ACLogEntryModal({
   const selectedUnit = useMemo(() => {
     return units.find((u) => u.id === selectedUnitId) || null;
   }, [units, selectedUnitId]);
+
+  // Schedule & Last Cleaning Map across all units
+  const scheduleStatusMap = useMemo(() => {
+    const statuses = calculateACScheduleStatus(units, maintenanceLogs, defaultCycleMonths);
+    const map = new Map<string, ACUnitScheduleStatus>();
+    statuses.forEach((s) => {
+      map.set(s.unit.id, s);
+    });
+    return map;
+  }, [units, maintenanceLogs, defaultCycleMonths]);
+
+  // Map unit_id -> all historical cleaning logs sorted newest first
+  const unitHistoryLogsMap = useMemo(() => {
+    const map = new Map<string, ACMaintenanceLog[]>();
+    units.forEach((unit) => {
+      const unitLogs = maintenanceLogs
+        .filter(
+          (l) =>
+            l.unit_id === unit.id ||
+            l.unit_name.toLowerCase().trim() === unit.name.toLowerCase().trim()
+        )
+        .sort((a, b) => new Date(b.recorded_at).getTime() - new Date(a.recorded_at).getTime());
+      if (unitLogs.length > 0) {
+        map.set(unit.id, unitLogs);
+      }
+    });
+    return map;
+  }, [units, maintenanceLogs]);
+
+  const selectedUnitSchedule = useMemo(() => {
+    if (!selectedUnit) return null;
+    return scheduleStatusMap.get(selectedUnit.id) || null;
+  }, [selectedUnit, scheduleStatusMap]);
+
+  const selectedUnitHistoryLogs = useMemo(() => {
+    if (!selectedUnit) return [];
+    return unitHistoryLogsMap.get(selectedUnit.id) || [];
+  }, [selectedUnit, unitHistoryLogsMap]);
+
+  const selectedUnitLastLog = useMemo(() => {
+    return selectedUnitSchedule?.last_log || selectedUnitHistoryLogs[0] || null;
+  }, [selectedUnitSchedule, selectedUnitHistoryLogs]);
+
+  const formatDateFull = (isoStr?: string | null) => {
+    if (!isoStr) return "-";
+    const d = new Date(isoStr);
+    if (isNaN(d.getTime())) return "-";
+    return d.toLocaleDateString("id-ID", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
+  };
+
+  const formatDateTimeFull = (isoStr?: string | null) => {
+    if (!isoStr) return "-";
+    const d = new Date(isoStr);
+    if (isNaN(d.getTime())) return "-";
+    const datePart = d.toLocaleDateString("id-ID", {
+      day: "2-digit",
+      month: "long",
+      year: "numeric",
+    });
+    const timePart = d.toLocaleTimeString("id-ID", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+    return `${datePart}, ${timePart}`;
+  };
+
+  const formatRelativeAgo = (isoStr?: string | null) => {
+    if (!isoStr) return "";
+    const d = new Date(isoStr);
+    if (isNaN(d.getTime())) return "";
+    const diffMs = Date.now() - d.getTime();
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    if (diffDays <= 0) {
+      const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+      if (diffHours <= 0) return "Baru saja hari ini";
+      return `${diffHours} jam yang lalu`;
+    }
+    if (diffDays === 1) return "Kemarin (1 hari lalu)";
+    return `${diffDays} hari yang lalu`;
+  };
 
   // Extract available unique floors from units
   const availableFloors = useMemo(() => {
@@ -560,40 +675,262 @@ export function ACLogEntryModal({
             </div>
 
             {selectedUnit && !isChangingUnit ? (
-              /* Selected Unit Card */
-              <div className="bg-white p-3.5 rounded-xl border-2 border-blue-500 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0"></span>
-                    <span className="text-sm font-black text-slate-900">{selectedUnit.name}</span>
-                    {selectedUnit.code && (
-                      <span className="font-mono text-[10px] text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">
-                        {selectedUnit.code}
+              /* Selected Unit Card + Last Cleaning Info */
+              <div className="space-y-3">
+                <div className="bg-white p-3.5 rounded-xl border-2 border-blue-500 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0"></span>
+                      <span className="text-sm font-black text-slate-900">{selectedUnit.name}</span>
+                      {selectedUnit.code && (
+                        <span className="font-mono text-[10px] text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">
+                          {selectedUnit.code}
+                        </span>
+                      )}
+                      {selectedUnitLastLog ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                          <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                          Sudah Pernah Cleaning ({selectedUnitHistoryLogs.length}x)
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-600 border border-slate-200">
+                          Belum Pernah Dicuci
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
+                        <MapPin className="w-2.5 h-2.5" />
+                        {resolveFloorFromUnit(selectedUnit)}
                       </span>
-                    )}
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold bg-slate-100 text-slate-700 border border-slate-200">
+                        {selectedUnit.category}
+                      </span>
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                        <Clock className="w-2.5 h-2.5" />
+                        Siklus: {formatUnitCycleLabel(selectedUnit, defaultCycleMonths)}
+                      </span>
+                    </div>
                   </div>
-                  <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
-                      <MapPin className="w-2.5 h-2.5" />
-                      {resolveFloorFromUnit(selectedUnit)}
-                    </span>
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold bg-slate-100 text-slate-700 border border-slate-200">
-                      {selectedUnit.category}
-                    </span>
-                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsChangingUnit(true);
+                      setSearchQuery("");
+                    }}
+                    className="px-3.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer self-start sm:self-auto shrink-0 shadow-2xs"
+                  >
+                    <Search className="w-3.5 h-3.5 text-blue-600" />
+                    <span>Ganti Kamar</span>
+                  </button>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsChangingUnit(true);
-                    setSearchQuery("");
-                  }}
-                  className="px-3.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer self-start sm:self-auto shrink-0 shadow-2xs"
-                >
-                  <Search className="w-3.5 h-3.5 text-blue-600" />
-                  <span>Ganti Kamar</span>
-                </button>
+                {/* INFORMASI TERAKHIR DATA UNIT CUCI (JIKA SUDAH PERNAH DI-CLEANING) */}
+                {selectedUnitLastLog ? (
+                  <div className="bg-white rounded-xl border border-emerald-300 shadow-xs overflow-hidden">
+                    <div className="bg-gradient-to-r from-emerald-600 to-teal-600 px-3.5 py-2 text-white flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex items-center gap-1.5 text-xs font-bold">
+                        <HistoryIcon className="w-3.5 h-3.5 text-emerald-100 shrink-0" />
+                        <span>Informasi Terakhir Data Unit Cuci (Riwayat Cleaning Terakhir)</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        {selectedUnitSchedule && (
+                          <span
+                            className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                              selectedUnitSchedule.status === "overdue"
+                                ? "bg-red-100 text-red-800 border-red-300"
+                                : selectedUnitSchedule.status === "approaching"
+                                ? "bg-amber-100 text-amber-900 border-amber-300"
+                                : "bg-white/20 text-white border-white/30"
+                            }`}
+                          >
+                            {selectedUnitSchedule.status_label}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="p-3.5 space-y-3 bg-emerald-50/25">
+                      {/* Baris 1: Tanggal Cuci Terakhir, Teknisi, & Jatuh Tempo */}
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                        <div className="bg-white p-2.5 rounded-lg border border-slate-200/90">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                            Tanggal & Jam Cuci Terakhir
+                          </span>
+                          <span className="text-xs font-extrabold text-slate-900 block mt-0.5">
+                            {formatDateTimeFull(selectedUnitLastLog.recorded_at)}
+                          </span>
+                          <span className="text-[10px] font-semibold text-emerald-700 block mt-0.5">
+                            {formatRelativeAgo(selectedUnitLastLog.recorded_at)}
+                          </span>
+                        </div>
+
+                        <div className="bg-white p-2.5 rounded-lg border border-slate-200/90">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                            Teknisi Pelaksana Terakhir
+                          </span>
+                          <span className="text-xs font-extrabold text-slate-900 flex items-center gap-1.5 mt-0.5">
+                            <UserIcon className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                            <span className="truncate">{selectedUnitLastLog.user_name || "-"}</span>
+                          </span>
+                          <span className="text-[10px] text-slate-500 block mt-0.5">
+                            Total riwayat: {selectedUnitHistoryLogs.length} kali dicuci
+                          </span>
+                        </div>
+
+                        <div className="bg-white p-2.5 rounded-lg border border-slate-200/90">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                            Jadwal Cuci Berikutnya
+                          </span>
+                          <span
+                            className={`text-xs font-extrabold block mt-0.5 ${
+                              selectedUnitSchedule?.status === "overdue"
+                                ? "text-red-600"
+                                : selectedUnitSchedule?.status === "approaching"
+                                ? "text-amber-600"
+                                : "text-slate-900"
+                            }`}
+                          >
+                            {formatDateFull(selectedUnitSchedule?.next_due_date)}
+                          </span>
+                          <span className="text-[10px] text-slate-500 block mt-0.5">
+                            Siklus unit: {formatUnitCycleLabel(selectedUnit, defaultCycleMonths)}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Baris 2: Parameter Pengukuran Terakhir (Suhu & Anemometer Before vs After) */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                        {/* Suhu Terakhir */}
+                        <div className="bg-amber-50/70 p-2.5 rounded-lg border border-amber-200 flex items-center justify-between gap-2">
+                          <div className="space-y-0.5">
+                            <span className="text-[10px] font-bold text-amber-900 flex items-center gap-1">
+                              <Thermometer className="w-3 h-3 text-amber-600" />
+                              Data Suhu Cuci Terakhir (°C)
+                            </span>
+                            <div className="flex items-center gap-2 text-xs">
+                              <span className="text-slate-600">
+                                Before: <strong className="text-slate-900">{selectedUnitLastLog.temp_before}°C</strong>
+                              </span>
+                              <span className="text-slate-400">→</span>
+                              <span className="text-emerald-800">
+                                After: <strong className="text-emerald-700">{selectedUnitLastLog.temp_after}°C</strong>
+                              </span>
+                            </div>
+                          </div>
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200 shrink-0">
+                            {Number((selectedUnitLastLog.temp_before - selectedUnitLastLog.temp_after).toFixed(1)) > 0
+                              ? `Turun ${Number((selectedUnitLastLog.temp_before - selectedUnitLastLog.temp_after).toFixed(1))}°C`
+                              : `${Number((selectedUnitLastLog.temp_before - selectedUnitLastLog.temp_after).toFixed(1))}°C`}
+                          </span>
+                        </div>
+
+                        {/* Anemometer Terakhir */}
+                        <div className="bg-cyan-50/70 p-2.5 rounded-lg border border-cyan-200 flex items-center justify-between gap-2">
+                          <div className="space-y-0.5">
+                            <span className="text-[10px] font-bold text-cyan-900 flex items-center gap-1">
+                              <Wind className="w-3 h-3 text-cyan-600" />
+                              Data Anemometer Terakhir (m/s)
+                            </span>
+                            <div className="flex items-center gap-2 text-xs">
+                              <span className="text-slate-600">
+                                Before: <strong className="text-slate-900">{selectedUnitLastLog.anemo_before} m/s</strong>
+                              </span>
+                              <span className="text-slate-400">→</span>
+                              <span className="text-emerald-800">
+                                After: <strong className="text-emerald-700">{selectedUnitLastLog.anemo_after} m/s</strong>
+                              </span>
+                            </div>
+                          </div>
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200 shrink-0">
+                            {Number((selectedUnitLastLog.anemo_after - selectedUnitLastLog.anemo_before).toFixed(2)) > 0
+                              ? `+${Number((selectedUnitLastLog.anemo_after - selectedUnitLastLog.anemo_before).toFixed(2))} m/s`
+                              : `${Number((selectedUnitLastLog.anemo_after - selectedUnitLastLog.anemo_before).toFixed(2))} m/s`}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Baris 3: Catatan Terakhir */}
+                      {selectedUnitLastLog.notes && (
+                        <div className="bg-white p-2.5 rounded-lg border border-slate-200 text-xs">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-0.5">
+                            Catatan Kondisi Terakhir:
+                          </span>
+                          <p className="text-slate-700 italic leading-relaxed">
+                            &ldquo;{selectedUnitLastLog.notes}&rdquo;
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Baris 4: Riwayat Sebelumnya jika sudah dicuci > 1 kali */}
+                      {selectedUnitHistoryLogs.length > 1 && (
+                        <div className="pt-1 border-t border-emerald-200/70">
+                          <button
+                            type="button"
+                            onClick={() => setShowAllUnitHistory((prev) => !prev)}
+                            className="text-[11px] font-bold text-emerald-800 hover:text-emerald-950 flex items-center gap-1 cursor-pointer"
+                          >
+                            {showAllUnitHistory ? (
+                              <>
+                                <ChevronUp className="w-3.5 h-3.5" />
+                                <span>Sembunyikan riwayat cuci sebelumnya</span>
+                              </>
+                            ) : (
+                              <>
+                                <ChevronDown className="w-3.5 h-3.5" />
+                                <span>
+                                  Lihat {selectedUnitHistoryLogs.length - 1} riwayat cuci terdahulu lainnya pada unit ini
+                                </span>
+                              </>
+                            )}
+                          </button>
+
+                          {showAllUnitHistory && (
+                            <div className="mt-2 space-y-1.5 max-h-40 overflow-y-auto pr-1">
+                              {selectedUnitHistoryLogs.slice(1).map((hLog, idx) => (
+                                <div
+                                  key={hLog.log_id || idx}
+                                  className="bg-white/90 px-2.5 py-2 rounded-lg border border-slate-200 text-[11px] flex flex-col sm:flex-row sm:items-center justify-between gap-1.5"
+                                >
+                                  <div>
+                                    <span className="font-bold text-slate-800">
+                                      {formatDateTimeFull(hLog.recorded_at)}
+                                    </span>
+                                    <span className="text-slate-400 mx-1.5">•</span>
+                                    <span className="font-semibold text-blue-700">
+                                      Oleh: {hLog.user_name}
+                                    </span>
+                                    {hLog.notes && (
+                                      <p className="text-[10px] text-slate-500 italic mt-0.5">
+                                        &ldquo;{hLog.notes}&rdquo;
+                                      </p>
+                                    )}
+                                  </div>
+                                  <div className="flex items-center gap-2 shrink-0 text-[10px] font-semibold">
+                                    <span className="px-1.5 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200">
+                                      Suhu: {hLog.temp_before}°C → {hLog.temp_after}°C
+                                    </span>
+                                    <span className="px-1.5 py-0.5 rounded bg-cyan-50 text-cyan-800 border border-cyan-200">
+                                      Anemo: {hLog.anemo_before} → {hLog.anemo_after} m/s
+                                    </span>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="bg-slate-50 px-3.5 py-2.5 rounded-xl border border-slate-200 flex items-center gap-2 text-xs text-slate-600">
+                    <Clock className="w-4 h-4 text-slate-400 shrink-0" />
+                    <span>
+                      Unit <strong>{selectedUnit.name}</strong> belum memiliki riwayat pencatatan cuci sebelumnya (Pencatatan Perdana).
+                    </span>
+                  </div>
+                )}
               </div>
             ) : (
               /* Quick Search Bar & Live Results */
@@ -631,6 +968,8 @@ export function ACLogEntryModal({
                         {smartSuggestions.map(({ unit: u, score }) => {
                           const uFloor = resolveFloorFromUnit(u);
                           const isPrimary = score >= 900;
+                          const uSched = scheduleStatusMap.get(u.id);
+                          const uLastLog = uSched?.last_log;
                           return (
                             <button
                               key={u.id}
@@ -655,6 +994,17 @@ export function ACLogEntryModal({
                               >
                                 {uFloor}
                               </span>
+                              {uLastLog && (
+                                <span
+                                  className={`text-[9px] px-1.5 py-0.2 rounded font-bold ${
+                                    isPrimary
+                                      ? "bg-emerald-400/30 text-emerald-100"
+                                      : "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                                  }`}
+                                >
+                                  Cuci: {formatDateFull(uLastLog.recorded_at)}
+                                </span>
+                              )}
                             </button>
                           );
                         })}
@@ -718,7 +1068,7 @@ export function ACLogEntryModal({
                     )}
                   </div>
 
-                  <div className="max-h-52 overflow-y-auto divide-y divide-slate-100 p-1">
+                  <div className="max-h-64 overflow-y-auto divide-y divide-slate-100 p-1">
                     {loadingUnits ? (
                       <div className="p-4 text-center text-xs text-slate-400">
                         Memuat data kamar & unit AC...
@@ -736,6 +1086,9 @@ export function ACLogEntryModal({
                       searchResults.map((u) => {
                         const isCurrent = u.id === selectedUnitId;
                         const floorName = resolveFloorFromUnit(u);
+                        const uSchedule = scheduleStatusMap.get(u.id);
+                        const uLastLog = uSchedule?.last_log;
+                        const uLogsCount = unitHistoryLogsMap.get(u.id)?.length || 0;
                         return (
                           <button
                             key={u.id}
@@ -752,8 +1105,8 @@ export function ACLogEntryModal({
                                 : "hover:bg-blue-50/60 border border-transparent"
                             }`}
                           >
-                            <div className="min-w-0 flex-1">
-                              <div className="flex items-center gap-2">
+                            <div className="min-w-0 flex-1 space-y-1">
+                              <div className="flex items-center gap-2 flex-wrap">
                                 <span className="text-xs font-bold text-slate-900 truncate">
                                   {u.name}
                                 </span>
@@ -762,14 +1115,50 @@ export function ACLogEntryModal({
                                     {u.code}
                                   </span>
                                 )}
+                                {uLastLog && (
+                                  <span
+                                    className={`inline-flex items-center gap-1 px-1.5 py-0.2 rounded text-[10px] font-bold border ${
+                                      uSchedule?.status === "overdue"
+                                        ? "bg-red-50 text-red-700 border-red-200"
+                                        : uSchedule?.status === "approaching"
+                                        ? "bg-amber-50 text-amber-800 border-amber-200"
+                                        : "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                    }`}
+                                  >
+                                    <CheckCircle2 className="w-2.5 h-2.5" />
+                                    <span>Sudah Pernah Cuci ({uLogsCount}x)</span>
+                                  </span>
+                                )}
                               </div>
-                              <div className="flex items-center gap-1.5 mt-0.5 text-[10px] text-slate-500">
+                              <div className="flex items-center gap-1.5 text-[10px] text-slate-500 flex-wrap">
                                 <span className="font-semibold text-blue-700 bg-blue-50 px-1.5 py-0.2 rounded">
                                   {floorName}
                                 </span>
                                 <span>•</span>
                                 <span className="truncate">{u.category}</span>
                               </div>
+                              {uLastLog && (
+                                <div className="bg-slate-50 border border-slate-200/80 rounded-md px-2 py-1 text-[10px] text-slate-600 flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                                  <span>
+                                    Terakhir Cuci:{" "}
+                                    <strong className="text-slate-800">
+                                      {formatDateFull(uLastLog.recorded_at)}
+                                    </strong>
+                                  </span>
+                                  <span>•</span>
+                                  <span>
+                                    Teknisi: <strong className="text-slate-800">{uLastLog.user_name}</strong>
+                                  </span>
+                                  <span>•</span>
+                                  <span className="text-amber-800 font-semibold">
+                                    Suhu: {uLastLog.temp_before}°C → {uLastLog.temp_after}°C
+                                  </span>
+                                  <span>•</span>
+                                  <span className="text-cyan-800 font-semibold">
+                                    Anemo: {uLastLog.anemo_before} → {uLastLog.anemo_after} m/s
+                                  </span>
+                                </div>
+                              )}
                             </div>
 
                             <div className="shrink-0 flex items-center">
@@ -795,10 +1184,17 @@ export function ACLogEntryModal({
 
           {/* Section 3: Data Pengukuran Suhu & Anemometer */}
           <div className="space-y-3">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
-              <Thermometer className="w-4 h-4 text-amber-500" />
-              2. Parameter Pengukuran (Before vs After)
-            </h3>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+                <Thermometer className="w-4 h-4 text-amber-500" />
+                2. Parameter Pengukuran (Before vs After)
+              </h3>
+              {selectedUnitLastLog && (
+                <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                  Referensi Cuci Terakhir ({formatDateFull(selectedUnitLastLog.recorded_at)}) Tersedia
+                </span>
+              )}
+            </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {/* Suhu Box */}
@@ -820,6 +1216,15 @@ export function ACLogEntryModal({
                     </span>
                   )}
                 </div>
+
+                {selectedUnitLastLog && (
+                  <div className="px-2.5 py-1.5 bg-white/90 border border-amber-200/90 rounded-lg text-[10px] text-amber-900 flex items-center justify-between">
+                    <span className="font-semibold text-slate-500">Data Cuci Terakhir:</span>
+                    <span className="font-bold">
+                      Before {selectedUnitLastLog.temp_before}°C → After {selectedUnitLastLog.temp_after}°C
+                    </span>
+                  </div>
+                )}
 
                 <div className="grid grid-cols-2 gap-2">
                   <div>
@@ -875,6 +1280,15 @@ export function ACLogEntryModal({
                     </span>
                   )}
                 </div>
+
+                {selectedUnitLastLog && (
+                  <div className="px-2.5 py-1.5 bg-white/90 border border-cyan-200/90 rounded-lg text-[10px] text-cyan-900 flex items-center justify-between">
+                    <span className="font-semibold text-slate-500">Data Cuci Terakhir:</span>
+                    <span className="font-bold">
+                      Before {selectedUnitLastLog.anemo_before} m/s → After {selectedUnitLastLog.anemo_after} m/s
+                    </span>
+                  </div>
+                )}
 
                 <div className="grid grid-cols-2 gap-2">
                   <div>

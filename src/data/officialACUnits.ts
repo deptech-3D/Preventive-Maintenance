@@ -3,67 +3,19 @@ import { ACUnitLocation } from "../types";
 /**
  * Data Master Resmi Unit AC & Ruangan Midtown Hotel
  * Ditanamkan secara permanen ke dalam kode sumber utama proyek
- * mencakup seluruh unit Basement, Lobby/Lantai 1, Lantai 2, Lantai 3,
- * Lantai 5, Lantai 6, Lantai 7, Lantai 8, Lantai 9, Lantai 10, Lantai 11,
- * Lantai 12, Rooftop, GYM, Caffe Bar, Lift, Koridor, dan Fasilitas lainnya.
  */
 export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
-  {
-    "id": "unit_b1_genset",
-    "category": "Ruang Teknis & Utilitas",
-    "floor": "Basement",
-    "name": "Ruang Genset & Solar (B1)",
-    "code": "EQ-GEN",
-    "order": 2
-  },
-  {
-    "id": "unit_b1_laundry",
-    "category": "Ruang Teknis & Utilitas",
-    "floor": "Basement",
-    "name": "Ruang Laundry & Linen (B1)",
-    "code": "EQ-LND",
-    "order": 3
-  },
-  {
-    "id": "unit_b1_loading",
-    "category": "Area Operasional & Servis",
-    "floor": "Basement",
-    "name": "Office Loading Dock & Security (B1)",
-    "code": "OFF-B1",
-    "order": 4
-  },
-  {
-    "id": "unit_b2_pompa",
-    "category": "Ruang Teknis & Utilitas",
-    "floor": "Basement",
-    "name": "Ruang Pompa & Chiller (B2)",
-    "code": "EQ-PMP",
-    "order": 5
-  },
-  {
-    "id": "unit_b2_stp",
-    "category": "Ruang Teknis & Utilitas",
-    "floor": "Basement",
-    "name": "Ruang STP & GWT (B2)",
-    "code": "EQ-STP",
-    "order": 6
-  },
-  {
-    "id": "unit_b2_fan",
-    "category": "Ruang Teknis & Utilitas",
-    "floor": "Basement",
-    "name": "Ruang Exhaust Fan Parkir (B2)",
-    "code": "EQ-EXH",
-    "order": 7
-  },
   {
     "id": "unit_km_301",
     "category": "Area Privat / Kamar Hotel",
     "floor": "Lantai 3",
     "name": "Kamar 307",
     "code": "KM-307",
-    "order": 8,
-    "notes": "Daikin AC Split Duct"
+    "order": 1,
+    "notes": "Daikin AC Split Duct",
+    "cycle_months": 3,
+    "cycle_days": null,
+    "created_at": "2026-09-28T02:25:40.821Z"
   },
   {
     "id": "unit_km_302",
@@ -71,8 +23,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "floor": "Lantai 3",
     "name": "Kamar 308",
     "code": "KM-308",
-    "order": 9,
-    "notes": "Daikin AC Split Duct"
+    "order": 2,
+    "notes": "Daikin AC Split Duct",
+    "cycle_months": 3,
+    "cycle_days": null,
+    "created_at": "2026-09-28T02:25:45.447Z"
   },
   {
     "id": "unit_km_303",
@@ -80,8 +35,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "floor": "Lantai 3",
     "name": "Kamar 309",
     "code": "KM-309",
-    "order": 10,
-    "notes": "Daikin AC Split Duct"
+    "order": 3,
+    "notes": "Daikin AC Split Duct",
+    "cycle_months": 3,
+    "cycle_days": null,
+    "created_at": "2026-09-28T02:25:50.247Z"
   },
   {
     "id": "unit_km_304",
@@ -89,8 +47,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "floor": "Lantai 3",
     "name": "Kamar 310",
     "code": "KM-310",
-    "order": 11,
-    "notes": "Daikin AC Split Duct"
+    "order": 4,
+    "notes": "Daikin AC Split Duct",
+    "cycle_months": 3,
+    "cycle_days": null,
+    "created_at": "2026-09-28T02:25:55.522Z"
   },
   {
     "id": "unit_km_305",
@@ -98,8 +59,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "floor": "Lantai 3",
     "name": "Kamar 311",
     "code": "KM-311",
-    "order": 12,
-    "notes": "Daikin AC Split Duct"
+    "order": 5,
+    "notes": "Daikin AC Split Duct",
+    "cycle_months": 3,
+    "cycle_days": null,
+    "created_at": "2026-09-28T02:26:01.832Z"
   },
   {
     "id": "unit_km_306",
@@ -107,8 +71,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "floor": "Lantai 3",
     "name": "Kamar 312",
     "code": "KM-312",
-    "order": 13,
-    "notes": "Daikin AC Split Duct"
+    "order": 6,
+    "notes": "Daikin AC Split Duct",
+    "cycle_months": 3,
+    "cycle_days": null,
+    "created_at": "2026-09-28T02:26:06.616Z"
   },
   {
     "id": "unit_km_307",
@@ -116,8 +83,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "floor": "Lantai 3",
     "name": "Kamar 315",
     "code": "KM-315",
-    "order": 14,
-    "notes": "Daikin AC Split Duct"
+    "order": 7,
+    "notes": "Daikin AC Split Duct",
+    "cycle_months": 3,
+    "cycle_days": null,
+    "created_at": "2026-09-28T02:26:10.802Z"
   },
   {
     "id": "unit_km_308",
@@ -125,8 +95,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "floor": "Lantai 3",
     "name": "Kamar 316",
     "code": "KM-316",
-    "order": 15,
-    "notes": "Daikin AC Split Duct"
+    "order": 8,
+    "notes": "Daikin AC Split Duct",
+    "cycle_months": 3,
+    "cycle_days": null,
+    "created_at": "2026-09-28T02:26:16.181Z"
   },
   {
     "id": "unit_km_501",
@@ -134,10 +107,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "floor": "Lantai 5",
     "name": "Kamar 501",
     "code": "KM-501",
-    "order": 16,
+    "order": 9,
     "notes": "Daikin AC Split Duct",
-    "cycle_months": null,
-    "cycle_days": null
+    "cycle_months": 3,
+    "cycle_days": null,
+    "created_at": "2026-09-28T02:22:51.575Z"
   },
   {
     "id": "unit_km_502",
@@ -145,8 +119,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "floor": "Lantai 5",
     "name": "Kamar 502",
     "code": "KM-502",
-    "order": 17,
-    "notes": "Daikin AC Split Duct"
+    "order": 10,
+    "notes": "Daikin AC Split Duct",
+    "cycle_months": 3,
+    "cycle_days": null,
+    "created_at": "2026-09-28T02:22:55.875Z"
   },
   {
     "id": "unit_km_503",
@@ -154,8 +131,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "floor": "Lantai 5",
     "name": "Kamar 503",
     "code": "KM-503",
-    "order": 18,
-    "notes": "Daikin AC Split Duct"
+    "order": 11,
+    "notes": "Daikin AC Split Duct",
+    "cycle_months": 3,
+    "cycle_days": null,
+    "created_at": "2026-09-28T02:23:01.316Z"
   },
   {
     "id": "unit_km_505",
@@ -163,8 +143,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "floor": "Lantai 5",
     "name": "Kamar 505",
     "code": "KM-505",
-    "order": 20,
-    "notes": "Daikin AC Split Duct"
+    "order": 12,
+    "notes": "Daikin AC Split Duct",
+    "cycle_months": 3,
+    "cycle_days": null,
+    "created_at": "2026-09-28T02:23:05.682Z"
   },
   {
     "id": "unit_km_506",
@@ -172,8 +155,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "floor": "Lantai 5",
     "name": "Kamar 506",
     "code": "KM-506",
-    "order": 21,
-    "notes": "Daikin AC Split Duct"
+    "order": 13,
+    "notes": "Daikin AC Split Duct",
+    "cycle_months": 3,
+    "cycle_days": null,
+    "created_at": "2026-09-28T02:23:09.466Z"
   },
   {
     "id": "unit_km_601",
@@ -181,8 +167,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "floor": "Lantai 6",
     "name": "Kamar 601",
     "code": "KM-601",
-    "order": 22,
-    "notes": "Daikin AC Split Duct"
+    "order": 14,
+    "notes": "Daikin AC Split Duct",
+    "cycle_months": 3,
+    "cycle_days": null,
+    "created_at": "2026-09-28T02:22:12.039Z"
   },
   {
     "id": "unit_km_602",
@@ -190,8 +179,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "floor": "Lantai 6",
     "name": "Kamar 602",
     "code": "KM-602",
-    "order": 23,
-    "notes": "Daikin AC Split Duct"
+    "order": 15,
+    "notes": "Daikin AC Split Duct",
+    "cycle_months": 3,
+    "cycle_days": null,
+    "created_at": "2026-09-28T02:22:08.153Z"
   },
   {
     "id": "unit_km_603",
@@ -199,8 +191,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "floor": "Lantai 6",
     "name": "Kamar 603",
     "code": "KM-603",
-    "order": 24,
-    "notes": "Daikin AC Split Duct"
+    "order": 16,
+    "notes": "Daikin AC Split Duct",
+    "cycle_months": 3,
+    "cycle_days": null,
+    "created_at": "2026-09-28T02:22:04.519Z"
   },
   {
     "id": "unit_km_604",
@@ -208,8 +203,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "floor": "Lantai 6",
     "name": "Kamar 605",
     "code": "KM-605",
-    "order": 25,
-    "notes": "Daikin AC Split Duct"
+    "order": 17,
+    "notes": "Daikin AC Split Duct",
+    "cycle_months": 3,
+    "cycle_days": null,
+    "created_at": "2026-09-28T02:22:00.582Z"
   },
   {
     "id": "unit_km_701",
@@ -217,8 +215,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "floor": "Lantai 7",
     "name": "Kamar 701",
     "code": "KM-701",
-    "order": 26,
-    "notes": "Daikin AC Split Duct"
+    "order": 18,
+    "notes": "Daikin AC Split Duct",
+    "cycle_months": 3,
+    "cycle_days": null,
+    "created_at": "2026-09-28T02:16:41.406Z"
   },
   {
     "id": "unit_km_702",
@@ -226,8 +227,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "floor": "Lantai 7",
     "name": "Kamar 702",
     "code": "KM-702",
-    "order": 27,
-    "notes": "Daikin AC Split Duct"
+    "order": 19,
+    "notes": "Daikin AC Split Duct",
+    "cycle_months": 3,
+    "cycle_days": null,
+    "created_at": "2026-09-28T02:16:45.588Z"
   },
   {
     "id": "unit_km_703",
@@ -235,8 +239,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "floor": "Lantai 7",
     "name": "Kamar 703",
     "code": "KM-703",
-    "order": 28,
-    "notes": "Daikin AC Split Duct"
+    "order": 20,
+    "notes": "Daikin AC Split Duct",
+    "cycle_months": 3,
+    "cycle_days": null,
+    "created_at": "2026-09-28T02:16:50.673Z"
   },
   {
     "id": "unit_km_704",
@@ -244,8 +251,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "floor": "Lantai 7",
     "name": "Kamar 705",
     "code": "KM-705",
-    "order": 29,
-    "notes": "Daikin AC Split Duct"
+    "order": 21,
+    "notes": "Daikin AC Split Duct",
+    "cycle_months": 3,
+    "cycle_days": null,
+    "created_at": "2026-09-28T02:16:55.382Z"
   },
   {
     "id": "unit_km_801",
@@ -253,10 +263,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "floor": "Lantai 8",
     "name": "Kamar 801",
     "code": "KM-801",
-    "order": 30,
+    "order": 22,
     "notes": "Daikin AC Split Duct",
-    "cycle_months": null,
-    "cycle_days": null
+    "cycle_months": 3,
+    "cycle_days": null,
+    "created_at": "2026-09-28T02:13:01.813Z"
   },
   {
     "id": "unit_km_802",
@@ -264,10 +275,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "floor": "Lantai 8",
     "name": "Kamar 802",
     "code": "KM-802",
-    "order": 31,
+    "order": 23,
     "notes": "Daikin AC Split Duct",
-    "cycle_months": null,
-    "cycle_days": null
+    "cycle_months": 3,
+    "cycle_days": null,
+    "created_at": "2026-09-28T02:13:06.752Z"
   },
   {
     "id": "unit_km_803",
@@ -275,10 +287,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "floor": "Lantai 8",
     "name": "Kamar 803",
     "code": "KM-803",
-    "order": 32,
+    "order": 24,
     "notes": "Daikin AC Split Duct",
-    "cycle_months": null,
-    "cycle_days": null
+    "cycle_months": 3,
+    "cycle_days": null,
+    "created_at": "2026-09-28T02:13:11.013Z"
   },
   {
     "id": "unit_km_901",
@@ -286,10 +299,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "floor": "Lantai 9",
     "name": "Kamar 901",
     "code": "KM-901",
-    "order": 33,
+    "order": 25,
     "notes": "Daikin AC Split Duct",
-    "cycle_months": null,
-    "cycle_days": null
+    "cycle_months": 3,
+    "cycle_days": null,
+    "created_at": "2026-09-28T02:10:46.042Z"
   },
   {
     "id": "unit_km_902",
@@ -297,10 +311,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "floor": "Lantai 9",
     "name": "Kamar 902",
     "code": "KM-902",
-    "order": 34,
+    "order": 26,
     "notes": "Daikin AC Split Duct",
-    "cycle_months": null,
-    "cycle_days": null
+    "cycle_months": 3,
+    "cycle_days": null,
+    "created_at": "2026-09-28T02:10:50.168Z"
   },
   {
     "id": "unit_km_903",
@@ -308,10 +323,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "floor": "Lantai 9",
     "name": "Kamar 903",
     "code": "KM-903",
-    "order": 35,
+    "order": 27,
     "notes": "Daikin AC Split Duct",
-    "cycle_months": null,
-    "cycle_days": null
+    "cycle_months": 3,
+    "cycle_days": null,
+    "created_at": "2026-09-28T02:10:56.583Z"
   },
   {
     "id": "unit_km_1001",
@@ -319,10 +335,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "floor": "Lantai 10",
     "name": "Kamar 1001",
     "code": "KM-1001",
-    "order": 36,
+    "order": 28,
     "notes": "Daikin AC Split Duct",
-    "cycle_months": null,
-    "cycle_days": null
+    "cycle_months": 3,
+    "cycle_days": null,
+    "created_at": "2026-09-28T02:04:17.138Z"
   },
   {
     "id": "unit_km_1002",
@@ -330,10 +347,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "floor": "Lantai 10",
     "name": "Kamar 1002",
     "code": "KM-1002",
-    "order": 37,
+    "order": 29,
     "notes": "Daikin AC Split Duct",
-    "cycle_months": null,
-    "cycle_days": null
+    "cycle_months": 3,
+    "cycle_days": null,
+    "created_at": "2026-09-28T02:04:22.120Z"
   },
   {
     "id": "unit_km_1003",
@@ -341,10 +359,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "floor": "Lantai 10",
     "name": "Kamar 1003",
     "code": "KM-1003",
-    "order": 38,
+    "order": 30,
     "notes": "Daikin AC Split Duct",
-    "cycle_months": null,
-    "cycle_days": null
+    "cycle_months": 3,
+    "cycle_days": null,
+    "created_at": "2026-09-28T02:04:28.097Z"
   },
   {
     "id": "unit_km_1101",
@@ -352,10 +371,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "floor": "Lantai 11",
     "name": "Kamar 1101",
     "code": "KM-1101",
-    "order": 39,
+    "order": 31,
     "notes": "Daikin AC Split Duct",
-    "cycle_months": null,
-    "cycle_days": null
+    "cycle_months": 3,
+    "cycle_days": null,
+    "created_at": "2026-09-28T01:52:15.607Z"
   },
   {
     "id": "unit_km_1102",
@@ -363,10 +383,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "floor": "Lantai 11",
     "name": "Kamar 1102",
     "code": "KM-1102",
-    "order": 40,
+    "order": 32,
     "notes": "Daikin AC Split Duct",
-    "cycle_months": null,
-    "cycle_days": null
+    "cycle_months": 3,
+    "cycle_days": null,
+    "created_at": "2026-09-28T01:52:51.112Z"
   },
   {
     "id": "unit_km_1201",
@@ -374,10 +395,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "floor": "Lantai 12",
     "name": "Kamar 1201 A",
     "code": "MRV-1201 A",
-    "order": 41,
+    "order": 33,
     "notes": "Daikin AC Split Duct A (Area Living Room)",
-    "cycle_months": null,
-    "cycle_days": null
+    "cycle_months": 3,
+    "cycle_days": null,
+    "created_at": "2026-09-28T01:56:22.890Z"
   },
   {
     "id": "unit_rf_lift",
@@ -385,114 +407,44 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "floor": "Rooftop",
     "name": "Ruang Motor Lift Rooftop A",
     "code": "EQ-LIFT A",
-    "order": 44,
+    "order": 34,
     "notes": "Arah Lift Passenger",
     "cycle_months": null,
     "cycle_days": null
   },
   {
-    "id": "unit_rm_singhasari",
-    "category": "Area Publik & Komersial",
-    "floor": "Lantai Lain / VRV",
-    "name": "Ballroom Singhasari",
-    "code": "BLR-01",
-    "order": 46
-  },
-  {
-    "id": "unit_rm_aster1",
-    "category": "Area Publik & Komersial",
-    "floor": "Lantai Lain / VRV",
-    "name": "Meeting Room Aster 1",
-    "code": "MR-AST1",
-    "order": 47
-  },
-  {
-    "id": "unit_rm_aster2",
-    "category": "Area Publik & Komersial",
-    "floor": "Lantai Lain / VRV",
-    "name": "Meeting Room Aster 2",
-    "code": "MR-AST2",
-    "order": 48
-  },
-  {
-    "id": "unit_rm_tulip",
-    "category": "Area Publik & Komersial",
-    "floor": "Lantai Lain / VRV",
-    "name": "Meeting Room Tulip",
-    "code": "MR-TLP",
-    "order": 49
-  },
-  {
-    "id": "unit_rm_vip",
-    "category": "Area Publik & Komersial",
-    "floor": "Lantai Lain / VRV",
-    "name": "VIP Boardroom",
-    "code": "MR-VIP",
-    "order": 50
-  },
-  {
-    "id": "unit_off_gm",
-    "category": "Area Operasional & Servis",
-    "floor": "Lantai Lain / VRV",
-    "name": "Office General Manager",
-    "code": "OFF-GM",
-    "order": 51
-  },
-  {
-    "id": "unit_off_hrd",
-    "category": "Area Operasional & Servis",
-    "floor": "Lantai Lain / VRV",
-    "name": "Office HRD & GA",
-    "code": "OFF-HRD",
-    "order": 52
-  },
-  {
-    "id": "unit_off_acc",
-    "category": "Area Operasional & Servis",
-    "floor": "Lantai Lain / VRV",
-    "name": "Office Accounting & Finance",
-    "code": "OFF-ACC",
-    "order": 53
-  },
-  {
-    "id": "unit_off_sales",
-    "category": "Area Operasional & Servis",
-    "floor": "Lantai Lain / VRV",
-    "name": "Office Sales & Marketing",
-    "code": "OFF-SLS",
-    "order": 54
-  },
-  {
-    "id": "unit_off_eng",
-    "category": "Area Operasional & Servis",
-    "floor": "Lantai Lain / VRV",
-    "name": "Office Engineering",
-    "code": "OFF-ENG",
-    "order": 55
-  },
-  {
-    "id": "unit_eq_server",
-    "category": "Ruang Teknis & Utilitas",
-    "floor": "Lantai Lain / VRV",
-    "name": "Ruang Server IT & CCTV",
-    "code": "EQ-SRV",
-    "order": 56
-  },
-  {
-    "id": "unit_vrv_lt6",
     "category": "Area Utilitas/Outdoor VRV",
     "floor": "Lantai Lain / VRV",
-    "name": "Outdoor VRV Lantai 6",
-    "code": "VRV-LT6",
-    "order": 57
+    "name": "Outdoor VRV Lobby",
+    "code": "VRV-Lobby",
+    "cycle_months": 3,
+    "order": 35,
+    "id": "unit_1790554241632_klxzq",
+    "created_at": "2026-09-28T00:10:41.632Z",
+    "cycle_days": null
   },
   {
-    "id": "unit_vrv_lt5",
     "category": "Area Utilitas/Outdoor VRV",
     "floor": "Lantai Lain / VRV",
-    "name": "Outdoor VRV Lantai 5",
-    "code": "VRV-LT5",
-    "order": 58
+    "name": "Outdoor Cool Storage/Walking Freezer",
+    "code": "CSWF-01",
+    "notes": "Condensor Loading Dock",
+    "cycle_months": 2,
+    "order": 36,
+    "id": "unit_1790556164953_mb8ni",
+    "created_at": "2026-09-28T00:42:44.953Z"
+  },
+  {
+    "id": "unit_vrv_podium",
+    "category": "Area Utilitas/Outdoor VRV",
+    "floor": "Lantai Lain / VRV",
+    "name": "Outdoor VRV Lantai 2",
+    "code": "VRV-LT2",
+    "order": 37,
+    "cycle_months": 6,
+    "cycle_days": null,
+    "created_at": "2026-09-28T00:13:11.321Z",
+    "notes": "Cuci Semua Outdoor/Condensor"
   },
   {
     "id": "unit_vrv_lt3",
@@ -500,15 +452,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "floor": "Lantai Lain / VRV",
     "name": "Outdoor VRV Lantai 3",
     "code": "VRV-LT3",
-    "order": 59
-  },
-  {
-    "id": "unit_vrv_podium",
-    "category": "Area Utilitas/Outdoor VRV",
-    "floor": "Lantai Lain / VRV",
-    "name": "Outdoor VRV Podium Barat",
-    "code": "VRV-POD",
-    "order": 60
+    "order": 38,
+    "cycle_months": 6,
+    "cycle_days": null,
+    "created_at": "2026-09-28T00:13:38.798Z",
+    "notes": "Cuci Semua Outdoor/Condensor"
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -516,9 +464,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 317",
     "code": "KM-317",
     "notes": "Daikin AC Split Duct",
-    "order": 61,
+    "order": 39,
     "id": "unit_1789964738985_u2gpg",
-    "created_at": "2026-09-21T04:25:38.985Z"
+    "created_at": "2026-09-21T04:25:38.985Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -526,9 +476,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 318",
     "code": "KM-318",
     "notes": "Daikin AC Split Duct",
-    "order": 62,
+    "order": 40,
     "id": "unit_1789964790418_gvm0t",
-    "created_at": "2026-09-21T04:26:30.418Z"
+    "created_at": "2026-09-21T04:26:30.418Z",
+    "cycle_months": null,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -536,9 +488,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 319",
     "code": "KM-319",
     "notes": "Daikin AC Split Duct",
-    "order": 63,
+    "order": 41,
     "id": "unit_1789964850673_n2luh",
-    "created_at": "2026-09-21T04:27:30.673Z"
+    "created_at": "2026-09-21T04:27:30.673Z",
+    "cycle_months": null,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -546,9 +500,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 320",
     "code": "KM-320",
     "notes": "Daikin AC Split Duct",
-    "order": 64,
+    "order": 42,
     "id": "unit_1789964880001_44o8a",
-    "created_at": "2026-09-21T04:28:00.001Z"
+    "created_at": "2026-09-21T04:28:00.001Z",
+    "cycle_months": null,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -556,9 +512,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 321",
     "code": "KM-321",
     "notes": "Daikin AC Split Duct",
-    "order": 65,
+    "order": 43,
     "id": "unit_1789964940345_uj6yq",
-    "created_at": "2026-09-21T04:29:00.345Z"
+    "created_at": "2026-09-21T04:29:00.345Z",
+    "cycle_months": null,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -566,9 +524,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 322",
     "code": "KM-322",
     "notes": "Daikin AC Split Duct",
-    "order": 66,
+    "order": 44,
     "id": "unit_1789964969265_krini",
-    "created_at": "2026-09-21T04:29:29.265Z"
+    "created_at": "2026-09-21T04:29:29.265Z",
+    "cycle_months": null,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -576,9 +536,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 323",
     "code": "KM-323",
     "notes": "Daikin AC Split Duct",
-    "order": 67,
+    "order": 45,
     "id": "unit_1789965012034_wdti4",
-    "created_at": "2026-09-21T04:30:12.034Z"
+    "created_at": "2026-09-21T04:30:12.034Z",
+    "cycle_months": null,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -586,9 +548,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 507",
     "code": "KM-507",
     "notes": "Daikin AC Split Duct",
-    "order": 67,
+    "order": 46,
     "id": "unit_1789970353708_a3may",
-    "created_at": "2026-09-21T05:59:13.708Z"
+    "created_at": "2026-09-21T05:59:13.708Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -596,9 +560,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 508",
     "code": "KM-508",
     "notes": "Daikin AC Split Duct",
-    "order": 68,
+    "order": 47,
     "id": "unit_1789970393588_ujwgy",
-    "created_at": "2026-09-21T05:59:53.588Z"
+    "created_at": "2026-09-21T05:59:53.588Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -606,9 +572,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 509",
     "code": "KM-509",
     "notes": "Daikin AC Split Duct",
-    "order": 69,
+    "order": 48,
     "id": "unit_1789970428900_2zc1h",
-    "created_at": "2026-09-21T06:00:28.900Z"
+    "created_at": "2026-09-21T06:00:28.900Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -616,9 +584,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 510",
     "code": "KM-510",
     "notes": "Daikin AC Split Duct",
-    "order": 70,
+    "order": 49,
     "id": "unit_1789970502468_9ao1j",
-    "created_at": "2026-09-21T06:01:42.468Z"
+    "created_at": "2026-09-21T06:01:42.468Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -626,9 +596,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 511",
     "code": "KM-511",
     "notes": "Daikin AC Split Duct",
-    "order": 71,
+    "order": 50,
     "id": "unit_1789970532652_rkw55",
-    "created_at": "2026-09-21T06:02:12.652Z"
+    "created_at": "2026-09-21T06:02:12.652Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -636,9 +608,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 512",
     "code": "KM-512",
     "notes": "Daikin AC Split Duct",
-    "order": 72,
+    "order": 51,
     "id": "unit_1789970710636_8ydmz",
-    "created_at": "2026-09-21T06:05:10.636Z"
+    "created_at": "2026-09-21T06:05:10.636Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -646,9 +620,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 515",
     "code": "KM-515",
     "notes": "Daikin AC Split Duct",
-    "order": 73,
+    "order": 52,
     "id": "unit_1789970833932_yqrzm",
-    "created_at": "2026-09-21T06:07:13.932Z"
+    "created_at": "2026-09-21T06:07:13.932Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -656,10 +632,10 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 516",
     "code": "KM-516",
     "notes": "Daikin AC Split Duct",
-    "order": 74,
+    "order": 53,
     "id": "unit_1789971045012_k74f4",
     "created_at": "2026-09-21T06:10:45.012Z",
-    "cycle_months": null,
+    "cycle_months": 3,
     "cycle_days": null
   },
   {
@@ -668,10 +644,10 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 517",
     "code": "KM-517",
     "notes": "Daikin AC Split Duct",
-    "order": 75,
+    "order": 54,
     "id": "unit_1789971078876_5cpcz",
     "created_at": "2026-09-21T06:11:18.876Z",
-    "cycle_months": null,
+    "cycle_months": 3,
     "cycle_days": null
   },
   {
@@ -680,10 +656,10 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 518",
     "code": "KM-518",
     "notes": "Daikin AC Split Duct",
-    "order": 76,
+    "order": 55,
     "id": "unit_1789971113244_z03nu",
     "created_at": "2026-09-21T06:11:53.244Z",
-    "cycle_months": null,
+    "cycle_months": 3,
     "cycle_days": null
   },
   {
@@ -692,10 +668,10 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 519",
     "code": "KM-519",
     "notes": "Daikin AC Split Duct",
-    "order": 77,
+    "order": 56,
     "id": "unit_1789971151500_bx8pq",
     "created_at": "2026-09-21T06:12:31.500Z",
-    "cycle_months": null,
+    "cycle_months": 3,
     "cycle_days": null
   },
   {
@@ -704,10 +680,10 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 520",
     "code": "KM-520",
     "notes": "Daikin AC Split Duct",
-    "order": 78,
+    "order": 57,
     "id": "unit_1789971169909_xintm",
     "created_at": "2026-09-21T06:12:49.909Z",
-    "cycle_months": null,
+    "cycle_months": 3,
     "cycle_days": null
   },
   {
@@ -716,10 +692,10 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 521",
     "code": "KM-521",
     "notes": "Daikin AC Split Duct",
-    "order": 79,
+    "order": 58,
     "id": "unit_1789971192477_19di5",
     "created_at": "2026-09-21T06:13:12.477Z",
-    "cycle_months": null,
+    "cycle_months": 3,
     "cycle_days": null
   },
   {
@@ -728,10 +704,10 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 522",
     "code": "KM-522",
     "notes": "Daikin AC Split Duct",
-    "order": 80,
+    "order": 59,
     "id": "unit_1789971228180_zvbuj",
     "created_at": "2026-09-21T06:13:48.180Z",
-    "cycle_months": null,
+    "cycle_months": 3,
     "cycle_days": null
   },
   {
@@ -740,10 +716,10 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 523",
     "code": "KM-523",
     "notes": "Daikin AC Split Duct",
-    "order": 81,
+    "order": 60,
     "id": "unit_1789971258428_vmyag",
     "created_at": "2026-09-21T06:14:18.428Z",
-    "cycle_months": null,
+    "cycle_months": 3,
     "cycle_days": null
   },
   {
@@ -752,10 +728,10 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 525",
     "code": "KM-525",
     "notes": "Daikin AC Split Duct",
-    "order": 82,
+    "order": 61,
     "id": "unit_1789971281884_jtmtq",
     "created_at": "2026-09-21T06:14:41.884Z",
-    "cycle_months": null,
+    "cycle_months": 3,
     "cycle_days": null
   },
   {
@@ -764,7 +740,7 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Koridor Depan 312",
     "code": "KRD-312",
     "notes": "Daikin AC Split Duct",
-    "order": 83,
+    "order": 62,
     "id": "unit_1789971463332_my1lc",
     "created_at": "2026-09-21T06:17:43.332Z",
     "cycle_months": null,
@@ -776,7 +752,7 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Koridor Depan 316",
     "code": "KRD-316",
     "notes": "Daikin AC Split Duct",
-    "order": 84,
+    "order": 63,
     "id": "unit_1789971504108_1pan7",
     "created_at": "2026-09-21T06:18:24.108Z",
     "cycle_months": null,
@@ -785,10 +761,10 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
   {
     "category": "Area Privat / Kamar Hotel",
     "floor": "Lantai 3",
-    "name": "Koridor Depan Lift",
+    "name": "Koridor Depan Lift Lt. 3",
     "code": "KRD-Lift",
     "notes": "Daikin AC Split Duct",
-    "order": 85,
+    "order": 64,
     "id": "unit_1789971562981_tqouv",
     "created_at": "2026-09-21T06:19:22.981Z",
     "cycle_months": null,
@@ -800,10 +776,10 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 526",
     "code": "KM-526",
     "notes": "Daikin AC Split Duct",
-    "order": 86,
+    "order": 65,
     "id": "unit_1789971634884_bdpp6",
     "created_at": "2026-09-21T06:20:34.884Z",
-    "cycle_months": null,
+    "cycle_months": 3,
     "cycle_days": null
   },
   {
@@ -812,10 +788,10 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Koridor Depan 506",
     "code": "KRD-506",
     "notes": "Daikin AC Split Duct",
-    "order": 87,
+    "order": 66,
     "id": "unit_1789971727404_1hidr",
     "created_at": "2026-09-21T06:22:07.404Z",
-    "cycle_months": null,
+    "cycle_months": 6,
     "cycle_days": null
   },
   {
@@ -824,10 +800,10 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Koridor Depan 516",
     "code": "KRD-516",
     "notes": "Daikin AC Split Duct",
-    "order": 88,
+    "order": 67,
     "id": "unit_1789971778940_4whif",
     "created_at": "2026-09-21T06:22:58.940Z",
-    "cycle_months": null,
+    "cycle_months": 6,
     "cycle_days": null
   },
   {
@@ -836,9 +812,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 606",
     "code": "KM-606",
     "notes": "Daikin AC Split Duct",
-    "order": 89,
+    "order": 68,
     "id": "unit_1789972017940_o6p77",
-    "created_at": "2026-09-21T06:26:57.940Z"
+    "created_at": "2026-09-21T06:26:57.940Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -846,9 +824,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 607",
     "code": "KM-607",
     "notes": "Daikin AC Split Duct",
-    "order": 90,
+    "order": 69,
     "id": "unit_1789972037629_vgvt5",
-    "created_at": "2026-09-21T06:27:17.629Z"
+    "created_at": "2026-09-21T06:27:17.629Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -856,9 +836,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 608",
     "code": "KM-608",
     "notes": "Daikin AC Split Duct",
-    "order": 91,
+    "order": 70,
     "id": "unit_1789972069852_lu1xl",
-    "created_at": "2026-09-21T06:27:49.852Z"
+    "created_at": "2026-09-21T06:27:49.852Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -866,9 +848,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 609",
     "code": "KM-609",
     "notes": "Daikin AC Split Duct",
-    "order": 92,
+    "order": 71,
     "id": "unit_1789972092549_lp89k",
-    "created_at": "2026-09-21T06:28:12.549Z"
+    "created_at": "2026-09-21T06:28:12.549Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -876,9 +860,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 610",
     "code": "KM-610",
     "notes": "Daikin AC Split Duct",
-    "order": 93,
+    "order": 72,
     "id": "unit_1789972136572_58t9c",
-    "created_at": "2026-09-21T06:28:56.572Z"
+    "created_at": "2026-09-21T06:28:56.572Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -886,9 +872,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 611",
     "code": "KM-611",
     "notes": "Daikin AC Split Duct",
-    "order": 94,
+    "order": 73,
     "id": "unit_1789972697301_nmhpi",
-    "created_at": "2026-09-21T06:38:17.301Z"
+    "created_at": "2026-09-21T06:38:17.301Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -896,9 +884,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 612",
     "code": "KM-612",
     "notes": "Daikin AC Split Duct",
-    "order": 95,
+    "order": 74,
     "id": "unit_1789972732478_8wccr",
-    "created_at": "2026-09-21T06:38:52.478Z"
+    "created_at": "2026-09-21T06:38:52.478Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -906,9 +896,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 615",
     "code": "KM-615",
     "notes": "Daikin AC Split Duct",
-    "order": 96,
+    "order": 75,
     "id": "unit_1789972761621_ebu66",
-    "created_at": "2026-09-21T06:39:21.621Z"
+    "created_at": "2026-09-21T06:39:21.621Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -916,9 +908,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 616",
     "code": "KM-616",
     "notes": "Daikin AC Split Duct",
-    "order": 97,
+    "order": 76,
     "id": "unit_1789972788717_tlp2d",
-    "created_at": "2026-09-21T06:39:48.717Z"
+    "created_at": "2026-09-21T06:39:48.717Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -926,9 +920,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 617",
     "code": "KM-617",
     "notes": "Daikin AC Split Duct",
-    "order": 98,
+    "order": 77,
     "id": "unit_1789972850597_5fsw1",
-    "created_at": "2026-09-21T06:40:50.597Z"
+    "created_at": "2026-09-21T06:40:50.597Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -936,9 +932,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 618",
     "code": "KM-618",
     "notes": "Daikin AC Split Duct",
-    "order": 99,
+    "order": 78,
     "id": "unit_1789972882309_dzaxk",
-    "created_at": "2026-09-21T06:41:22.309Z"
+    "created_at": "2026-09-21T06:41:22.309Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -946,9 +944,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 619",
     "code": "KM-619",
     "notes": "Daikin AC Split Duct",
-    "order": 100,
+    "order": 79,
     "id": "unit_1789972903101_ykk9d",
-    "created_at": "2026-09-21T06:41:43.101Z"
+    "created_at": "2026-09-21T06:41:43.101Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -956,9 +956,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 620",
     "code": "KM-620",
     "notes": "Daikin AC Split Duct",
-    "order": 102,
+    "order": 80,
     "id": "unit_1789972948757_0a30n",
-    "created_at": "2026-09-21T06:42:28.757Z"
+    "created_at": "2026-09-21T06:42:28.757Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -966,9 +968,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 621",
     "code": "KM-621",
     "notes": "Daikin AC Split Duct",
-    "order": 103,
+    "order": 81,
     "id": "unit_1789972964532_yj3vi",
-    "created_at": "2026-09-21T06:42:44.532Z"
+    "created_at": "2026-09-21T06:42:44.532Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -976,9 +980,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 622",
     "code": "KM-622",
     "notes": "Daikin AC Split Duct",
-    "order": 105,
+    "order": 82,
     "id": "unit_1789973006213_h2o8x",
-    "created_at": "2026-09-21T06:43:26.213Z"
+    "created_at": "2026-09-21T06:43:26.213Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -986,10 +992,10 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 623",
     "code": "KM-623",
     "notes": "Daikin AC Split Duct",
-    "order": 106,
+    "order": 83,
     "id": "unit_1789973029309_w0gai",
     "created_at": "2026-09-21T06:43:49.309Z",
-    "cycle_months": null,
+    "cycle_months": 3,
     "cycle_days": null
   },
   {
@@ -998,10 +1004,10 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 625",
     "code": "KM-625",
     "notes": "Daikin AC Split Duct",
-    "order": 107,
+    "order": 84,
     "id": "unit_1789973050773_oewcn",
     "created_at": "2026-09-21T06:44:10.773Z",
-    "cycle_months": null,
+    "cycle_months": 3,
     "cycle_days": null
   },
   {
@@ -1009,10 +1015,12 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "floor": "Lantai 6",
     "name": "Kamar 626",
     "code": "KM-626",
-    "order": 108,
+    "order": 85,
     "id": "unit_1789973069068_4dfjs",
     "created_at": "2026-09-21T06:44:29.068Z",
-    "notes": "Daikin AC Split Duct"
+    "notes": "Daikin AC Split Duct",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -1020,10 +1028,10 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Koridor Depan 606",
     "code": "KRD-606",
     "notes": "Daikin AC Split Duct",
-    "order": 109,
+    "order": 86,
     "id": "unit_1789973182821_p4jbk",
     "created_at": "2026-09-21T06:46:22.821Z",
-    "cycle_months": null,
+    "cycle_months": 6,
     "cycle_days": null
   },
   {
@@ -1032,22 +1040,22 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Koridor Depan 616",
     "code": "KRD-616",
     "notes": "Daikin AC Split Duct",
-    "order": 110,
+    "order": 87,
     "id": "unit_1789973207597_2501q",
     "created_at": "2026-09-21T06:46:47.597Z",
-    "cycle_months": null,
+    "cycle_months": 6,
     "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
     "floor": "Lantai 6",
-    "name": "Koridor Depan Lift",
+    "name": "Koridor Depan Lift Lt. 6",
     "code": "KRD-Lift",
     "notes": "Daikin AC Split Duct",
-    "order": 111,
+    "order": 88,
     "id": "unit_1789973234821_kl7kq",
     "created_at": "2026-09-21T06:47:14.821Z",
-    "cycle_months": null,
+    "cycle_months": 6,
     "cycle_days": null
   },
   {
@@ -1056,9 +1064,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 706",
     "code": "KM-706",
     "notes": "Daikin AC Split Duct",
-    "order": 112,
+    "order": 89,
     "id": "unit_1789973793229_m65rp",
-    "created_at": "2026-09-21T06:56:33.229Z"
+    "created_at": "2026-09-21T06:56:33.229Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -1066,9 +1076,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 707",
     "code": "KM-707",
     "notes": "Daikin AC Split Duct",
-    "order": 113,
+    "order": 90,
     "id": "unit_1789973833229_uxqii",
-    "created_at": "2026-09-21T06:57:13.229Z"
+    "created_at": "2026-09-21T06:57:13.229Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -1076,9 +1088,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 708",
     "code": "KM-708",
     "notes": "Daikin AC Split Duct",
-    "order": 114,
+    "order": 91,
     "id": "unit_1789973940965_e0uir",
-    "created_at": "2026-09-21T06:59:00.965Z"
+    "created_at": "2026-09-21T06:59:00.965Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -1086,9 +1100,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 709",
     "code": "KM-709",
     "notes": "Daikin AC Split Duct",
-    "order": 115,
+    "order": 92,
     "id": "unit_1789974015678_aovs5",
-    "created_at": "2026-09-21T07:00:15.678Z"
+    "created_at": "2026-09-21T07:00:15.678Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -1096,9 +1112,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 710",
     "code": "KM-710",
     "notes": "Daikin AC Split Duct",
-    "order": 116,
+    "order": 93,
     "id": "unit_1789974053253_9noix",
-    "created_at": "2026-09-21T07:00:53.253Z"
+    "created_at": "2026-09-21T07:00:53.253Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -1106,9 +1124,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 711",
     "code": "KM-711",
     "notes": "Daikin AC Split Duct",
-    "order": 117,
+    "order": 94,
     "id": "unit_1789974173069_qx1ae",
-    "created_at": "2026-09-21T07:02:53.069Z"
+    "created_at": "2026-09-21T07:02:53.069Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -1116,9 +1136,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 712",
     "code": "KM-712",
     "notes": "Daikin AC Split Duct",
-    "order": 118,
+    "order": 95,
     "id": "unit_1789974246349_xuz0t",
-    "created_at": "2026-09-21T07:04:06.349Z"
+    "created_at": "2026-09-21T07:04:06.349Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -1126,9 +1148,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 715",
     "code": "KM-715",
     "notes": "Daikin AC Split Duct",
-    "order": 119,
+    "order": 96,
     "id": "unit_1789974343557_k7ocr",
-    "created_at": "2026-09-21T07:05:43.557Z"
+    "created_at": "2026-09-21T07:05:43.557Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -1136,9 +1160,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 716",
     "code": "KM-716",
     "notes": "Daikin AC Split Duct",
-    "order": 120,
+    "order": 97,
     "id": "unit_1789974654749_mm9fq",
-    "created_at": "2026-09-21T07:10:54.749Z"
+    "created_at": "2026-09-21T07:10:54.749Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -1146,9 +1172,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 717",
     "code": "KM-717",
     "notes": "Daikin AC Split Duct",
-    "order": 121,
+    "order": 98,
     "id": "unit_1789974684102_uat9n",
-    "created_at": "2026-09-21T07:11:24.102Z"
+    "created_at": "2026-09-21T07:11:24.102Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -1156,9 +1184,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 718",
     "code": "KM-718",
     "notes": "Daikin AC Split Duct",
-    "order": 122,
+    "order": 99,
     "id": "unit_1789974710773_pqmfr",
-    "created_at": "2026-09-21T07:11:50.773Z"
+    "created_at": "2026-09-21T07:11:50.773Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -1166,74 +1196,33 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 719",
     "code": "KM-719",
     "notes": "Daikin AC Split Duct",
-    "order": 123,
+    "order": 100,
     "id": "unit_1789974839918_w6lgf",
-    "created_at": "2026-09-21T07:13:59.918Z"
-  },
-  {
-    "id": "unit_b_lvmdp",
-    "category": "Ruang Teknis & Utilitas",
-    "floor": "Basement",
-    "name": "Ruang Panel Utama LVMDP (Basement)",
-    "code": "EQ-LVMDP",
-    "order": 1
-  },
-  {
-    "id": "unit_b_genset",
-    "category": "Ruang Teknis & Utilitas",
-    "floor": "Basement",
-    "name": "Ruang Genset & Solar (Basement)",
-    "code": "EQ-GEN",
-    "order": 2
-  },
-  {
-    "id": "unit_b_laundry",
-    "category": "Ruang Teknis & Utilitas",
-    "floor": "Basement",
-    "name": "Ruang Laundry & Linen (Basement)",
-    "code": "EQ-LND",
-    "order": 3
+    "created_at": "2026-09-21T07:13:59.918Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "id": "unit_b_loading",
     "category": "Area Operasional & Servis",
     "floor": "Basement",
     "name": "Office Security (Basement)",
-    "code": "OFF-B",
-    "order": 4,
-    "notes": "Split 2 PK"
-  },
-  {
-    "id": "unit_b_pompa",
-    "category": "Ruang Teknis & Utilitas",
-    "floor": "Basement",
-    "name": "Ruang Pompa & Chiller (Basement)",
-    "code": "EQ-PMP",
-    "order": 5
-  },
-  {
-    "id": "unit_b_stp",
-    "category": "Ruang Teknis & Utilitas",
-    "floor": "Basement",
-    "name": "Ruang STP & GWT (Basement)",
-    "code": "EQ-STP",
-    "order": 6
-  },
-  {
-    "id": "unit_b_fan",
-    "category": "Ruang Teknis & Utilitas",
-    "floor": "Basement",
-    "name": "Ruang Exhaust Fan Parkir (Basement)",
-    "code": "EQ-EXH",
-    "order": 7
+    "code": "OFF-SCRT&CCTV",
+    "order": 101,
+    "notes": "Split 2 PK",
+    "cycle_months": 3,
+    "cycle_days": null,
+    "created_at": "2026-09-26T14:49:33.257Z"
   },
   {
     "id": "unit_l1_lobby",
-    "category": "Ruang Teknis & Utilitas",
+    "category": "Area Publik & Komersial",
     "floor": "Lobby / Lantai 1",
     "name": "Lobby & Reception Area",
     "code": "LOB-01",
-    "order": 8
+    "order": 102,
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "id": "unit_l1_resto",
@@ -1241,65 +1230,9 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "floor": "Lobby / Lantai 1",
     "name": "Restoran / Coffee Shop",
     "code": "RST-01",
-    "order": 9,
-    "notes": "Coffee Shop"
-  },
-  {
-    "id": "unit_l1_fo",
-    "category": "Area Operasional & Servis",
-    "floor": "Lobby / Lantai 1",
-    "name": "Office Front Desk & Back Office",
-    "code": "OFF-FO",
-    "order": 10
-  },
-  {
-    "id": "unit_l2_ballroom",
-    "category": "Area Publik & Komersial",
-    "floor": "Lantai 2",
-    "name": "Ballroom (Lantai 2)",
-    "code": "BLR-L2",
-    "order": 11,
-    "cycle_months": null,
-    "cycle_days": null
-  },
-  {
-    "id": "unit_l2_meeting",
-    "category": "Area Publik & Komersial",
-    "floor": "Lantai 2",
-    "name": "Ruang Meeting Tulip (Lantai 2)",
-    "code": "MR-TLP",
-    "order": 12
-  },
-  {
-    "id": "unit_l2_office",
-    "category": "Area Operasional & Servis",
-    "floor": "Lantai 2",
-    "name": "Office Management & Sales (Lantai 2)",
-    "code": "OFF-L2",
-    "order": 13
-  },
-  {
-    "category": "Ruang Teknis & Utilitas",
-    "floor": "Lobby / Lantai 1",
-    "name": "Ruang Panel Utama LVMDP",
-    "code": "EQ-LVMDP 1",
-    "notes": "Split 2 PK A",
-    "order": 138,
-    "id": "unit_1789975453999_m9fbd",
-    "created_at": "2026-09-21T07:24:13.999Z",
-    "cycle_months": null,
-    "cycle_days": null
-  },
-  {
-    "category": "Ruang Teknis & Utilitas",
-    "floor": "Lobby / Lantai 1",
-    "name": "Ruang Panel Utama LVMDP",
-    "code": "EQ-LVMDP 2",
-    "notes": "Split B Atas Pintu",
-    "order": 139,
-    "id": "unit_1789975478038_m9kdo",
-    "created_at": "2026-09-21T07:24:38.038Z",
-    "cycle_months": null,
+    "order": 103,
+    "notes": "Coffee Shop",
+    "cycle_months": 3,
     "cycle_days": null
   },
   {
@@ -1308,9 +1241,61 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Restoran / Coffee Shop",
     "code": "RST-02",
     "notes": "Depan Kaca",
-    "order": 139,
+    "order": 104,
     "id": "unit_1790041097855_itva6",
-    "created_at": "2026-09-22T01:38:17.855Z"
+    "created_at": "2026-09-22T01:38:17.855Z",
+    "cycle_months": 3,
+    "cycle_days": null
+  },
+  {
+    "id": "unit_l2_meeting",
+    "category": "Area Publik & Komersial",
+    "floor": "Lantai 2",
+    "name": "Ruang Meeting TH1 A",
+    "code": "MR-TH1A",
+    "order": 105,
+    "cycle_months": 6,
+    "cycle_days": null
+  },
+  {
+    "category": "Area Publik & Komersial",
+    "floor": "Lantai 2",
+    "name": "Ruang Meeting TH1 B",
+    "code": "MR-TH1AB",
+    "cycle_months": 6,
+    "order": 106,
+    "id": "unit_1790426609385_37gsq",
+    "created_at": "2026-09-26T12:43:29.385Z"
+  },
+  {
+    "category": "Area Publik & Komersial",
+    "floor": "Lantai 2",
+    "name": "Ruang Meeting TH2 A",
+    "code": "MR-TH2A",
+    "cycle_months": 6,
+    "order": 107,
+    "id": "unit_1790426658594_so7t7",
+    "created_at": "2026-09-26T12:44:18.594Z"
+  },
+  {
+    "category": "Area Operasional & Servis",
+    "floor": "Lobby / Lantai 1",
+    "name": "Office ENG (dalam)",
+    "code": "OFF-DLM",
+    "cycle_months": 6,
+    "order": 108,
+    "id": "unit_1790431448484_5pokr",
+    "created_at": "2026-09-26T14:04:08.484Z"
+  },
+  {
+    "category": "Area Operasional & Servis",
+    "floor": "Lobby / Lantai 1",
+    "name": "Office ENG ADM (Luar)",
+    "code": "OFF-ADM",
+    "cycle_months": 6,
+    "order": 109,
+    "id": "unit_1790431509048_4k53q",
+    "created_at": "2026-09-26T14:05:09.048Z"
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -1318,9 +1303,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 720",
     "code": "KM-720",
     "notes": "Daikin AC Split Duct",
-    "order": 139,
+    "order": 110,
     "id": "unit_1790046637129_ncall",
-    "created_at": "2026-09-22T03:10:37.129Z"
+    "created_at": "2026-09-22T03:10:37.129Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -1328,9 +1315,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 721",
     "code": "KM-721",
     "notes": "Daikin AC Split Duct",
-    "order": 140,
+    "order": 111,
     "id": "unit_1790046687385_rqe5y",
-    "created_at": "2026-09-22T03:11:27.385Z"
+    "created_at": "2026-09-22T03:11:27.385Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -1338,9 +1327,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 722",
     "code": "KM-722",
     "notes": "Daikin AC Split Duct",
-    "order": 141,
+    "order": 112,
     "id": "unit_1790046706961_3az8v",
-    "created_at": "2026-09-22T03:11:46.961Z"
+    "created_at": "2026-09-22T03:11:46.961Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -1348,9 +1339,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 723",
     "code": "KM-723",
     "notes": "Daikin AC Split Duct",
-    "order": 142,
+    "order": 113,
     "id": "unit_1790046726353_del1b",
-    "created_at": "2026-09-22T03:12:06.353Z"
+    "created_at": "2026-09-22T03:12:06.353Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -1358,9 +1351,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 725",
     "code": "KM-725",
     "notes": "Daikin AC Split Duct",
-    "order": 143,
+    "order": 114,
     "id": "unit_1790046744410_0mtr3",
-    "created_at": "2026-09-22T03:12:24.410Z"
+    "created_at": "2026-09-22T03:12:24.410Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -1368,9 +1363,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 726",
     "code": "KM-726",
     "notes": "Daikin AC Split Duct",
-    "order": 144,
+    "order": 115,
     "id": "unit_1790046764138_ahtkn",
-    "created_at": "2026-09-22T03:12:44.138Z"
+    "created_at": "2026-09-22T03:12:44.138Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -1378,9 +1375,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Koridor Depan 706",
     "code": "KRD-706",
     "notes": "Daikin AC Split Duct",
-    "order": 145,
+    "order": 116,
     "id": "unit_1790046866969_z410q",
-    "created_at": "2026-09-22T03:14:26.969Z"
+    "created_at": "2026-09-22T03:14:26.969Z",
+    "cycle_months": 6,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -1388,19 +1387,23 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Koridor Depan 716",
     "code": "KRD-716",
     "notes": "Daikin AC Split Duct",
-    "order": 146,
+    "order": 117,
     "id": "unit_1790046890169_q2125",
-    "created_at": "2026-09-22T03:14:50.169Z"
+    "created_at": "2026-09-22T03:14:50.169Z",
+    "cycle_months": 6,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
     "floor": "Lantai 7",
-    "name": "Koridor Depan Lift",
+    "name": "Koridor Depan Lift Lt. 7",
     "code": "KRD-Lift",
     "notes": "Daikin AC Split Duct",
-    "order": 147,
+    "order": 118,
     "id": "unit_1790046918889_wj2j3",
-    "created_at": "2026-09-22T03:15:18.889Z"
+    "created_at": "2026-09-22T03:15:18.889Z",
+    "cycle_months": 6,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -1408,9 +1411,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 805",
     "code": "KM-805",
     "notes": "Daikin AC Split Duct",
-    "order": 146,
+    "order": 119,
     "id": "unit_1790047333385_0vjn0",
-    "created_at": "2026-09-22T03:22:13.385Z"
+    "created_at": "2026-09-22T03:22:13.385Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -1418,9 +1423,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 806",
     "code": "KM-806",
     "notes": "Daikin AC Split Duct",
-    "order": 147,
+    "order": 120,
     "id": "unit_1790047385073_mx8nh",
-    "created_at": "2026-09-22T03:23:05.073Z"
+    "created_at": "2026-09-22T03:23:05.073Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -1428,9 +1435,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 807",
     "code": "KM-807",
     "notes": "Daikin AC Split Duct",
-    "order": 148,
+    "order": 121,
     "id": "unit_1790047407097_x73xa",
-    "created_at": "2026-09-22T03:23:27.097Z"
+    "created_at": "2026-09-22T03:23:27.097Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -1438,9 +1447,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 808",
     "code": "KM-808",
     "notes": "Daikin AC Split Duct",
-    "order": 149,
+    "order": 122,
     "id": "unit_1790047454865_vi62i",
-    "created_at": "2026-09-22T03:24:14.865Z"
+    "created_at": "2026-09-22T03:24:14.865Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -1448,9 +1459,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 809",
     "code": "KM-809",
     "notes": "Daikin AC Split Duct",
-    "order": 150,
+    "order": 123,
     "id": "unit_1790047488163_vnckw",
-    "created_at": "2026-09-22T03:24:48.163Z"
+    "created_at": "2026-09-22T03:24:48.163Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -1458,9 +1471,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 810",
     "code": "KM-810",
     "notes": "Daikin AC Split Duct",
-    "order": 151,
+    "order": 124,
     "id": "unit_1790047567321_e7syn",
-    "created_at": "2026-09-22T03:26:07.321Z"
+    "created_at": "2026-09-22T03:26:07.321Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -1468,9 +1483,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 811",
     "code": "KM-811",
     "notes": "Daikin AC Split Duct",
-    "order": 152,
+    "order": 125,
     "id": "unit_1790047621730_1da1f",
-    "created_at": "2026-09-22T03:27:01.730Z"
+    "created_at": "2026-09-22T03:27:01.730Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -1478,9 +1495,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 812",
     "code": "KM-812",
     "notes": "Daikin AC Split Duct",
-    "order": 153,
+    "order": 126,
     "id": "unit_1790047653970_tzide",
-    "created_at": "2026-09-22T03:27:33.970Z"
+    "created_at": "2026-09-22T03:27:33.970Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -1488,9 +1507,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 815",
     "code": "KM-815",
     "notes": "Daikin AC Split Duct",
-    "order": 154,
+    "order": 127,
     "id": "unit_1790047682450_v1zz2",
-    "created_at": "2026-09-22T03:28:02.450Z"
+    "created_at": "2026-09-22T03:28:02.450Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -1498,9 +1519,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 816",
     "code": "KM-816",
     "notes": "Daikin AC Split Duct",
-    "order": 155,
+    "order": 128,
     "id": "unit_1790047704785_a8ab6",
-    "created_at": "2026-09-22T03:28:24.785Z"
+    "created_at": "2026-09-22T03:28:24.785Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -1508,10 +1531,10 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 817",
     "code": "KM-817",
     "notes": "Daikin AC Split Duct",
-    "order": 156,
+    "order": 129,
     "id": "unit_1790047716858_o4nfb",
     "created_at": "2026-09-22T03:28:36.858Z",
-    "cycle_months": null,
+    "cycle_months": 3,
     "cycle_days": null
   },
   {
@@ -1520,9 +1543,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 818",
     "code": "KM-818",
     "notes": "Daikin AC Split Duct",
-    "order": 157,
+    "order": 130,
     "id": "unit_1790047798769_qk02q",
-    "created_at": "2026-09-22T03:29:58.770Z"
+    "created_at": "2026-09-22T03:29:58.770Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -1530,9 +1555,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 819",
     "code": "KM-819",
     "notes": "Daikin AC Split Duct",
-    "order": 158,
+    "order": 131,
     "id": "unit_1790047822866_0qt8m",
-    "created_at": "2026-09-22T03:30:22.866Z"
+    "created_at": "2026-09-22T03:30:22.866Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -1540,9 +1567,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 820",
     "code": "KM-820",
     "notes": "Daikin AC Split Duct",
-    "order": 159,
+    "order": 132,
     "id": "unit_1790047850578_mruq6",
-    "created_at": "2026-09-22T03:30:50.578Z"
+    "created_at": "2026-09-22T03:30:50.578Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -1550,9 +1579,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 821",
     "code": "KM-821",
     "notes": "Daikin AC Split Duct",
-    "order": 160,
+    "order": 133,
     "id": "unit_1790047891482_8xapk",
-    "created_at": "2026-09-22T03:31:31.482Z"
+    "created_at": "2026-09-22T03:31:31.482Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -1560,9 +1591,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 822",
     "code": "KM-822",
     "notes": "Daikin AC Split Duct",
-    "order": 161,
+    "order": 134,
     "id": "unit_1790047911346_omly3",
-    "created_at": "2026-09-22T03:31:51.346Z"
+    "created_at": "2026-09-22T03:31:51.346Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -1570,9 +1603,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 823",
     "code": "KM-823",
     "notes": "Daikin AC Split Duct",
-    "order": 162,
+    "order": 135,
     "id": "unit_1790047930866_1efw4",
-    "created_at": "2026-09-22T03:32:10.866Z"
+    "created_at": "2026-09-22T03:32:10.866Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -1580,9 +1615,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 825",
     "code": "KM-825",
     "notes": "Daikin AC Split Duct",
-    "order": 163,
+    "order": 136,
     "id": "unit_1790047953314_t0m23",
-    "created_at": "2026-09-22T03:32:33.314Z"
+    "created_at": "2026-09-22T03:32:33.314Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -1590,9 +1627,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 826",
     "code": "KM-826",
     "notes": "Daikin AC Split Duct",
-    "order": 164,
+    "order": 137,
     "id": "unit_1790047977547_ufobq",
-    "created_at": "2026-09-22T03:32:57.547Z"
+    "created_at": "2026-09-22T03:32:57.547Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -1600,9 +1639,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Koridor Depan 806",
     "code": "KRD-806",
     "notes": "Daikin AC Split Duct",
-    "order": 165,
+    "order": 138,
     "id": "unit_1790048180818_u90oh",
-    "created_at": "2026-09-22T03:36:20.818Z"
+    "created_at": "2026-09-22T03:36:20.818Z",
+    "cycle_months": 6,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -1610,19 +1651,23 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Koridor Depan 816",
     "code": "KRD-816",
     "notes": "Daikin AC Split Duct",
-    "order": 166,
+    "order": 139,
     "id": "unit_1790048219938_sk9r0",
-    "created_at": "2026-09-22T03:36:59.938Z"
+    "created_at": "2026-09-22T03:36:59.938Z",
+    "cycle_months": 6,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
     "floor": "Lantai 8",
-    "name": "Koridor Depan Lift",
+    "name": "Koridor Depan Lift Lt. 8",
     "code": "KRD-Lift",
     "notes": "Daikin AC Split Duct",
-    "order": 167,
+    "order": 140,
     "id": "unit_1790048254554_acl68",
-    "created_at": "2026-09-22T03:37:34.554Z"
+    "created_at": "2026-09-22T03:37:34.554Z",
+    "cycle_months": 6,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -1630,9 +1675,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 905",
     "code": "KM-905",
     "notes": "Daikin AC Split Duct",
-    "order": 168,
+    "order": 141,
     "id": "unit_1790048968042_8x2t9",
-    "created_at": "2026-09-22T03:49:28.042Z"
+    "created_at": "2026-09-22T03:49:28.042Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -1640,9 +1687,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 906",
     "code": "KM-906",
     "notes": "Daikin AC Split Duct",
-    "order": 169,
+    "order": 142,
     "id": "unit_1790049010210_vi9k6",
-    "created_at": "2026-09-22T03:50:10.210Z"
+    "created_at": "2026-09-22T03:50:10.210Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -1650,10 +1699,10 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 908",
     "code": "KM-908",
     "notes": "Daikin AC Split Duct",
-    "order": 170,
+    "order": 143,
     "id": "unit_1790049045666_9q2wh",
     "created_at": "2026-09-22T03:50:45.666Z",
-    "cycle_months": null,
+    "cycle_months": 3,
     "cycle_days": null
   },
   {
@@ -1662,9 +1711,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 909",
     "code": "KM-909",
     "notes": "Daikin AC Split Duct",
-    "order": 171,
+    "order": 144,
     "id": "unit_1790049110746_gt6qg",
-    "created_at": "2026-09-22T03:51:50.746Z"
+    "created_at": "2026-09-22T03:51:50.746Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -1672,9 +1723,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 910",
     "code": "KM-910",
     "notes": "Daikin AC Split Duct",
-    "order": 172,
+    "order": 145,
     "id": "unit_1790049140666_0vmb9",
-    "created_at": "2026-09-22T03:52:20.666Z"
+    "created_at": "2026-09-22T03:52:20.666Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -1682,9 +1735,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 911",
     "code": "KM-911",
     "notes": "Daikin AC Split Duct",
-    "order": 173,
+    "order": 146,
     "id": "unit_1790049160290_b6em1",
-    "created_at": "2026-09-22T03:52:40.290Z"
+    "created_at": "2026-09-22T03:52:40.290Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -1692,10 +1747,10 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 912",
     "code": "KM-912",
     "notes": "Daikin AC Split Duct",
-    "order": 174,
+    "order": 147,
     "id": "unit_1790049182074_2qhjo",
     "created_at": "2026-09-22T03:53:02.074Z",
-    "cycle_months": null,
+    "cycle_months": 3,
     "cycle_days": null
   },
   {
@@ -1704,9 +1759,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 915",
     "code": "KM-915",
     "notes": "Daikin AC Split Duct",
-    "order": 175,
+    "order": 148,
     "id": "unit_1790049242715_z781i",
-    "created_at": "2026-09-22T03:54:02.715Z"
+    "created_at": "2026-09-22T03:54:02.715Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -1714,9 +1771,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 916",
     "code": "KM-916",
     "notes": "Daikin AC Split Duct",
-    "order": 176,
+    "order": 149,
     "id": "unit_1790049274762_a9i3g",
-    "created_at": "2026-09-22T03:54:34.762Z"
+    "created_at": "2026-09-22T03:54:34.762Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -1724,9 +1783,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 917",
     "code": "KM-917",
     "notes": "Daikin AC Split Duct",
-    "order": 177,
+    "order": 150,
     "id": "unit_1790049292666_yclq4",
-    "created_at": "2026-09-22T03:54:52.666Z"
+    "created_at": "2026-09-22T03:54:52.666Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -1734,9 +1795,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 918",
     "code": "KM-918",
     "notes": "Daikin AC Split Duct",
-    "order": 178,
+    "order": 151,
     "id": "unit_1790049311250_x1987",
-    "created_at": "2026-09-22T03:55:11.250Z"
+    "created_at": "2026-09-22T03:55:11.250Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -1744,9 +1807,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 919",
     "code": "KM-919",
     "notes": "Daikin AC Split Duct",
-    "order": 180,
+    "order": 152,
     "id": "unit_1790049384163_82f5r",
-    "created_at": "2026-09-22T03:56:24.163Z"
+    "created_at": "2026-09-22T03:56:24.163Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -1754,9 +1819,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 920",
     "code": "KM-920",
     "notes": "Daikin AC Split Duct",
-    "order": 181,
+    "order": 153,
     "id": "unit_1790049415514_gjj5c",
-    "created_at": "2026-09-22T03:56:55.514Z"
+    "created_at": "2026-09-22T03:56:55.514Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -1764,9 +1831,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 921",
     "code": "KM-921",
     "notes": "Daikin AC Split Duct",
-    "order": 182,
+    "order": 154,
     "id": "unit_1790049448690_katgr",
-    "created_at": "2026-09-22T03:57:28.690Z"
+    "created_at": "2026-09-22T03:57:28.690Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -1774,9 +1843,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 922",
     "code": "KM-922",
     "notes": "Daikin AC Split Duct",
-    "order": 183,
+    "order": 155,
     "id": "unit_1790049465531_w6tpf",
-    "created_at": "2026-09-22T03:57:45.531Z"
+    "created_at": "2026-09-22T03:57:45.531Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -1784,9 +1855,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 923",
     "code": "KM-923",
     "notes": "Daikin AC Split Duct",
-    "order": 184,
+    "order": 156,
     "id": "unit_1790049485706_tsxre",
-    "created_at": "2026-09-22T03:58:05.706Z"
+    "created_at": "2026-09-22T03:58:05.706Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -1794,9 +1867,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 925",
     "code": "KM-925",
     "notes": "Daikin AC Split Duct",
-    "order": 185,
+    "order": 157,
     "id": "unit_1790049506810_2vu4a",
-    "created_at": "2026-09-22T03:58:26.810Z"
+    "created_at": "2026-09-22T03:58:26.810Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -1804,9 +1879,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 926",
     "code": "KM-926",
     "notes": "Daikin AC Split Duct",
-    "order": 186,
+    "order": 158,
     "id": "unit_1790049526514_gd2ty",
-    "created_at": "2026-09-22T03:58:46.514Z"
+    "created_at": "2026-09-22T03:58:46.514Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -1814,9 +1891,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Koridor Depan 906",
     "code": "KRD-906",
     "notes": "Daikin AC Split Duct",
-    "order": 187,
+    "order": 159,
     "id": "unit_1790049626370_pb8uo",
-    "created_at": "2026-09-22T04:00:26.370Z"
+    "created_at": "2026-09-22T04:00:26.370Z",
+    "cycle_months": 6,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -1824,19 +1903,23 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Koridor Depan 916",
     "code": "KRD-916",
     "notes": "Daikin AC Split Duct",
-    "order": 188,
+    "order": 160,
     "id": "unit_1790049667938_dbzjs",
-    "created_at": "2026-09-22T04:01:07.938Z"
+    "created_at": "2026-09-22T04:01:07.938Z",
+    "cycle_months": 6,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
     "floor": "Lantai 9",
-    "name": "Koridor Depan Lift",
+    "name": "Koridor Depan Lift Lt. 9",
     "code": "KRD-Lift",
     "notes": "Daikin AC Split Duct",
-    "order": 189,
+    "order": 161,
     "id": "unit_1790049706682_5se6b",
-    "created_at": "2026-09-22T04:01:46.682Z"
+    "created_at": "2026-09-22T04:01:46.682Z",
+    "cycle_months": 6,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -1844,9 +1927,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 1005",
     "code": "KM-1005",
     "notes": "Daikin AC Split Duct",
-    "order": 189,
+    "order": 162,
     "id": "unit_1790051816515_ncwhi",
-    "created_at": "2026-09-22T04:36:56.515Z"
+    "created_at": "2026-09-22T04:36:56.515Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -1854,9 +1939,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 1006",
     "code": "KM-1006",
     "notes": "Daikin AC Split Duct",
-    "order": 190,
+    "order": 163,
     "id": "unit_1790051834411_692ag",
-    "created_at": "2026-09-22T04:37:14.411Z"
+    "created_at": "2026-09-22T04:37:14.411Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -1864,9 +1951,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 1008",
     "code": "KM-1008",
     "notes": "Daikin AC Split Duct",
-    "order": 191,
+    "order": 164,
     "id": "unit_1790051854731_9yh99",
-    "created_at": "2026-09-22T04:37:34.731Z"
+    "created_at": "2026-09-22T04:37:34.731Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -1874,9 +1963,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 1009",
     "code": "KM-1009",
     "notes": "Daikin AC Split Duct",
-    "order": 192,
+    "order": 165,
     "id": "unit_1790051882939_89gz2",
-    "created_at": "2026-09-22T04:38:02.939Z"
+    "created_at": "2026-09-22T04:38:02.939Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -1884,9 +1975,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 1010",
     "code": "KM-1010",
     "notes": "Daikin AC Split Duct",
-    "order": 193,
+    "order": 166,
     "id": "unit_1790051908371_4eqyd",
-    "created_at": "2026-09-22T04:38:28.371Z"
+    "created_at": "2026-09-22T04:38:28.371Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -1894,9 +1987,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 1011",
     "code": "KM-1011",
     "notes": "Daikin AC Split Duct",
-    "order": 194,
+    "order": 167,
     "id": "unit_1790051925443_3au2v",
-    "created_at": "2026-09-22T04:38:45.443Z"
+    "created_at": "2026-09-22T04:38:45.443Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -1904,9 +1999,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 1012",
     "code": "KM-1012",
     "notes": "Daikin AC Split Duct",
-    "order": 195,
+    "order": 168,
     "id": "unit_1790051938555_n9zp6",
-    "created_at": "2026-09-22T04:38:58.555Z"
+    "created_at": "2026-09-22T04:38:58.555Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -1914,9 +2011,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 1015",
     "code": "KM-1015",
     "notes": "Daikin AC Split Duct",
-    "order": 196,
+    "order": 169,
     "id": "unit_1790051953051_geuen",
-    "created_at": "2026-09-22T04:39:13.051Z"
+    "created_at": "2026-09-22T04:39:13.051Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -1924,9 +2023,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 1016",
     "code": "KM-1016",
     "notes": "Daikin AC Split Duct",
-    "order": 197,
+    "order": 170,
     "id": "unit_1790051973235_jrb82",
-    "created_at": "2026-09-22T04:39:33.235Z"
+    "created_at": "2026-09-22T04:39:33.235Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -1934,9 +2035,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 1017",
     "code": "KM-1017",
     "notes": "Daikin AC Split Duct",
-    "order": 198,
+    "order": 171,
     "id": "unit_1790052002484_4vkr5",
-    "created_at": "2026-09-22T04:40:02.484Z"
+    "created_at": "2026-09-22T04:40:02.484Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -1944,9 +2047,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 1018",
     "code": "KM-1018",
     "notes": "Daikin AC Split Duct",
-    "order": 199,
+    "order": 172,
     "id": "unit_1790053935813_ae3jp",
-    "created_at": "2026-09-22T05:12:15.813Z"
+    "created_at": "2026-09-22T05:12:15.813Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -1954,9 +2059,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 1019",
     "code": "KM-1019",
     "notes": "Daikin AC Split Duct",
-    "order": 200,
+    "order": 173,
     "id": "unit_1790053954805_2gyh2",
-    "created_at": "2026-09-22T05:12:34.805Z"
+    "created_at": "2026-09-22T05:12:34.805Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -1964,9 +2071,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 1020",
     "code": "KM-1020",
     "notes": "Daikin AC Split Duct",
-    "order": 201,
+    "order": 174,
     "id": "unit_1790053981773_7lb71",
-    "created_at": "2026-09-22T05:13:01.773Z"
+    "created_at": "2026-09-22T05:13:01.773Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -1974,9 +2083,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 1021",
     "code": "KM-1021",
     "notes": "Daikin AC Split Duct",
-    "order": 202,
+    "order": 175,
     "id": "unit_1790054023260_cad3y",
-    "created_at": "2026-09-22T05:13:43.260Z"
+    "created_at": "2026-09-22T05:13:43.260Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -1984,9 +2095,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 1022",
     "code": "KM-1022",
     "notes": "Daikin AC Split Duct",
-    "order": 203,
+    "order": 176,
     "id": "unit_1790054038476_sa11x",
-    "created_at": "2026-09-22T05:13:58.476Z"
+    "created_at": "2026-09-22T05:13:58.476Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -1994,9 +2107,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 1023",
     "code": "KM-1023",
     "notes": "Daikin AC Split Duct",
-    "order": 204,
+    "order": 177,
     "id": "unit_1790054055101_70lsd",
-    "created_at": "2026-09-22T05:14:15.101Z"
+    "created_at": "2026-09-22T05:14:15.101Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -2004,9 +2119,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 1025",
     "code": "KM-1025",
     "notes": "Daikin AC Split Duct",
-    "order": 205,
+    "order": 178,
     "id": "unit_1790054076412_6zf7v",
-    "created_at": "2026-09-22T05:14:36.412Z"
+    "created_at": "2026-09-22T05:14:36.412Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -2014,9 +2131,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 1026",
     "code": "KM-1026",
     "notes": "Daikin AC Split Duct",
-    "order": 206,
+    "order": 179,
     "id": "unit_1790054099205_n6u1f",
-    "created_at": "2026-09-22T05:14:59.205Z"
+    "created_at": "2026-09-22T05:14:59.205Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -2024,9 +2143,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Koridor Depan 1006",
     "code": "KDR-1006",
     "notes": "Daikin AC Split Duct",
-    "order": 207,
+    "order": 180,
     "id": "unit_1790054171260_q4mf4",
-    "created_at": "2026-09-22T05:16:11.260Z"
+    "created_at": "2026-09-22T05:16:11.260Z",
+    "cycle_months": 6,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -2034,19 +2155,23 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Koridor Depan 1016",
     "code": "KDR-1016",
     "notes": "Daikin AC Split Duct",
-    "order": 208,
+    "order": 181,
     "id": "unit_1790054194292_of59l",
-    "created_at": "2026-09-22T05:16:34.292Z"
+    "created_at": "2026-09-22T05:16:34.292Z",
+    "cycle_months": 6,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
     "floor": "Lantai 10",
-    "name": "Koridor Depan Lift",
+    "name": "Koridor Depan Lift Lt. 10",
     "code": "KDR-Lift",
     "notes": "Daikin AC Split Duct",
-    "order": 209,
+    "order": 182,
     "id": "unit_1790054229284_y5c4d",
-    "created_at": "2026-09-22T05:17:09.284Z"
+    "created_at": "2026-09-22T05:17:09.284Z",
+    "cycle_months": 6,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -2054,9 +2179,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 1103",
     "code": "KM-1103",
     "notes": "Daikin AC Split Duct",
-    "order": 210,
+    "order": 183,
     "id": "unit_1790054340533_geeun",
-    "created_at": "2026-09-22T05:19:00.533Z"
+    "created_at": "2026-09-22T05:19:00.533Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -2064,9 +2191,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 1105",
     "code": "KM-1105",
     "notes": "Daikin AC Split Duct",
-    "order": 211,
+    "order": 184,
     "id": "unit_1790054367868_5hew2",
-    "created_at": "2026-09-22T05:19:27.868Z"
+    "created_at": "2026-09-22T05:19:27.868Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -2074,9 +2203,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 1106",
     "code": "KM-1106",
     "notes": "Daikin AC Split Duct",
-    "order": 212,
+    "order": 185,
     "id": "unit_1790054385380_sbr2h",
-    "created_at": "2026-09-22T05:19:45.380Z"
+    "created_at": "2026-09-22T05:19:45.380Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -2084,9 +2215,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 1108",
     "code": "KM-1108",
     "notes": "Daikin AC Split Duct",
-    "order": 213,
+    "order": 186,
     "id": "unit_1790054416373_64g8i",
-    "created_at": "2026-09-22T05:20:16.373Z"
+    "created_at": "2026-09-22T05:20:16.373Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -2094,9 +2227,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 1109",
     "code": "KM-1109",
     "notes": "Daikin AC Split Duct",
-    "order": 214,
+    "order": 187,
     "id": "unit_1790054431852_iuqw4",
-    "created_at": "2026-09-22T05:20:31.852Z"
+    "created_at": "2026-09-22T05:20:31.852Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -2104,9 +2239,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 1110",
     "code": "KM-1110",
     "notes": "Daikin AC Split Duct",
-    "order": 215,
+    "order": 188,
     "id": "unit_1790054461724_v16ma",
-    "created_at": "2026-09-22T05:21:01.724Z"
+    "created_at": "2026-09-22T05:21:01.724Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -2114,9 +2251,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 1111",
     "code": "KM-1111",
     "notes": "Daikin AC Split Duct",
-    "order": 216,
+    "order": 189,
     "id": "unit_1790054478860_dgj8f",
-    "created_at": "2026-09-22T05:21:18.860Z"
+    "created_at": "2026-09-22T05:21:18.860Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -2124,10 +2263,10 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 1112",
     "code": "KM-1112",
     "notes": "Daikin AC Split Duct",
-    "order": 217,
+    "order": 190,
     "id": "unit_1790054494660_313hp",
     "created_at": "2026-09-22T05:21:34.660Z",
-    "cycle_months": null,
+    "cycle_months": 3,
     "cycle_days": null
   },
   {
@@ -2136,9 +2275,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 1115",
     "code": "KM-1115",
     "notes": "Daikin AC Split Duct",
-    "order": 218,
+    "order": 191,
     "id": "unit_1790054538916_q9m76",
-    "created_at": "2026-09-22T05:22:18.916Z"
+    "created_at": "2026-09-22T05:22:18.916Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -2146,9 +2287,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 1116",
     "code": "KM-1116",
     "notes": "Daikin AC Split Duct",
-    "order": 219,
+    "order": 192,
     "id": "unit_1790054556588_jw77m",
-    "created_at": "2026-09-22T05:22:36.588Z"
+    "created_at": "2026-09-22T05:22:36.588Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -2156,9 +2299,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 1117",
     "code": "KM-1117",
     "notes": "Daikin AC Split Duct",
-    "order": 220,
+    "order": 193,
     "id": "unit_1790054570596_ihidr",
-    "created_at": "2026-09-22T05:22:50.596Z"
+    "created_at": "2026-09-22T05:22:50.596Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -2166,9 +2311,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 1118",
     "code": "KM-1118",
     "notes": "Daikin AC Split Duct",
-    "order": 221,
+    "order": 194,
     "id": "unit_1790054597541_6assw",
-    "created_at": "2026-09-22T05:23:17.541Z"
+    "created_at": "2026-09-22T05:23:17.541Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -2176,9 +2323,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 1119",
     "code": "KM-1119",
     "notes": "Daikin AC Split Duct",
-    "order": 222,
+    "order": 195,
     "id": "unit_1790054627173_gqixq",
-    "created_at": "2026-09-22T05:23:47.173Z"
+    "created_at": "2026-09-22T05:23:47.173Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -2186,9 +2335,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 1120",
     "code": "KM-1120",
     "notes": "Daikin AC Split Duct",
-    "order": 223,
+    "order": 196,
     "id": "unit_1790054649444_gbxla",
-    "created_at": "2026-09-22T05:24:09.444Z"
+    "created_at": "2026-09-22T05:24:09.444Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -2196,9 +2347,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 1121",
     "code": "KM-1121",
     "notes": "Daikin AC Split Duct",
-    "order": 224,
+    "order": 197,
     "id": "unit_1790054665838_y354v",
-    "created_at": "2026-09-22T05:24:25.838Z"
+    "created_at": "2026-09-22T05:24:25.838Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -2206,9 +2359,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 1122",
     "code": "KM-1122",
     "notes": "Daikin AC Split Duct",
-    "order": 225,
+    "order": 198,
     "id": "unit_1790054687477_xcvcp",
-    "created_at": "2026-09-22T05:24:47.477Z"
+    "created_at": "2026-09-22T05:24:47.477Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -2216,9 +2371,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 1123",
     "code": "KM-1123",
     "notes": "Daikin AC Split Duct",
-    "order": 226,
+    "order": 199,
     "id": "unit_1790054702173_dnc8w",
-    "created_at": "2026-09-22T05:25:02.173Z"
+    "created_at": "2026-09-22T05:25:02.173Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -2226,9 +2383,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 1125",
     "code": "KM-1125",
     "notes": "Daikin AC Split Duct",
-    "order": 227,
+    "order": 200,
     "id": "unit_1790054734973_7fqwh",
-    "created_at": "2026-09-22T05:25:34.973Z"
+    "created_at": "2026-09-22T05:25:34.973Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -2236,9 +2395,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 1126",
     "code": "KM-1126",
     "notes": "Daikin AC Split Duct",
-    "order": 228,
+    "order": 201,
     "id": "unit_1790054854276_ayxcr",
-    "created_at": "2026-09-22T05:27:34.276Z"
+    "created_at": "2026-09-22T05:27:34.276Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -2246,9 +2407,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Koridor Depan 1106",
     "code": "KDR-1106",
     "notes": "Daikin AC Split Duct",
-    "order": 229,
+    "order": 202,
     "id": "unit_1790054893509_kiunc",
-    "created_at": "2026-09-22T05:28:13.509Z"
+    "created_at": "2026-09-22T05:28:13.509Z",
+    "cycle_months": 6,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -2256,19 +2419,23 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Koridor Depan 1116",
     "code": "KDR-1116",
     "notes": "Daikin AC Split Duct",
-    "order": 230,
+    "order": 203,
     "id": "unit_1790054929269_nqxta",
-    "created_at": "2026-09-22T05:28:49.269Z"
+    "created_at": "2026-09-22T05:28:49.269Z",
+    "cycle_months": 6,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
     "floor": "Lantai 11",
-    "name": "Koridor Depan Lift",
+    "name": "Koridor Depan Lift Lt. 11",
     "code": "KDR-Lift",
     "notes": "Daikin AC Split Duct",
-    "order": 231,
+    "order": 204,
     "id": "unit_1790054951805_uxpxu",
-    "created_at": "2026-09-22T05:29:11.805Z"
+    "created_at": "2026-09-22T05:29:11.805Z",
+    "cycle_months": 6,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -2276,9 +2443,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 1201 B",
     "code": "MRV-1201 B",
     "notes": "Daikin AC Split Duct B (Area Bed Room)",
-    "order": 232,
+    "order": 205,
     "id": "unit_1790055197485_36p7x",
-    "created_at": "2026-09-22T05:33:17.485Z"
+    "created_at": "2026-09-22T05:33:17.485Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -2286,9 +2455,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 1202 A",
     "code": "MRV-1202 A",
     "notes": "Daikin AC Split Duct A (Area Living Room)",
-    "order": 232,
+    "order": 206,
     "id": "unit_1790055364389_p9ouk",
-    "created_at": "2026-09-22T05:36:04.389Z"
+    "created_at": "2026-09-22T05:36:04.389Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -2296,9 +2467,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 1202 B",
     "code": "MRV-1202 B",
     "notes": "Daikin AC Split Duct B (Area Bed Room)",
-    "order": 233,
+    "order": 207,
     "id": "unit_1790055413949_bc318",
-    "created_at": "2026-09-22T05:36:53.949Z"
+    "created_at": "2026-09-22T05:36:53.949Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -2306,9 +2479,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 1203",
     "code": "KM-1203",
     "notes": "Daikin AC Split Duct",
-    "order": 234,
+    "order": 208,
     "id": "unit_1790055467748_rklzo",
-    "created_at": "2026-09-22T05:37:47.749Z"
+    "created_at": "2026-09-22T05:37:47.749Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -2316,9 +2491,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 1205",
     "code": "KM-1205",
     "notes": "Daikin AC Split Duct",
-    "order": 235,
+    "order": 209,
     "id": "unit_1790055505580_vp0tw",
-    "created_at": "2026-09-22T05:38:25.580Z"
+    "created_at": "2026-09-22T05:38:25.580Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -2326,9 +2503,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 1206",
     "code": "KM-1206",
     "notes": "Daikin AC Split Duct",
-    "order": 236,
+    "order": 210,
     "id": "unit_1790055549181_kb2nd",
-    "created_at": "2026-09-22T05:39:09.181Z"
+    "created_at": "2026-09-22T05:39:09.181Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -2336,9 +2515,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 1207",
     "code": "KM-1207",
     "notes": "Daikin AC Split Duct",
-    "order": 237,
+    "order": 211,
     "id": "unit_1790055566373_j2ntc",
-    "created_at": "2026-09-22T05:39:26.373Z"
+    "created_at": "2026-09-22T05:39:26.373Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -2346,9 +2527,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 1208 A",
     "code": "MRV-1208 A",
     "notes": "Daikin AC Split Duct (Area Living Room)",
-    "order": 238,
+    "order": 212,
     "id": "unit_1790055602085_7cksf",
-    "created_at": "2026-09-22T05:40:02.085Z"
+    "created_at": "2026-09-22T05:40:02.085Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -2356,9 +2539,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 1208 B",
     "code": "MRV-1208 B",
     "notes": "Daikin AC Split Duct B (Area Bed Room)",
-    "order": 240,
+    "order": 213,
     "id": "unit_1790055731093_4173h",
-    "created_at": "2026-09-22T05:42:11.093Z"
+    "created_at": "2026-09-22T05:42:11.093Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -2366,9 +2551,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 1209",
     "code": "KM-1209",
     "notes": "Daikin AC Split Duct",
-    "order": 241,
+    "order": 214,
     "id": "unit_1790055800893_7684c",
-    "created_at": "2026-09-22T05:43:20.893Z"
+    "created_at": "2026-09-22T05:43:20.893Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -2376,9 +2563,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Kamar 1210",
     "code": "KM-1210",
     "notes": "Daikin AC Split Duct",
-    "order": 242,
+    "order": 215,
     "id": "unit_1790055927301_wkn75",
-    "created_at": "2026-09-22T05:45:27.301Z"
+    "created_at": "2026-09-22T05:45:27.301Z",
+    "cycle_months": 3,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
@@ -2386,19 +2575,23 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Koridor Depan 1202",
     "code": "KDR-1202",
     "notes": "Daikin AC Split Duct",
-    "order": 243,
+    "order": 216,
     "id": "unit_1790055989757_6pamu",
-    "created_at": "2026-09-22T05:46:29.757Z"
+    "created_at": "2026-09-22T05:46:29.757Z",
+    "cycle_months": 6,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
     "floor": "Lantai 12",
-    "name": "Koridor Depan Lift",
+    "name": "Koridor Depan Lift Lt. 12",
     "code": "KDR-Lift",
     "notes": "Daikin AC Split Duct",
-    "order": 244,
+    "order": 217,
     "id": "unit_1790056065948_m33cq",
-    "created_at": "2026-09-22T05:47:45.949Z"
+    "created_at": "2026-09-22T05:47:45.949Z",
+    "cycle_months": 6,
+    "cycle_days": null
   },
   {
     "category": "Area Publik & Komersial",
@@ -2406,9 +2599,11 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "GYM",
     "code": "GYM-01",
     "notes": "Daikin AC Split Duct",
-    "order": 245,
+    "order": 218,
     "id": "unit_1790056288886_yob78",
-    "created_at": "2026-09-22T05:51:28.886Z"
+    "created_at": "2026-09-22T05:51:28.886Z",
+    "cycle_months": null,
+    "cycle_days": null
   },
   {
     "category": "Area Publik & Komersial",
@@ -2416,19 +2611,23 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Caffe Bar",
     "code": "CFE-02",
     "notes": "Daikin AC Split Duct",
-    "order": 246,
+    "order": 219,
     "id": "unit_1790056372109_pis4q",
-    "created_at": "2026-09-22T05:52:52.109Z"
+    "created_at": "2026-09-22T05:52:52.109Z",
+    "cycle_months": null,
+    "cycle_days": null
   },
   {
     "category": "Area Privat / Kamar Hotel",
     "floor": "Lantai 5",
-    "name": "Koridor Depan Lift",
+    "name": "Koridor Depan Lift Lt. 5",
     "code": "KDR-Lift",
     "notes": "Daikin AC Split Duct",
-    "order": 246,
+    "order": 220,
     "id": "unit_1790057518406_hnpum",
-    "created_at": "2026-09-22T06:11:58.406Z"
+    "created_at": "2026-09-22T06:11:58.406Z",
+    "cycle_months": 6,
+    "cycle_days": null
   },
   {
     "category": "Area Utilitas/Outdoor VRV",
@@ -2436,8 +2635,509 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "name": "Ruang Motor Lift Rooftop B",
     "code": "EQ-LIFT B",
     "notes": "Arah Lift Service",
-    "order": 245,
+    "order": 221,
     "id": "unit_1790058409790_5rrkt",
-    "created_at": "2026-09-22T06:26:49.790Z"
+    "created_at": "2026-09-22T06:26:49.790Z",
+    "cycle_months": null,
+    "cycle_days": null
+  },
+  {
+    "category": "Area Publik & Komersial",
+    "floor": "Lantai 2",
+    "name": "Ruang Meeting TH2 B",
+    "code": "MR-TH2B",
+    "order": 222,
+    "id": "unit_1790426693206_jqf3b",
+    "created_at": "2026-09-26T12:44:53.206Z",
+    "cycle_months": 6,
+    "cycle_days": null
+  },
+  {
+    "category": "Area Operasional & Servis",
+    "floor": "Lantai 2",
+    "name": "Ruang Meeting TH3 A",
+    "code": "MR-TH3A",
+    "cycle_months": 6,
+    "order": 223,
+    "id": "unit_1790426747884_ru6lm",
+    "created_at": "2026-09-26T12:45:47.884Z"
+  },
+  {
+    "category": "Area Publik & Komersial",
+    "floor": "Lantai 2",
+    "name": "Ruang Meeting TH3 B",
+    "code": "MR-TH3B",
+    "cycle_months": 6,
+    "order": 224,
+    "id": "unit_1790426771898_qxtmb",
+    "created_at": "2026-09-26T12:46:11.898Z"
+  },
+  {
+    "category": "Area Publik & Komersial",
+    "floor": "Lantai 2",
+    "name": "Ruang Meeting VIP",
+    "code": "MR-VIP",
+    "cycle_months": 6,
+    "order": 225,
+    "id": "unit_1790426856524_fqgx5",
+    "created_at": "2026-09-26T12:47:36.524Z"
+  },
+  {
+    "id": "unit_l2_ballroom",
+    "category": "Area Publik & Komersial",
+    "floor": "Lantai 2",
+    "name": "Ballroom 1A",
+    "code": "BLR-1A",
+    "order": 226,
+    "cycle_months": 6,
+    "cycle_days": null
+  },
+  {
+    "category": "Area Publik & Komersial",
+    "floor": "Lantai 2",
+    "name": "Ballroom 1B",
+    "order": 227,
+    "id": "unit_1790426946592_a4jyz",
+    "created_at": "2026-09-26T12:49:06.592Z",
+    "code": "BLR-1B",
+    "cycle_months": 6,
+    "cycle_days": null
+  },
+  {
+    "category": "Area Publik & Komersial",
+    "floor": "Lantai 2",
+    "name": "Ballroom 2A",
+    "code": "BLR-2A",
+    "cycle_months": 6,
+    "order": 228,
+    "id": "unit_1790427024729_nt0g4",
+    "created_at": "2026-09-26T12:50:24.729Z"
+  },
+  {
+    "category": "Area Publik & Komersial",
+    "floor": "Lantai 2",
+    "name": "Ballroom 2B",
+    "code": "BLR-2B",
+    "cycle_months": 6,
+    "order": 229,
+    "id": "unit_1790427043609_ygh67",
+    "created_at": "2026-09-26T12:50:43.610Z"
+  },
+  {
+    "category": "Area Publik & Komersial",
+    "floor": "Lantai 2",
+    "name": "Ballroom 2C",
+    "code": "BLR-2C",
+    "cycle_months": 6,
+    "order": 230,
+    "id": "unit_1790427064006_97lgm",
+    "created_at": "2026-09-26T12:51:04.006Z"
+  },
+  {
+    "category": "Area Publik & Komersial",
+    "floor": "Lantai 2",
+    "name": "PreFungtion",
+    "code": "PRE-BAL-AREA",
+    "cycle_months": 6,
+    "order": 231,
+    "id": "unit_1790428409388_v6iwr",
+    "created_at": "2026-09-26T13:13:29.388Z"
+  },
+  {
+    "category": "Area Publik & Komersial",
+    "floor": "Lantai 2",
+    "name": "Hall Lift",
+    "code": "HLL-LIFT-AREA",
+    "cycle_months": 6,
+    "order": 232,
+    "id": "unit_1790428477585_sxwb2",
+    "created_at": "2026-09-26T13:14:37.585Z"
+  },
+  {
+    "id": "unit_l2_office",
+    "category": "Area Operasional & Servis",
+    "floor": "Lantai 2",
+    "name": "Office Manager & Sales",
+    "code": "OFF-MNGR.SALES",
+    "order": 233,
+    "cycle_months": 6,
+    "cycle_days": null
+  },
+  {
+    "category": "Area Operasional & Servis",
+    "floor": "Lantai 2",
+    "name": "Office Sales",
+    "code": "OFF-SALES",
+    "cycle_months": 6,
+    "order": 234,
+    "id": "unit_1790427255102_iaek3",
+    "created_at": "2026-09-26T12:54:15.102Z"
+  },
+  {
+    "category": "Area Operasional & Servis",
+    "floor": "Lantai 2",
+    "name": "Office Manager HRD",
+    "code": "OFF-MNGR.HRD",
+    "cycle_months": 6,
+    "order": 235,
+    "id": "unit_1790427476953_5b2ir",
+    "created_at": "2026-09-26T12:57:56.953Z"
+  },
+  {
+    "category": "Area Operasional & Servis",
+    "floor": "Lantai 2",
+    "name": "Office Admin HRD",
+    "code": "OFF-ADM.HRD (ADMIN)",
+    "cycle_months": 6,
+    "order": 236,
+    "id": "unit_1790427524881_je6c9",
+    "created_at": "2026-09-26T12:58:44.881Z",
+    "cycle_days": null
+  },
+  {
+    "category": "Area Operasional & Servis",
+    "floor": "Lantai 2",
+    "name": "Office Manager HK",
+    "code": "OFF-MNGR.HK",
+    "cycle_months": 6,
+    "order": 237,
+    "id": "unit_1790555573208_27j6l",
+    "created_at": "2026-09-28T00:32:53.208Z",
+    "cycle_days": null,
+    "notes": "Split non VRV"
+  },
+  {
+    "category": "Area Operasional & Servis",
+    "floor": "Lantai 2",
+    "name": "Office Admin HK",
+    "code": "OFF-ADM.HK (ADMIN)",
+    "cycle_months": 6,
+    "order": 238,
+    "id": "unit_1790555651785_45ilb",
+    "created_at": "2026-09-28T00:34:11.785Z",
+    "cycle_days": null,
+    "notes": "Split non VRV"
+  },
+  {
+    "category": "Area Operasional & Servis",
+    "floor": "Lantai 2",
+    "name": "Office Manager F&B",
+    "code": "OFF-MNGR.F&B",
+    "cycle_months": 6,
+    "order": 239,
+    "id": "unit_1790427301051_jwevh",
+    "created_at": "2026-09-26T12:55:01.051Z"
+  },
+  {
+    "category": "Area Operasional & Servis",
+    "floor": "Lantai 2",
+    "name": "Office Secretary",
+    "code": "OFF-Secretary",
+    "cycle_months": 6,
+    "order": 240,
+    "id": "unit_1790427340539_ia2mq",
+    "created_at": "2026-09-26T12:55:40.540Z"
+  },
+  {
+    "category": "Area Operasional & Servis",
+    "floor": "Lantai 2",
+    "name": "Office General Manager (GM)",
+    "code": "OFF-GM",
+    "cycle_months": 3,
+    "order": 241,
+    "id": "unit_1790427436723_l1gi0",
+    "created_at": "2026-09-26T12:57:16.723Z"
+  },
+  {
+    "category": "Area Operasional & Servis",
+    "floor": "Lantai 2",
+    "name": "Office Manager Finance",
+    "code": "OFF-MNGR.FIN",
+    "cycle_months": 6,
+    "order": 242,
+    "id": "unit_1790428034440_0n6dr",
+    "created_at": "2026-09-26T13:07:14.440Z"
+  },
+  {
+    "category": "Area Operasional & Servis",
+    "floor": "Lantai 2",
+    "name": "Office Finance & IT",
+    "code": "OFF-FIN-IT",
+    "cycle_months": 6,
+    "order": 243,
+    "id": "unit_1790428157141_v8883",
+    "created_at": "2026-09-26T13:09:17.141Z"
+  },
+  {
+    "category": "Area Publik & Komersial",
+    "floor": "Lobby / Lantai 1",
+    "name": "Depan Lift Lobby",
+    "code": "DPN-Lift",
+    "cycle_months": 6,
+    "order": 244,
+    "id": "unit_1790431564800_gvhkc",
+    "created_at": "2026-09-26T14:06:04.800Z"
+  },
+  {
+    "category": "Area Publik & Komersial",
+    "floor": "Lobby / Lantai 1",
+    "name": "Lobby Depan Kaca",
+    "code": "LB-DPN-KACA",
+    "cycle_months": 6,
+    "order": 245,
+    "id": "unit_1790431613992_c1aj0",
+    "created_at": "2026-09-26T14:06:53.992Z"
+  },
+  {
+    "category": "Area Publik & Komersial",
+    "floor": "Lobby / Lantai 1",
+    "name": "Resto VIP",
+    "code": "RST-VIP",
+    "cycle_months": 3,
+    "order": 246,
+    "id": "unit_1790431693731_7na88",
+    "created_at": "2026-09-26T14:08:13.731Z"
+  },
+  {
+    "category": "Area Operasional & Servis",
+    "floor": "Lobby / Lantai 1",
+    "name": "Koridor Depan Office Eng",
+    "code": "KRD-DPN-ENG",
+    "order": 247,
+    "id": "unit_1790431996656_08e09",
+    "created_at": "2026-09-26T14:13:16.656Z",
+    "cycle_months": 6,
+    "cycle_days": null
+  },
+  {
+    "category": "Area Operasional & Servis",
+    "floor": "Lobby / Lantai 1",
+    "name": "Ruang Uniform (Storage F&B)",
+    "code": "UNF-F&B",
+    "cycle_months": 6,
+    "order": 248,
+    "id": "unit_1790432970523_uahu3",
+    "created_at": "2026-09-26T14:29:30.523Z"
+  },
+  {
+    "category": "Area Operasional & Servis",
+    "floor": "Lobby / Lantai 1",
+    "name": "Office Manager FO",
+    "code": "OFF-FO",
+    "notes": "Split non VRV",
+    "cycle_months": 6,
+    "order": 249,
+    "id": "unit_1790432195958_lknjr",
+    "created_at": "2026-09-26T14:16:35.958Z"
+  },
+  {
+    "category": "Area Operasional & Servis",
+    "floor": "Lobby / Lantai 1",
+    "name": "Office Chef",
+    "code": "OFF-Chef",
+    "notes": "Split non VRV",
+    "cycle_months": 3,
+    "order": 250,
+    "id": "unit_1790433432555_moia5",
+    "created_at": "2026-09-26T14:37:12.555Z",
+    "cycle_days": null
+  },
+  {
+    "category": "Area Operasional & Servis",
+    "floor": "Lobby / Lantai 1",
+    "name": "Office Operator & Reserpasi",
+    "code": "OFF-OPR/RES",
+    "notes": "Split non VRV",
+    "cycle_months": 6,
+    "order": 251,
+    "id": "unit_1790432260839_nq9r4",
+    "created_at": "2026-09-26T14:17:40.839Z",
+    "cycle_days": null
+  },
+  {
+    "category": "Area Operasional & Servis",
+    "floor": "Lobby / Lantai 1",
+    "name": "Office Duty Manager / Night Audit",
+    "code": "OFF-DM/NA",
+    "notes": "Split non VRV",
+    "cycle_months": 6,
+    "order": 252,
+    "id": "unit_1790432372287_k083j",
+    "created_at": "2026-09-26T14:19:32.287Z"
+  },
+  {
+    "category": "Area Operasional & Servis",
+    "floor": "Lobby / Lantai 1",
+    "name": "Ruang SPA",
+    "code": "SPA-01",
+    "notes": "Split non VRV",
+    "cycle_months": 6,
+    "order": 253,
+    "id": "unit_1790432872929_leowb",
+    "created_at": "2026-09-26T14:27:52.929Z"
+  },
+  {
+    "category": "Ruang Teknis & Utilitas",
+    "floor": "Lobby / Lantai 1",
+    "name": "Ruang Panel Utama LVMDP",
+    "code": "EQ-LVMDP 1",
+    "notes": "Split 2 PK Atas Pintu - Cuci Sekalian Outdoor (di samping)",
+    "order": 254,
+    "id": "unit_1789975453999_m9fbd",
+    "created_at": "2026-09-21T07:24:13.999Z",
+    "cycle_months": 6,
+    "cycle_days": null
+  },
+  {
+    "category": "Ruang Teknis & Utilitas",
+    "floor": "Lobby / Lantai 1",
+    "name": "Ruang Panel Utama LVMDP",
+    "code": "EQ-LVMDP 2",
+    "notes": "Split B Atas Panel - Cuci Sekalian Outdoor (di samping)",
+    "order": 255,
+    "id": "unit_1789975478038_m9kdo",
+    "created_at": "2026-09-21T07:24:38.038Z",
+    "cycle_months": 6,
+    "cycle_days": null
+  },
+  {
+    "category": "Ruang Teknis & Utilitas",
+    "floor": "Lobby / Lantai 1",
+    "name": "Ruang Server A (Atas Pintu)",
+    "code": "RS-SVR-A",
+    "notes": "Split non VRV (Atas Pintu)",
+    "order": 256,
+    "id": "unit_1790432428268_roo4k",
+    "created_at": "2026-09-26T14:20:28.268Z",
+    "cycle_months": 6,
+    "cycle_days": null
+  },
+  {
+    "category": "Ruang Teknis & Utilitas",
+    "floor": "Lobby / Lantai 1",
+    "name": "Ruang Server B (Dinding Dalam)",
+    "code": "RS-SVR-B",
+    "notes": "Split non VRV (Dinding Dalam)",
+    "cycle_months": 6,
+    "order": 257,
+    "id": "unit_1790432547455_zomax",
+    "created_at": "2026-09-26T14:22:27.455Z",
+    "cycle_days": null
+  },
+  {
+    "category": "Ruang Teknis & Utilitas",
+    "floor": "Lobby / Lantai 1",
+    "name": "Ruang PABX A (Atas Pintu)",
+    "code": "PABX-A",
+    "notes": "Split non VRV (Atas Pintu) - Cuci Sekalian Outdoor (di basement)",
+    "cycle_months": 6,
+    "order": 258,
+    "id": "unit_1790432659990_mqupr",
+    "created_at": "2026-09-26T14:24:19.990Z",
+    "cycle_days": null
+  },
+  {
+    "category": "Ruang Teknis & Utilitas",
+    "floor": "Lobby / Lantai 1",
+    "name": "Ruang PABX B (Dinding Dalam)",
+    "code": "PABX-B",
+    "notes": "Split non VRV (Dinding Dalam) - Cuci Sekalian Outdoor (di basement)",
+    "cycle_months": 6,
+    "order": 259,
+    "id": "unit_1790432822978_izkbb",
+    "created_at": "2026-09-26T14:27:02.978Z",
+    "cycle_days": null
+  },
+  {
+    "category": "Area Operasional & Servis",
+    "floor": "Lobby / Lantai 1",
+    "name": "General Storage A (Dekat Pintu)",
+    "code": "GS-A",
+    "notes": "Split non VRV - Cuci Sekalian Outdoor (di Samping)",
+    "cycle_months": 6,
+    "order": 260,
+    "id": "unit_1790433103787_2zva2",
+    "created_at": "2026-09-26T14:31:43.787Z",
+    "cycle_days": null
+  },
+  {
+    "category": "Area Operasional & Servis",
+    "floor": "Lobby / Lantai 1",
+    "name": "General Storage B (Dalam)",
+    "code": "GS-B",
+    "notes": "Split non VRV - Cuci Sekalian Outdoor (di samping)",
+    "cycle_months": 6,
+    "order": 261,
+    "id": "unit_1790433155157_qwdqy",
+    "created_at": "2026-09-26T14:32:35.157Z",
+    "cycle_days": null
+  },
+  {
+    "category": "Ruang Teknis & Utilitas",
+    "floor": "Lobby / Lantai 1",
+    "name": "Garbage",
+    "code": "GRB-01",
+    "notes": "Split non VRV - Cuci Sekalian Outdoor (di basement)",
+    "cycle_months": 6,
+    "order": 262,
+    "id": "unit_1790433269074_p4mdi",
+    "created_at": "2026-09-26T14:34:29.074Z",
+    "cycle_days": null
+  },
+  {
+    "id": "unit_vrv_lt6",
+    "category": "Area Utilitas/Outdoor VRV",
+    "floor": "Lantai Lain / VRV",
+    "name": "Outdoor VRV Lantai 6",
+    "code": "VRV-LT6",
+    "order": 263,
+    "cycle_months": 6,
+    "cycle_days": null,
+    "created_at": "2026-09-28T00:13:51.534Z",
+    "notes": "Cuci Semua Outdoor/Condensor"
+  },
+  {
+    "id": "unit_vrv_lt5",
+    "category": "Area Utilitas/Outdoor VRV",
+    "floor": "Lantai Lain / VRV",
+    "name": "Outdoor VRV Lantai 9",
+    "code": "VRV-LT9",
+    "order": 264,
+    "cycle_months": 6,
+    "cycle_days": null,
+    "created_at": "2026-09-28T00:14:10.839Z",
+    "notes": "Cuci Semua Outdoor/Condensor"
+  },
+  {
+    "category": "Area Operasional & Servis",
+    "floor": "Lantai 2",
+    "name": "Dinning Room",
+    "code": "DR-DIN",
+    "cycle_months": 6,
+    "order": 265,
+    "id": "unit_1790428269389_602nx",
+    "created_at": "2026-09-26T13:11:09.389Z"
+  },
+  {
+    "category": "Area Operasional & Servis",
+    "floor": "Lantai 2",
+    "name": "Koridor Office Area",
+    "code": "KDR-OFF",
+    "cycle_months": 6,
+    "order": 266,
+    "id": "unit_1790428344364_hd2fz",
+    "created_at": "2026-09-26T13:12:24.364Z"
+  },
+  {
+    "category": "Area Utilitas/Outdoor VRV",
+    "floor": "Lantai Lain / VRV",
+    "name": "Outdoor VRV Lantai 12",
+    "code": "VRV-LT12",
+    "cycle_months": 6,
+    "order": 267,
+    "id": "unit_1790554508431_m1set",
+    "created_at": "2026-09-28T00:15:08.431Z",
+    "notes": "Cuci Semua Outdoor/Condensor",
+    "cycle_days": null
   }
 ];

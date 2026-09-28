@@ -3321,11 +3321,35 @@ export function getLocalACUnits(): ACUnitLocation[] {
       }
     }
 
-    const combined = Array.from(mergedMap.values()).map((u: ACUnitLocation) => ({
-      ...u,
-      floor: u.floor || resolveFloorFromUnit(u),
-      category: normalizeACCategory(u.category),
-    }));
+    const defaultCycleMap = new Map<string, { cycle_months?: number | null; cycle_days?: number | null }>();
+    for (const du of DEFAULT_AC_UNITS) {
+      if (du && du.id && ((du.cycle_months && du.cycle_months > 0) || (du.cycle_days && du.cycle_days > 0))) {
+        defaultCycleMap.set(du.id, { cycle_months: du.cycle_months, cycle_days: du.cycle_days });
+      }
+    }
+    for (const vu of vaultList) {
+      if (vu && vu.id && ((vu.cycle_months && vu.cycle_months > 0) || (vu.cycle_days && vu.cycle_days > 0))) {
+        defaultCycleMap.set(vu.id, { cycle_months: vu.cycle_months, cycle_days: vu.cycle_days });
+      }
+    }
+
+    const combined = Array.from(mergedMap.values()).map((u: ACUnitLocation) => {
+      const hasCycle =
+        (typeof u.cycle_months === "number" && u.cycle_months > 0) ||
+        (typeof u.cycle_days === "number" && u.cycle_days > 0);
+      const fallbackCycle = !hasCycle ? defaultCycleMap.get(u.id) : undefined;
+      return {
+        ...u,
+        floor: u.floor || resolveFloorFromUnit(u),
+        category: normalizeACCategory(u.category),
+        ...(fallbackCycle
+          ? {
+              cycle_months: fallbackCycle.cycle_months ?? u.cycle_months,
+              cycle_days: fallbackCycle.cycle_days ?? u.cycle_days,
+            }
+          : {}),
+      };
+    });
 
     if (combined.length > 0 || deletedSet.size > 0) {
       localStorage.setItem("ac_pm_units_master", JSON.stringify(combined));
@@ -3403,6 +3427,10 @@ export async function fetchACUnits(): Promise<ACUnitLocation[]> {
   const hasLocalMaster =
     typeof localStorage !== "undefined" && Boolean(localStorage.getItem("ac_pm_units_master"));
   const localUnits = getLocalACUnits();
+  const localUnitMap = new Map<string, ACUnitLocation>();
+  for (const lu of localUnits) {
+    if (lu && lu.id) localUnitMap.set(lu.id, lu);
+  }
 
   // 1. Ambil cepat dari Server Backend API (/api/ac-units)
   try {
@@ -3417,11 +3445,32 @@ export async function fetchACUnits(): Promise<ACUnitLocation[]> {
 
         const serverUnits: ACUnitLocation[] = json.units
           .filter((u: any) => u && u.id && !deletedSet.has(u.id))
-          .map((u: any) => ({
-            ...u,
-            floor: u.floor || resolveFloorFromUnit(u),
-            category: normalizeACCategory(u.category),
-          }));
+          .map((u: any) => {
+            const loc = localUnitMap.get(u.id);
+            const serverHasCycle =
+              (typeof u.cycle_months === "number" && u.cycle_months > 0) ||
+              (typeof u.cycle_days === "number" && u.cycle_days > 0);
+            const localHasCycle =
+              loc &&
+              ((typeof loc.cycle_months === "number" && loc.cycle_months > 0) ||
+                (typeof loc.cycle_days === "number" && loc.cycle_days > 0));
+
+            return {
+              ...u,
+              floor: u.floor || resolveFloorFromUnit(u),
+              category: normalizeACCategory(u.category),
+              cycle_months: serverHasCycle
+                ? u.cycle_months
+                : localHasCycle
+                ? loc!.cycle_months
+                : u.cycle_months,
+              cycle_days: serverHasCycle
+                ? u.cycle_days
+                : localHasCycle
+                ? loc!.cycle_days
+                : u.cycle_days,
+            };
+          });
 
         // Utamakan data terbaru dari serverUnits agar perubahan nama, siklus, atau urutan dari aplikasi/AI Studio langsung sinkron
         const mergedMap = new Map<string, ACUnitLocation>();
@@ -3473,6 +3522,9 @@ export async function createACUnit(item: Omit<ACUnitLocation, "id">): Promise<AC
   const current = getLocalACUnits();
   const updated = [...current, newUnit];
   saveLocalACUnits(updated);
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("ac-data-synced"));
+  }
 
   // Kirim ke Server Backend API
   try {
@@ -3499,33 +3551,71 @@ export async function createACUnit(item: Omit<ACUnitLocation, "id">): Promise<AC
   return newUnit;
 }
 
-export async function updateACUnit(id: string, updates: Partial<ACUnitLocation>): Promise<ACUnitLocation> {
+export async function updateACUnit(
+  id: string,
+  updates: Partial<ACUnitLocation> & { clear_cycle?: boolean }
+): Promise<ACUnitLocation> {
   const current = getLocalACUnits();
   const idx = current.findIndex((u) => u.id === id);
   if (idx === -1) throw new Error("Unit tidak ditemukan");
 
-  const updatedItem: ACUnitLocation = { ...current[idx], ...updates };
+  const existing = current[idx];
+  const explicitlyCleared = updates.clear_cycle === true;
+  const cleanUpdates = { ...updates };
+  delete cleanUpdates.clear_cycle;
+
+  const updatedItem: ACUnitLocation = { ...existing, ...cleanUpdates };
+
+  if (!explicitlyCleared) {
+    const incomingHasCycle =
+      (typeof cleanUpdates.cycle_months === "number" && cleanUpdates.cycle_months > 0) ||
+      (typeof cleanUpdates.cycle_days === "number" && cleanUpdates.cycle_days > 0);
+    const existingHasCycle =
+      (typeof existing.cycle_months === "number" && existing.cycle_months > 0) ||
+      (typeof existing.cycle_days === "number" && existing.cycle_days > 0);
+    if (!incomingHasCycle && existingHasCycle) {
+      updatedItem.cycle_months = existing.cycle_months;
+      updatedItem.cycle_days = existing.cycle_days;
+    }
+  } else {
+    delete updatedItem.cycle_months;
+    delete updatedItem.cycle_days;
+  }
+
   current[idx] = updatedItem;
   saveLocalACUnits(current);
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("ac-data-synced"));
+  }
 
   // Kirim ke Server Backend API
   try {
     await fetch(apiUrl("/api/ac-units"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(updatedItem),
+      body: JSON.stringify({
+        ...updatedItem,
+        cycle_months: explicitlyCleared ? null : updatedItem.cycle_months ?? null,
+        cycle_days: explicitlyCleared ? null : updatedItem.cycle_days ?? null,
+        clear_cycle: explicitlyCleared,
+      }),
     });
   } catch {}
 
   try {
-    await supabase.from("ac_unit_locations").update(updates).eq("id", id);
+    await supabase.from("ac_unit_locations").update(cleanUpdates).eq("id", id);
   } catch {}
 
   return updatedItem;
 }
 
 export async function updateBulkACUnits(
-  updates: Array<{ id: string; cycle_months?: number | null; cycle_days?: number | null }>
+  updates: Array<{
+    id: string;
+    cycle_months?: number | null;
+    cycle_days?: number | null;
+    clear_cycle?: boolean;
+  }>
 ): Promise<void> {
   const current = getLocalACUnits();
   const updateMap = new Map(updates.map((u) => [u.id, u]));
@@ -3534,24 +3624,33 @@ export async function updateBulkACUnits(
     const patch = updateMap.get(u.id);
     if (!patch) return u;
     const clone = { ...u };
-    if (patch.cycle_months !== undefined) {
-      if (patch.cycle_months === null || patch.cycle_months === 0) {
-        delete clone.cycle_months;
-      } else {
+    const explicitlyCleared = patch.clear_cycle === true;
+    const incomingHasCycle =
+      (typeof patch.cycle_months === "number" && patch.cycle_months > 0) ||
+      (typeof patch.cycle_days === "number" && patch.cycle_days > 0);
+
+    if (explicitlyCleared) {
+      delete clone.cycle_months;
+      delete clone.cycle_days;
+    } else if (incomingHasCycle) {
+      if (patch.cycle_months && patch.cycle_months > 0) {
         clone.cycle_months = patch.cycle_months;
-      }
-    }
-    if (patch.cycle_days !== undefined) {
-      if (patch.cycle_days === null || patch.cycle_days === 0) {
-        delete clone.cycle_days;
       } else {
+        delete clone.cycle_months;
+      }
+      if (patch.cycle_days && patch.cycle_days > 0) {
         clone.cycle_days = patch.cycle_days;
+      } else {
+        delete clone.cycle_days;
       }
     }
     return clone;
   });
 
   saveLocalACUnits(nextUnits);
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("ac-data-synced"));
+  }
 
   // Kirim ke Server Backend API
   try {
@@ -3577,6 +3676,9 @@ export async function deleteACUnit(id: string): Promise<void> {
   const current = getLocalACUnits();
   const filtered = current.filter((u) => u.id !== id);
   saveLocalACUnits(filtered);
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("ac-data-synced"));
+  }
 
   // Kirim ke Server Backend API
   try {
@@ -3638,6 +3740,9 @@ export async function reorderFloorACUnits(
   });
 
   saveLocalACUnits(nextUnits);
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("ac-data-synced"));
+  }
 
   // Kirim ke Server Backend API di latar belakang agar UI langsung berubah instan tanpa jeda
   try {

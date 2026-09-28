@@ -216,7 +216,7 @@ export function App() {
       {/* Main Content Area */}
       <main className="flex-1 max-w-6xl w-full mx-auto px-4 pt-4 sm:pt-6">
         {activeTab === "dashboard" && (
-          <Dashboard key={refreshKey} onOpenACLog={() => handleOpenACLog()} />
+          <Dashboard key={refreshKey} onOpenACLog={handleOpenACLog} />
         )}
         {activeTab === "search" && (
           <ACSearchMode key={refreshKey} onOpenACLog={handleOpenACLog} />

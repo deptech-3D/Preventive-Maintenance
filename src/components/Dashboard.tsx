@@ -11,10 +11,10 @@ import { ACScheduleNotificationPanel } from "./ACScheduleNotificationPanel";
 import { fetchAppSettings, getLocalAppSettings } from "../supabaseService";
 
 interface DashboardProps {
-  onOpenACLog?: () => void;
+  onOpenACLog?: (unitId?: string) => void;
 }
 
-export function Dashboard({ onOpenACLog: _onOpenACLog }: DashboardProps) {
+export function Dashboard({ onOpenACLog }: DashboardProps) {
   const { user } = useAuth();
   const { t, lang } = useI18n();
   const [settings, setSettings] = useState<AppSettings | null>(() => getLocalAppSettings());
@@ -97,7 +97,7 @@ export function Dashboard({ onOpenACLog: _onOpenACLog }: DashboardProps) {
       </div>
 
       {/* PANEL UTAMA: NOTIFIKASI & MONITORING JADWAL CLEANING AC & VRV */}
-      <ACScheduleNotificationPanel key={refreshTrigger} />
+      <ACScheduleNotificationPanel key={refreshTrigger} onOpenACLog={onOpenACLog} />
     </div>
   );
 }

@@ -1073,24 +1073,80 @@ export function ACIntegrationReportPanel({ propertyName = "Engineering Hotel" }:
             </button>
           </div>
 
-          {/* Quick Metrics Bar */}
+          {/* Quick Metrics Bar (Clickable to filter) */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-            <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl">
-              <span className="text-[10px] font-bold uppercase text-slate-500 block">Total Unit Terdaftar</span>
-              <span className="text-xl font-black text-slate-900">{scheduleCounts.total}</span>
-            </div>
-            <div className="p-3 bg-red-50 border border-red-200 rounded-xl">
-              <span className="text-[10px] font-bold uppercase text-red-600 block">Lewat Jadwal (Overdue)</span>
-              <span className="text-xl font-black text-red-700">{scheduleCounts.overdue}</span>
-            </div>
-            <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl">
-              <span className="text-[10px] font-bold uppercase text-amber-700 block">Mendekati Jatuh Tempo (H-7)</span>
-              <span className="text-xl font-black text-amber-800">{scheduleCounts.approaching}</span>
-            </div>
-            <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl">
-              <span className="text-[10px] font-bold uppercase text-emerald-700 block">Kondisi Terawat (Aman)</span>
-              <span className="text-xl font-black text-emerald-800">{scheduleCounts.safe}</span>
-            </div>
+            <button
+              type="button"
+              onClick={() => setScheduleStatusFilter("all")}
+              className={`p-3 rounded-xl border text-left transition cursor-pointer ${
+                scheduleStatusFilter === "all"
+                  ? "bg-slate-900 text-white border-slate-900 shadow-sm ring-2 ring-slate-900/20"
+                  : "bg-slate-50 border-slate-200 hover:bg-slate-100 text-slate-900"
+              }`}
+            >
+              <span
+                className={`text-[10px] font-bold uppercase block ${
+                  scheduleStatusFilter === "all" ? "text-slate-300" : "text-slate-500"
+                }`}
+              >
+                Total Unit Terdaftar
+              </span>
+              <span className="text-xl font-black">{scheduleCounts.total}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setScheduleStatusFilter("overdue")}
+              className={`p-3 rounded-xl border text-left transition cursor-pointer ${
+                scheduleStatusFilter === "overdue"
+                  ? "bg-red-600 text-white border-red-600 shadow-sm ring-2 ring-red-500/30"
+                  : "bg-red-50 border-red-200 hover:bg-red-100 text-red-700"
+              }`}
+            >
+              <span
+                className={`text-[10px] font-bold uppercase block ${
+                  scheduleStatusFilter === "overdue" ? "text-red-100" : "text-red-600"
+                }`}
+              >
+                Lewat Jadwal (Overdue)
+              </span>
+              <span className="text-xl font-black">{scheduleCounts.overdue}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setScheduleStatusFilter("approaching")}
+              className={`p-3 rounded-xl border text-left transition cursor-pointer ${
+                scheduleStatusFilter === "approaching"
+                  ? "bg-amber-600 text-white border-amber-600 shadow-sm ring-2 ring-amber-500/30"
+                  : "bg-amber-50 border-amber-200 hover:bg-amber-100 text-amber-800"
+              }`}
+            >
+              <span
+                className={`text-[10px] font-bold uppercase block ${
+                  scheduleStatusFilter === "approaching" ? "text-amber-100" : "text-amber-700"
+                }`}
+              >
+                Mendekati Jatuh Tempo (H-7)
+              </span>
+              <span className="text-xl font-black">{scheduleCounts.approaching}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setScheduleStatusFilter("safe")}
+              className={`p-3 rounded-xl border text-left transition cursor-pointer ${
+                scheduleStatusFilter === "safe"
+                  ? "bg-emerald-600 text-white border-emerald-600 shadow-sm ring-2 ring-emerald-500/30"
+                  : "bg-emerald-50 border-emerald-200 hover:bg-emerald-100 text-emerald-800"
+              }`}
+            >
+              <span
+                className={`text-[10px] font-bold uppercase block ${
+                  scheduleStatusFilter === "safe" ? "text-emerald-100" : "text-emerald-700"
+                }`}
+              >
+                Kondisi Terawat (Aman)
+              </span>
+              <span className="text-xl font-black">{scheduleCounts.safe}</span>
+            </button>
           </div>
 
           {/* Filters: Category & Floor & Status */}

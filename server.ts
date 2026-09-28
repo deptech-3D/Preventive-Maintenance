@@ -170,17 +170,74 @@ let lastRemotePullTime = 0;
 let lastLocalWriteTime = 0;
 let isPullingRemote = false;
 
+function mergeUnitPreservingCycle(existing: any, incoming: any): any {
+  if (!existing) {
+    const clean = { ...incoming };
+    delete clean.clear_cycle;
+    return clean;
+  }
+  const merged = { ...existing, ...incoming };
+  const explicitlyCleared = incoming.clear_cycle === true;
+  if (!explicitlyCleared) {
+    const incomingHasCycle =
+      (typeof incoming.cycle_months === "number" && incoming.cycle_months > 0) ||
+      (typeof incoming.cycle_days === "number" && incoming.cycle_days > 0);
+    const existingHasCycle =
+      (typeof existing.cycle_months === "number" && existing.cycle_months > 0) ||
+      (typeof existing.cycle_days === "number" && existing.cycle_days > 0);
+    if (!incomingHasCycle && existingHasCycle) {
+      merged.cycle_months = existing.cycle_months ?? null;
+      merged.cycle_days = existing.cycle_days ?? null;
+    }
+  }
+  if (incoming.created_at && existing.created_at) {
+    merged.created_at = existing.created_at;
+  }
+  delete merged.clear_cycle;
+  return merged;
+}
+
+function mergeUnitsListPreservingCycles(
+  existingUnits: any[],
+  incomingUnits: any[],
+  deletedSet: Set<string>
+): any[] {
+  const existingMap = new Map<string, any>();
+  for (const u of existingUnits || []) {
+    if (u && u.id && !deletedSet.has(u.id)) {
+      existingMap.set(u.id, u);
+    }
+  }
+  const result: any[] = [];
+  const seenIds = new Set<string>();
+  for (const inc of incomingUnits || []) {
+    if (!inc || !inc.id || deletedSet.has(inc.id)) continue;
+    seenIds.add(inc.id);
+    const prev = existingMap.get(inc.id);
+    result.push(mergeUnitPreservingCycle(prev, inc));
+  }
+  for (const [id, prev] of existingMap.entries()) {
+    if (!seenIds.has(id) && !deletedSet.has(id)) {
+      result.push(prev);
+    }
+  }
+  return result;
+}
+
 function writeState(state: ServerState, pushToLive = false): void {
   try {
     const file = getEffectiveDataFile();
     state.last_updated = new Date().toISOString();
     fs.writeFileSync(file, JSON.stringify(state, null, 2), "utf-8");
 
-    // Persist ac_units permanently into data/default_ac_units.json
+    // Persist ac_units permanently into data/default_ac_units.json and src/data/officialACUnits.ts
     if (Array.isArray(state.ac_units)) {
       try {
         const defaultUnitsFile = path.join(process.cwd(), "data", "default_ac_units.json");
         fs.writeFileSync(defaultUnitsFile, JSON.stringify(state.ac_units, null, 2), "utf-8");
+        const officialTsFile = path.join(process.cwd(), "src", "data", "officialACUnits.ts");
+        const tsContent = `import { ACUnitLocation } from "../types";\n\n/**\n * Data Master Resmi Unit AC & Ruangan Midtown Hotel\n * Ditanamkan secara permanen ke dalam kode sumber utama proyek\n */\nexport const OFFICIAL_AC_UNITS: ACUnitLocation[] = ${JSON.stringify(state.ac_units, null, 2)};\n`;
+        fs.writeFileSync(officialTsFile, tsContent, "utf-8");
       } catch {}
     }
 
@@ -368,10 +425,23 @@ async function pullFromLiveRemoteIfNeeded(force = false): Promise<void> {
     if (Array.isArray(pkg?.ac_units) && pkg.ac_units.length > 0) {
       const delUnitSet = new Set([...(state.deleted_ac_unit_ids || []), ...(pkg.deleted_ac_unit_ids || [])]);
       const validRemoteUnits = pkg.ac_units.filter((u: any) => u && u.id && !delUnitSet.has(u.id));
-      if (JSON.stringify(validRemoteUnits) !== JSON.stringify(state.ac_units)) {
-        state.ac_units = validRemoteUnits;
+      const mergedRemoteUnits = mergeUnitsListPreservingCycles(
+        state.ac_units || [],
+        validRemoteUnits,
+        delUnitSet
+      );
+      if (JSON.stringify(mergedRemoteUnits) !== JSON.stringify(state.ac_units)) {
+        state.ac_units = mergedRemoteUnits;
         state.deleted_ac_unit_ids = Array.from(delUnitSet);
         changed = true;
+      }
+      // If local state had custom cycles that were missing on remote, push them back to remote
+      if (JSON.stringify(mergedRemoteUnits) !== JSON.stringify(validRemoteUnits)) {
+        fetch(`${LIVE_REMOTE_URL}/api/ac-units/bulk`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json", "x-sync-forwarded": "1" },
+          body: JSON.stringify({ units: mergedRemoteUnits }),
+        }).catch(() => {});
       }
     }
 
@@ -429,7 +499,9 @@ async function pullFromLiveRemoteIfNeeded(force = false): Promise<void> {
 }
 
 // Initial state ensure & initial pull from live server
-writeState(readState(), false);
+if (!fs.existsSync(getEffectiveDataFile())) {
+  writeState(readState(), false);
+}
 pullFromLiveRemoteIfNeeded(true).catch(() => {});
 
 // Periodic background pull every 5 seconds so server_data.json stays fresh
@@ -851,7 +923,7 @@ app.post("/api/sync-all", (req: Request, res: Response) => {
 
   if (Array.isArray(pkg.ac_units) && pkg.ac_units.length > 0) {
     const delUnitSet = new Set(state.deleted_ac_unit_ids || []);
-    state.ac_units = pkg.ac_units.filter((u: any) => u && u.id && !delUnitSet.has(u.id));
+    state.ac_units = mergeUnitsListPreservingCycles(state.ac_units || [], pkg.ac_units, delUnitSet);
   }
 
   if (Array.isArray(pkg.ac_logs)) {
@@ -957,21 +1029,24 @@ app.post("/api/ac-units", (req: Request, res: Response) => {
   };
 
   if (existingIdx >= 0) {
-    state.ac_units[existingIdx] = { ...state.ac_units[existingIdx], ...record };
+    state.ac_units[existingIdx] = mergeUnitPreservingCycle(state.ac_units[existingIdx], record);
   } else {
-    state.ac_units.push(record);
+    const cleanRecord = { ...record };
+    delete cleanRecord.clear_cycle;
+    state.ac_units.push(cleanRecord);
   }
 
+  const savedUnit = existingIdx >= 0 ? state.ac_units[existingIdx] : state.ac_units[state.ac_units.length - 1];
   const shouldForward = req.headers["x-sync-forwarded"] !== "1";
   writeState(state, shouldForward);
   if (shouldForward) {
     fetch(`${LIVE_REMOTE_URL}/api/ac-units`, {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-sync-forwarded": "1" },
-      body: JSON.stringify(record),
+      body: JSON.stringify({ ...savedUnit, clear_cycle: unit.clear_cycle === true }),
     }).catch(() => {});
   }
-  res.json({ ok: true, unit: record });
+  res.json({ ok: true, unit: savedUnit });
 });
 
 // PUT bulk AC units (reorder or batch update)
@@ -982,7 +1057,7 @@ app.put("/api/ac-units/bulk", (req: Request, res: Response) => {
   const deletedUnitSet = new Set<string>(state.deleted_ac_unit_ids || []);
 
   if (Array.isArray(units)) {
-    state.ac_units = units.filter((u: any) => u && u.id && !deletedUnitSet.has(u.id));
+    state.ac_units = mergeUnitsListPreservingCycles(state.ac_units || [], units, deletedUnitSet);
   } else if (Array.isArray(updates)) {
     const map = new Map(updates.map((u: any) => [u.id, u]));
     state.ac_units = state.ac_units
@@ -990,13 +1065,21 @@ app.put("/api/ac-units/bulk", (req: Request, res: Response) => {
       .map((item: any) => {
         const patch = map.get(item.id);
         if (patch) {
-          return { ...item, ...patch };
+          return mergeUnitPreservingCycle(item, patch);
         }
         return item;
       });
   }
 
-  writeState(state, req.headers["x-sync-forwarded"] !== "1");
+  const shouldForward = req.headers["x-sync-forwarded"] !== "1";
+  writeState(state, shouldForward);
+  if (shouldForward && Array.isArray(updates)) {
+    fetch(`${LIVE_REMOTE_URL}/api/ac-units/bulk`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", "x-sync-forwarded": "1" },
+      body: JSON.stringify({ updates }),
+    }).catch(() => {});
+  }
   res.json({ ok: true, count: state.ac_units.length });
 });
 
@@ -1195,7 +1278,8 @@ app.post("/api/sync-from-remote", async (req: Request, res: Response) => {
       state.settings = mergedSettings;
     }
     if (Array.isArray(pkg.ac_units) && pkg.ac_units.length > 0) {
-      state.ac_units = pkg.ac_units;
+      const delUnitSet = new Set<string>(state.deleted_ac_unit_ids || []);
+      state.ac_units = mergeUnitsListPreservingCycles(state.ac_units || [], pkg.ac_units, delUnitSet);
     }
     if (Array.isArray(pkg.ac_logs) && pkg.ac_logs.length > 0) {
       state.ac_logs = pkg.ac_logs;

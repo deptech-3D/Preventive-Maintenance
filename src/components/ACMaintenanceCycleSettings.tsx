@@ -65,8 +65,9 @@ export function ACMaintenanceCycleSettings() {
   const [msg, setMsg] = useState<{ text: string; kind: "ok" | "err" } | null>(null);
 
   // Unit-specific duration management
-  const [units, setUnits] = useState<ACUnitLocation[]>([]);
+  const [units, setUnits] = useState<ACUnitLocation[]>(() => getLocalACUnits());
   const [unitDraftCycles, setUnitDraftCycles] = useState<Record<string, { months?: number; days?: number }>>({});
+  const [explicitClearedIds, setExplicitClearedIds] = useState<Set<string>>(new Set());
   const [unitSearch, setUnitSearch] = useState<string>("");
   const [unitCatFilter, setUnitCatFilter] = useState<ACCategory | "all">("all");
   const [unitFloorFilter, setUnitFloorFilter] = useState<RealFloor | "all">("all");
@@ -87,6 +88,20 @@ export function ACMaintenanceCycleSettings() {
   });
 
   useEffect(() => {
+    const syncFromList = (uList: ACUnitLocation[]) => {
+      setUnits(uList);
+      setUnitDraftCycles((prev) => {
+        const drafts: Record<string, { months?: number; days?: number }> = { ...prev };
+        uList.forEach((u) => {
+          drafts[u.id] = {
+            months: u.cycle_months ?? undefined,
+            days: u.cycle_days ?? undefined,
+          };
+        });
+        return drafts;
+      });
+    };
+
     (async () => {
       try {
         setLoading(true);
@@ -100,23 +115,20 @@ export function ACMaintenanceCycleSettings() {
           else setCycle("1 Bulan Sekali");
         }
 
-        setUnits(uList);
-
-        // Populate drafts
-        const drafts: Record<string, { months?: number; days?: number }> = {};
-        uList.forEach((u) => {
-          drafts[u.id] = {
-            months: u.cycle_months ?? undefined,
-            days: u.cycle_days ?? undefined,
-          };
-        });
-        setUnitDraftCycles(drafts);
+        syncFromList(uList);
       } catch (err) {
         console.error("Gagal memuat setting siklus AC:", err);
       } finally {
         setLoading(false);
       }
     })();
+
+    const handleSynced = () => {
+      const latest = getLocalACUnits();
+      syncFromList(latest);
+    };
+    window.addEventListener("ac-data-synced", handleSynced);
+    return () => window.removeEventListener("ac-data-synced", handleSynced);
   }, []);
 
   const handleSaveGlobal = async (e: React.FormEvent) => {
@@ -166,6 +178,12 @@ export function ACMaintenanceCycleSettings() {
   };
 
   const handleUnitCycleChange = (unitId: string, val: string) => {
+    setExplicitClearedIds((prev) => {
+      const next = new Set(prev);
+      if (val === "default") next.add(unitId);
+      else next.delete(unitId);
+      return next;
+    });
     setUnitDraftCycles((prev) => {
       const copy = { ...prev };
       if (val === "default") {
@@ -275,6 +293,16 @@ export function ACMaintenanceCycleSettings() {
       return;
     }
 
+    const isClear = val === "default";
+    setExplicitClearedIds((prev) => {
+      const next = new Set(prev);
+      targetIds.forEach((id) => {
+        if (isClear) next.add(id);
+        else next.delete(id);
+      });
+      return next;
+    });
+
     const nextDrafts = { ...unitDraftCycles };
     targetIds.forEach((id) => {
       if (val === "default") {
@@ -294,12 +322,14 @@ export function ACMaintenanceCycleSettings() {
     if (autoSave) {
       setSavingUnits(true);
       try {
-        const payload = units.map((u) => {
-          const draft = nextDrafts[u.id];
+        // Hanya kirim unit yang termasuk dalam targetIds agar unit lain tidak pernah berubah
+        const payload = targetIds.map((id) => {
+          const draft = nextDrafts[id];
           return {
-            id: u.id,
+            id,
             cycle_months: draft?.months ? draft.months : null,
             cycle_days: draft?.days ? draft.days : null,
+            clear_cycle: isClear,
           };
         });
         await updateBulkACUnits(payload);
@@ -342,16 +372,22 @@ export function ACMaintenanceCycleSettings() {
     setUnitMsg(null);
     setSavingUnits(true);
     try {
-      const payload = units.map((u) => {
+      const latestUnits = getLocalACUnits();
+      const payload = latestUnits.map((u) => {
         const draft = unitDraftCycles[u.id];
+        const isCleared = explicitClearedIds.has(u.id);
+        const months = isCleared ? null : draft?.months ?? u.cycle_months ?? null;
+        const days = isCleared ? null : draft?.days ?? u.cycle_days ?? null;
         return {
           id: u.id,
-          cycle_months: draft?.months ? draft.months : null,
-          cycle_days: draft?.days ? draft.days : null,
+          cycle_months: months,
+          cycle_days: days,
+          clear_cycle: isCleared,
         };
       });
 
       await updateBulkACUnits(payload);
+      setExplicitClearedIds(new Set());
 
       // Refresh list
       const fresh = await fetchACUnits();

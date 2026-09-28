@@ -26,7 +26,11 @@ import {
   normalizeACCategory,
   formatUnitCycleLabel,
 } from "../types";
-import { getACScheduleOverview, getLocalACScheduleOverview } from "../supabaseService";
+import {
+  getACScheduleOverview,
+  getLocalACScheduleOverview,
+  getLocalAppSettings,
+} from "../supabaseService";
 import {
   getSmartUnitSuggestions,
   smartFilterAndSortUnits,
@@ -39,6 +43,9 @@ interface ACSearchModeProps {
 export function ACSearchMode({ onOpenACLog }: ACSearchModeProps) {
   const [scheduleList, setScheduleList] = useState<ACUnitScheduleStatus[]>(() =>
     getLocalACScheduleOverview()
+  );
+  const [defaultCycleMonths, setDefaultCycleMonths] = useState<number>(
+    () => getLocalAppSettings().ac_maintenance_cycle_months || 1
   );
   const [loading, setLoading] = useState<boolean>(false);
 
@@ -66,6 +73,7 @@ export function ACSearchMode({ onOpenACLog }: ACSearchModeProps) {
     const handleSynced = () => {
       if (mounted) {
         setScheduleList(getLocalACScheduleOverview());
+        setDefaultCycleMonths(getLocalAppSettings().ac_maintenance_cycle_months || 1);
       }
     };
     window.addEventListener("ac-data-synced", handleSynced);
@@ -473,7 +481,7 @@ export function ACSearchMode({ onOpenACLog }: ACSearchModeProps) {
                       }`}
                     >
                       <Clock className="w-2.5 h-2.5 text-slate-400" />
-                      {formatUnitCycleLabel(unit, 1)}
+                      {formatUnitCycleLabel(unit, defaultCycleMonths)}
                     </span>
                     <span
                       className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] border ${statusBadge}`}
@@ -494,8 +502,8 @@ export function ACSearchMode({ onOpenACLog }: ACSearchModeProps) {
                   )}
                 </div>
 
-                {/* Maintenance Dates */}
-                <div className="bg-slate-50 rounded-xl p-2.5 border border-slate-100 text-[11px] space-y-1">
+                {/* Maintenance Dates & Last Cleaning Measurements */}
+                <div className="bg-slate-50 rounded-xl p-2.5 border border-slate-100 text-[11px] space-y-1.5">
                   <div className="flex items-center justify-between text-slate-600">
                     <span className="text-slate-400">Terakhir Dicuci:</span>
                     <span className="font-bold text-slate-800">
@@ -503,10 +511,31 @@ export function ACSearchMode({ onOpenACLog }: ACSearchModeProps) {
                     </span>
                   </div>
                   {item.last_log && (
-                    <div className="flex items-center justify-between text-[10px] text-slate-500">
-                      <span>Teknisi:</span>
-                      <span className="font-medium text-slate-700">{item.last_log.user_name}</span>
-                    </div>
+                    <>
+                      <div className="flex items-center justify-between text-[10px] text-slate-500">
+                        <span>Teknisi Terakhir:</span>
+                        <span className="font-semibold text-slate-700">{item.last_log.user_name}</span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-1.5 pt-1 border-t border-slate-200/60 text-[10px]">
+                        <div className="bg-amber-50/80 border border-amber-200/80 rounded-md px-2 py-1 text-amber-900">
+                          <span className="block text-[9px] text-amber-700 font-semibold">Suhu Terakhir</span>
+                          <span className="font-bold">
+                            {item.last_log.temp_before}°C → {item.last_log.temp_after}°C
+                          </span>
+                        </div>
+                        <div className="bg-cyan-50/80 border border-cyan-200/80 rounded-md px-2 py-1 text-cyan-900">
+                          <span className="block text-[9px] text-cyan-700 font-semibold">Anemo Terakhir</span>
+                          <span className="font-bold">
+                            {item.last_log.anemo_before} → {item.last_log.anemo_after} m/s
+                          </span>
+                        </div>
+                      </div>
+                      {item.last_log.notes && (
+                        <p className="text-[10px] text-slate-500 italic line-clamp-2 pt-0.5">
+                          Catatan: &ldquo;{item.last_log.notes}&rdquo;
+                        </p>
+                      )}
+                    </>
                   )}
                   {item.next_due_date && (
                     <div className="flex items-center justify-between text-slate-600 border-t border-slate-200/60 pt-1 mt-1">

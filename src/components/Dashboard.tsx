@@ -8,7 +8,7 @@ import { AppSettings } from "../types";
 import { useAuth } from "../auth";
 import { useI18n } from "../i18n";
 import { ACScheduleNotificationPanel } from "./ACScheduleNotificationPanel";
-import { fetchAppSettings } from "../supabaseService";
+import { fetchAppSettings, getLocalAppSettings } from "../supabaseService";
 
 interface DashboardProps {
   onOpenACLog?: () => void;
@@ -17,7 +17,7 @@ interface DashboardProps {
 export function Dashboard({ onOpenACLog: _onOpenACLog }: DashboardProps) {
   const { user } = useAuth();
   const { t, lang } = useI18n();
-  const [settings, setSettings] = useState<AppSettings | null>(null);
+  const [settings, setSettings] = useState<AppSettings | null>(() => getLocalAppSettings());
   const [refreshing, setRefreshing] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
@@ -25,6 +25,18 @@ export function Dashboard({ onOpenACLog: _onOpenACLog }: DashboardProps) {
     fetchAppSettings()
       .then((s) => setSettings(s))
       .catch((e) => console.error(e));
+
+    const handleSettingsSynced = (e: Event) => {
+      const detail = (e as CustomEvent)?.detail;
+      if (detail) {
+        setSettings(detail);
+      } else {
+        setSettings(getLocalAppSettings());
+      }
+    };
+
+    window.addEventListener("app-settings-synced", handleSettingsSynced);
+    return () => window.removeEventListener("app-settings-synced", handleSettingsSynced);
   }, [refreshTrigger]);
 
   const handleRefresh = () => {

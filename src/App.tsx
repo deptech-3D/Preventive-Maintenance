@@ -13,7 +13,12 @@ import {
 } from "lucide-react";
 import { useAuth } from "./auth";
 import { useI18n } from "./i18n";
-import { fetchAppSettings } from "./supabaseService";
+import {
+  fetchAppSettings,
+  fetchACUnits,
+  fetchACMaintenanceLogs,
+  fetchUsers,
+} from "./supabaseService";
 import { Login } from "./components/Login";
 import { Dashboard } from "./components/Dashboard";
 import { History } from "./components/History";
@@ -33,13 +38,41 @@ export function App() {
   const [propertyTitle, setPropertyTitle] = useState(user?.property_name || "Engineering Hotel");
 
   useEffect(() => {
-    fetchAppSettings()
-      .then((s) => {
-        if (s?.property_name) {
-          setPropertyTitle(s.property_name);
-        }
-      })
-      .catch(() => {});
+    const syncAllData = () => {
+      fetchAppSettings()
+        .then((s) => {
+          if (s?.property_name) {
+            setPropertyTitle(s.property_name);
+          }
+        })
+        .catch(() => {});
+      fetchACUnits().catch(() => {});
+      fetchACMaintenanceLogs().catch(() => {});
+      fetchUsers().catch(() => {});
+    };
+
+    syncAllData();
+
+    const handleSettingsSynced = (e: Event) => {
+      const detail = (e as CustomEvent)?.detail;
+      if (detail?.property_name) {
+        setPropertyTitle(detail.property_name);
+      }
+    };
+
+    const handleFocus = () => {
+      syncAllData();
+    };
+
+    window.addEventListener("app-settings-synced", handleSettingsSynced);
+    window.addEventListener("focus", handleFocus);
+    const interval = setInterval(syncAllData, 6000);
+
+    return () => {
+      window.removeEventListener("app-settings-synced", handleSettingsSynced);
+      window.removeEventListener("focus", handleFocus);
+      clearInterval(interval);
+    };
   }, [user, refreshKey]);
 
   if (loading) {

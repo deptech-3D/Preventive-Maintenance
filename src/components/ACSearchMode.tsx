@@ -62,8 +62,19 @@ export function ACSearchMode({ onOpenACLog }: ACSearchModeProps) {
         if (mounted) setLoading(false);
       }
     })();
+
+    const handleSynced = () => {
+      if (mounted) {
+        setScheduleList(getLocalACScheduleOverview());
+      }
+    };
+    window.addEventListener("ac-data-synced", handleSynced);
+    window.addEventListener("app-settings-synced", handleSynced);
+
     return () => {
       mounted = false;
+      window.removeEventListener("ac-data-synced", handleSynced);
+      window.removeEventListener("app-settings-synced", handleSynced);
     };
   }, []);
 

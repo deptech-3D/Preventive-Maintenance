@@ -102,14 +102,29 @@ export function Login() {
     };
     loadSettings();
 
-    // Listen to storage changes across tabs
+    // Listen to storage and custom sync changes across tabs/server
     const handleStorage = (e: StorageEvent) => {
       if (e.key === "meter_dashboard_custom_bg" || e.key === "meter_login_custom_bg") {
         if (e.newValue) setHeroBg(e.newValue);
       }
     };
+    const handleSettingsSynced = (e: Event) => {
+      const detail = (e as CustomEvent)?.detail;
+      if (detail?.dashboard_bg_url) {
+        setHeroBg(detail.dashboard_bg_url);
+      }
+      if (detail?.property_name) {
+        setHotelTitle(detail.property_name);
+      }
+    };
+    const interval = setInterval(loadSettings, 6000);
     window.addEventListener("storage", handleStorage);
-    return () => window.removeEventListener("storage", handleStorage);
+    window.addEventListener("app-settings-synced", handleSettingsSynced);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("storage", handleStorage);
+      window.removeEventListener("app-settings-synced", handleSettingsSynced);
+    };
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {

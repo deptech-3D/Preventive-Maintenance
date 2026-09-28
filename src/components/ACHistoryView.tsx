@@ -89,6 +89,11 @@ export function ACHistoryView() {
 
   useEffect(() => {
     loadLogs();
+    const handleSynced = () => {
+      setLogs(getLocalACLogs());
+    };
+    window.addEventListener("ac-data-synced", handleSynced);
+    return () => window.removeEventListener("ac-data-synced", handleSynced);
   }, [loadLogs]);
 
   const handleRefresh = async () => {

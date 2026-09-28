@@ -189,7 +189,7 @@ export async function supabaseLogin(identifier: string, pass: string): Promise<U
 
   // 0. Try Express Server Auth first (persists across shared URLs, web sessions & devices)
   try {
-    const res = await fetch("/api/auth/login", {
+    const res = await fetch(apiUrl("/api/auth/login"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email: cleanId, password: cleanPass }),
@@ -443,17 +443,44 @@ export async function fetchAppSettings(): Promise<AppSettings> {
       const json = await res.json();
       const s = json?.settings || json;
       if (s && typeof s === "object") {
+        // Jika di localStorage ada foto custom tapi server mengembalikan foto default, pertahankan foto custom & kirim ke server
+        const localCustomBg =
+          typeof localStorage !== "undefined"
+            ? localStorage.getItem("meter_dashboard_custom_bg") || localStorage.getItem("meter_login_custom_bg")
+            : null;
+        let effectiveBg = s.dashboard_bg_url || cached?.dashboard_bg_url || DEFAULT_SETTINGS.dashboard_bg_url;
+        if (
+          effectiveBg === DEFAULT_SETTINGS.dashboard_bg_url &&
+          localCustomBg &&
+          localCustomBg !== DEFAULT_SETTINGS.dashboard_bg_url
+        ) {
+          effectiveBg = localCustomBg;
+          fetch(apiUrl("/api/settings"), {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ dashboard_bg_url: localCustomBg }),
+          }).catch(() => {});
+        }
+
         const merged: AppSettings = {
           ...DEFAULT_SETTINGS,
           ...(cached || {}),
           ...s,
+          dashboard_bg_url: effectiveBg,
           ac_maintenance_cycle: (s.ac_maintenance_cycle || cached?.ac_maintenance_cycle || "1 Bulan Sekali") as any,
           ac_maintenance_cycle_months: Number(s.ac_maintenance_cycle_months ?? cached?.ac_maintenance_cycle_months ?? 1),
         };
         if (typeof localStorage !== "undefined") {
           try {
             localStorage.setItem("meter_app_settings", JSON.stringify(merged));
+            if (merged.dashboard_bg_url) {
+              localStorage.setItem("meter_dashboard_custom_bg", merged.dashboard_bg_url);
+              localStorage.setItem("meter_login_custom_bg", merged.dashboard_bg_url);
+            }
           } catch {}
+        }
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new CustomEvent("app-settings-synced", { detail: merged }));
         }
         return merged;
       }
@@ -486,6 +513,10 @@ export async function updateAppSettings(patch: Partial<AppSettings>): Promise<Ap
   if (typeof localStorage !== "undefined") {
     try {
       localStorage.setItem("meter_app_settings", JSON.stringify(updated));
+      if (updated.dashboard_bg_url) {
+        localStorage.setItem("meter_dashboard_custom_bg", updated.dashboard_bg_url);
+        localStorage.setItem("meter_login_custom_bg", updated.dashboard_bg_url);
+      }
     } catch {}
   }
 
@@ -538,12 +569,16 @@ export async function updateAppSettings(patch: Partial<AppSettings>): Promise<Ap
     const token = typeof localStorage !== "undefined" ? localStorage.getItem("meter_checklist_token") : null;
     const headers: Record<string, string> = { "Content-Type": "application/json" };
     if (token) headers["Authorization"] = `Bearer ${token}`;
-    await fetch("/api/settings", {
+    await fetch(apiUrl("/api/settings"), {
       method: "PUT",
       headers,
-      body: JSON.stringify({ ...patch, shift_malam_start: cleanMalam }),
+      body: JSON.stringify(updated),
     });
   } catch {}
+
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("app-settings-synced", { detail: updated }));
+  }
 
   return updated;
 }
@@ -553,10 +588,17 @@ export async function updateAppSettings(patch: Partial<AppSettings>): Promise<Ap
 export async function fetchUsers(): Promise<User[]> {
   // 1. Check Express backend first (contains persistent shared users across all clients & devices)
   try {
-    const res = await fetch("/api/users");
+    const res = await fetch(apiUrl("/api/users"));
     if (res.ok) {
       const data = await res.json();
+      if (Array.isArray(data?.deleted_user_ids) && typeof localStorage !== "undefined") {
+        const mergedDel = Array.from(new Set([...getDeletedUserIds(), ...data.deleted_user_ids]));
+        localStorage.setItem("meter_deleted_user_ids", JSON.stringify(mergedDel));
+      }
       if (data?.ok && Array.isArray(data.users) && data.users.length > 0) {
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new CustomEvent("users-data-synced", { detail: data.users }));
+        }
         return data.users;
       }
     }
@@ -688,7 +730,7 @@ export async function createUser(user: {
     const token = typeof localStorage !== "undefined" ? localStorage.getItem("meter_checklist_token") : null;
     const headers: Record<string, string> = { "Content-Type": "application/json" };
     if (token) headers["Authorization"] = `Bearer ${token}`;
-    await fetch("/api/users", {
+    await fetch(apiUrl("/api/users"), {
       method: "POST",
       headers,
       body: JSON.stringify(user),
@@ -733,10 +775,10 @@ export async function updateUserPassword(user_id: string, newPassword: string): 
     const token = typeof localStorage !== "undefined" ? localStorage.getItem("meter_checklist_token") : null;
     const headers: Record<string, string> = { "Content-Type": "application/json" };
     if (token) headers["Authorization"] = `Bearer ${token}`;
-    await fetch(`/api/users/${user_id}/password`, {
-      method: "PATCH",
+    await fetch(apiUrl(`/api/users/${encodeURIComponent(user_id)}/password`), {
+      method: "PUT",
       headers,
-      body: JSON.stringify({ password: cleanPass }),
+      body: JSON.stringify({ password: cleanPass, new_password: cleanPass }),
     });
   } catch {}
 }
@@ -795,7 +837,7 @@ export async function deleteUser(user_id: string): Promise<void> {
     const token = typeof localStorage !== "undefined" ? localStorage.getItem("meter_checklist_token") : null;
     const headers: Record<string, string> = {};
     if (token) headers["Authorization"] = `Bearer ${token}`;
-    await fetch(`/api/users/${user_id}`, {
+    await fetch(apiUrl(`/api/users/${encodeURIComponent(user_id)}`), {
       method: "DELETE",
       headers,
     });
@@ -889,7 +931,7 @@ export async function updateAdminCredentials(
     const token = typeof localStorage !== "undefined" ? localStorage.getItem("meter_checklist_token") : null;
     const headers: Record<string, string> = { "Content-Type": "application/json" };
     if (token) headers["Authorization"] = `Bearer ${token}`;
-    await fetch("/api/auth/admin-creds", {
+    await fetch(apiUrl("/api/auth/admin-creds"), {
       method: "PUT",
       headers,
       body: JSON.stringify({
@@ -987,16 +1029,25 @@ export function importUsersAndAdminPackage(data: string | UserBackupPackage): {
       localStorage.setItem("meter_admin_custom_pass", pkg.admin.custom_password.trim());
     }
 
-    // Save property name
-    if (pkg.property_name) {
-      const rawSettings = localStorage.getItem("meter_app_settings");
-      let curr = { ...DEFAULT_SETTINGS };
-      if (rawSettings) {
-        try { curr = { ...curr, ...JSON.parse(rawSettings) }; } catch {}
-      }
-      curr.property_name = pkg.property_name;
-      localStorage.setItem("meter_app_settings", JSON.stringify(curr));
+    // Save property name and settings
+    const rawSettings = localStorage.getItem("meter_app_settings");
+    let curr = { ...DEFAULT_SETTINGS };
+    if (rawSettings) {
+      try { curr = { ...curr, ...JSON.parse(rawSettings) }; } catch {}
     }
+    if ((pkg as any).settings && typeof (pkg as any).settings === "object") {
+      curr = { ...curr, ...(pkg as any).settings };
+      if (curr.dashboard_bg_url) {
+        try {
+          localStorage.setItem("meter_dashboard_custom_bg", curr.dashboard_bg_url);
+          localStorage.setItem("meter_login_custom_bg", curr.dashboard_bg_url);
+        } catch {}
+      }
+    }
+    if (pkg.property_name) {
+      curr.property_name = pkg.property_name;
+    }
+    localStorage.setItem("meter_app_settings", JSON.stringify(curr));
 
     // Save deleted ids
     if (Array.isArray(pkg.deleted_user_ids)) {
@@ -1065,8 +1116,15 @@ export async function syncAllUsersAndAdminToServer(): Promise<{
   count: number;
 }> {
   try {
-    const pkg = exportUsersAndAdminPackage();
-    const res = await fetch("/api/sync-all", {
+    const pkg = {
+      ...exportUsersAndAdminPackage(),
+      settings: getLocalAppSettings(),
+      ac_units: getLocalACUnits(),
+      ac_logs: getLocalACLogs(),
+      deleted_ac_unit_ids: getDeletedACUnitIds(),
+      deleted_ac_log_ids: getDeletedACLogIds(),
+    };
+    const res = await fetch(apiUrl("/api/sync-all"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(pkg),
@@ -1135,7 +1193,7 @@ export async function requestAdminPasswordReset(inputEmail?: string): Promise<{
 
   // Call Express backend endpoint
   try {
-    const res = await fetch("/api/auth/admin-forgot-password/request", {
+    const res = await fetch(apiUrl("/api/auth/admin-forgot-password/request"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email: detectedEmail }),
@@ -1193,7 +1251,7 @@ export async function resetAdminPassword(
 
   // 2. Call backend reset endpoint
   try {
-    const res = await fetch("/api/auth/admin-forgot-password/reset", {
+    const res = await fetch(apiUrl("/api/auth/admin-forgot-password/reset"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, code, new_password: newPassword.trim() }),
@@ -3266,22 +3324,24 @@ export async function fetchACUnits(): Promise<ACUnitLocation[]> {
             category: normalizeACCategory(u.category),
           }));
 
-        // Utamakan urutan localUnits jika sudah ada di browser supaya posisi yang baru dipindah tidak tertimpa urutan lama server
+        // Utamakan data terbaru dari serverUnits agar perubahan nama, siklus, atau urutan dari aplikasi/AI Studio langsung sinkron
         const mergedMap = new Map<string, ACUnitLocation>();
 
-        if (hasLocalMaster && localUnits.length > 0) {
-          for (const u of localUnits) {
+        if (serverUnits.length > 0) {
+          for (const u of serverUnits) {
             if (u && u.id && !deletedSet.has(u.id)) {
               mergedMap.set(u.id, u);
             }
           }
-          for (const u of serverUnits) {
-            if (u && u.id && !deletedSet.has(u.id) && !mergedMap.has(u.id)) {
-              mergedMap.set(u.id, u);
+          if (hasLocalMaster && localUnits.length > 0) {
+            for (const u of localUnits) {
+              if (u && u.id && !deletedSet.has(u.id) && !mergedMap.has(u.id)) {
+                mergedMap.set(u.id, u);
+              }
             }
           }
-        } else {
-          for (const u of serverUnits) {
+        } else if (hasLocalMaster && localUnits.length > 0) {
+          for (const u of localUnits) {
             if (u && u.id && !deletedSet.has(u.id)) {
               mergedMap.set(u.id, u);
             }
@@ -3289,7 +3349,11 @@ export async function fetchACUnits(): Promise<ACUnitLocation[]> {
         }
 
         const merged = Array.from(mergedMap.values());
+        const prevRaw = typeof localStorage !== "undefined" ? localStorage.getItem("ac_pm_units_master") : null;
         saveLocalACUnits(merged);
+        if (typeof window !== "undefined" && prevRaw !== JSON.stringify(merged)) {
+          window.dispatchEvent(new CustomEvent("ac-data-synced"));
+        }
         return merged;
       }
     }
@@ -3735,9 +3799,13 @@ export async function fetchACMaintenanceLogs(): Promise<ACMaintenanceLog[]> {
         const valid = stripOlderUnitPhotos(
           json.logs.filter((l: any) => l && l.log_id && !deletedIds.has(l.log_id))
         );
+        const prevRaw = typeof localStorage !== "undefined" ? localStorage.getItem("ac_pm_maintenance_logs") : null;
         saveLocalACLogs(valid);
         if (typeof localStorage !== "undefined") {
           localStorage.setItem(AC_LOGS_INITIALIZED_KEY, "true");
+        }
+        if (typeof window !== "undefined" && prevRaw !== JSON.stringify(valid)) {
+          window.dispatchEvent(new CustomEvent("ac-data-synced"));
         }
         return valid;
       }
@@ -3891,7 +3959,7 @@ export async function syncWithRemoteLiveApp(targetUrl: string = "https://prevent
 
   // 3. Panggil juga server proxy backend untuk menarik data
   try {
-    const proxyRes = await fetch("/api/sync-from-remote", {
+    const proxyRes = await fetch(apiUrl("/api/sync-from-remote"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ url: cleanUrl }),
@@ -3933,7 +4001,7 @@ export async function syncWithRemoteLiveApp(targetUrl: string = "https://prevent
     unitsCount = mapped.length;
 
     try {
-      await fetch("/api/ac-units/bulk", {
+      await fetch(apiUrl("/api/ac-units/bulk"), {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ units: mapped }),
@@ -3945,8 +4013,13 @@ export async function syncWithRemoteLiveApp(targetUrl: string = "https://prevent
   if (pkgData) {
     importUsersAndAdminPackage(pkgData);
     usersCount = pkgData.users?.length || 0;
+    if (Array.isArray(pkgData.ac_logs) && pkgData.ac_logs.length > 0) {
+      const delLogSet = new Set(getDeletedACLogIds());
+      const mergedLogs = stripOlderUnitPhotos(pkgData.ac_logs.filter((l: any) => l && l.log_id && !delLogSet.has(l.log_id)));
+      saveLocalACLogs(mergedLogs);
+    }
     try {
-      await fetch("/api/sync-all", {
+      await fetch(apiUrl("/api/sync-all"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(pkgData),
@@ -3975,8 +4048,11 @@ export async function pushCurrentDataToRemote(targetUrl: string = "https://preve
   const pkg = exportUsersAndAdminPackage();
   const fullPkg = {
     ...pkg,
+    settings: getLocalAppSettings(),
     ac_units: units,
     ac_logs: getLocalACLogs(),
+    deleted_ac_unit_ids: getDeletedACUnitIds(),
+    deleted_ac_log_ids: getDeletedACLogIds(),
   };
 
   const res = await fetch(`${cleanUrl}/api/sync-all`, {
@@ -4016,8 +4092,20 @@ export async function updateACMaintenanceLog(
   saveLocalACLogs(current);
 
   try {
+    await fetch(apiUrl("/api/ac-logs"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(updatedItem),
+    });
+  } catch {}
+
+  try {
     await supabase.from("ac_maintenance_logs").update(updates).eq("log_id", log_id);
   } catch {}
+
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("ac-data-synced"));
+  }
 
   return updatedItem;
 }

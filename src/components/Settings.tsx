@@ -256,7 +256,30 @@ export function Settings() {
 
   useEffect(() => {
     loadData();
-  }, [loadData]);
+
+    const handleSettingsSynced = (e: Event) => {
+      const s = (e as CustomEvent)?.detail;
+      if (s && !saving && !uploadingBg) {
+        setSettings(s);
+        if (s.dashboard_bg_url) setBgUrl(s.dashboard_bg_url);
+        if (s.property_name) setPropertyName(s.property_name);
+      }
+    };
+
+    const handleUsersSynced = (e: Event) => {
+      const list = (e as CustomEvent)?.detail;
+      if (Array.isArray(list) && user?.role === "admin") {
+        setUsersList(list);
+      }
+    };
+
+    window.addEventListener("app-settings-synced", handleSettingsSynced);
+    window.addEventListener("users-data-synced", handleUsersSynced);
+    return () => {
+      window.removeEventListener("app-settings-synced", handleSettingsSynced);
+      window.removeEventListener("users-data-synced", handleUsersSynced);
+    };
+  }, [loadData, saving, uploadingBg, user?.role]);
 
   const compressImage = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {

@@ -124,6 +124,9 @@ function readState(): ServerState {
     if (fs.existsSync(file)) {
       const raw = fs.readFileSync(file, "utf-8");
       parsed = JSON.parse(raw);
+    } else if (file !== DATA_FILE && fs.existsSync(DATA_FILE)) {
+      const raw = fs.readFileSync(DATA_FILE, "utf-8");
+      parsed = JSON.parse(raw);
     }
 
     const deletedUnitSet = new Set<string>(Array.isArray(parsed.deleted_ac_unit_ids) ? parsed.deleted_ac_unit_ids : []);
@@ -162,7 +165,12 @@ function readState(): ServerState {
   return { ...DEFAULT_SERVER_STATE };
 }
 
-function writeState(state: ServerState): void {
+const LIVE_REMOTE_URL = "https://preventive-maint-eng.ai.studio";
+let lastRemotePullTime = 0;
+let lastLocalWriteTime = 0;
+let isPullingRemote = false;
+
+function writeState(state: ServerState, pushToLive = false): void {
   try {
     const file = getEffectiveDataFile();
     state.last_updated = new Date().toISOString();
@@ -175,13 +183,248 @@ function writeState(state: ServerState): void {
         fs.writeFileSync(defaultUnitsFile, JSON.stringify(state.ac_units, null, 2), "utf-8");
       } catch {}
     }
+
+    if (pushToLive) {
+      lastLocalWriteTime = Date.now();
+      pushStateToLiveRemote(state).catch(() => {});
+    }
   } catch (err) {
     console.error("Notice writing server state file:", err);
   }
 }
 
-// Initial state ensure
-writeState(readState());
+async function pushStateToLiveRemote(state: ServerState): Promise<void> {
+  try {
+    const deletedSet = new Set((state.deleted_user_ids || []).map((id) => id.toLowerCase()));
+    const activeUsers = (state.users || []).filter(
+      (u) => !u.deleted && !deletedSet.has(u.user_id.toLowerCase()) && !deletedSet.has(u.email.toLowerCase())
+    );
+    const pkg = {
+      version: state.version,
+      exported_at: new Date().toISOString(),
+      property_name: state.property_name,
+      admin: {
+        name: state.admin.name,
+        email: state.admin.email,
+        custom_password: state.admin.password_hash,
+      },
+      users: activeUsers,
+      deleted_user_ids: state.deleted_user_ids || [],
+      deleted_ac_unit_ids: state.deleted_ac_unit_ids || [],
+      deleted_ac_log_ids: state.deleted_ac_log_ids || [],
+      settings: state.settings,
+      ac_units: state.ac_units || [],
+      ac_logs: state.ac_logs || [],
+    };
+
+    await Promise.allSettled([
+      fetch(`${LIVE_REMOTE_URL}/api/settings`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", "x-sync-forwarded": "1" },
+        body: JSON.stringify(state.settings),
+      }),
+      fetch(`${LIVE_REMOTE_URL}/api/ac-units/bulk`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", "x-sync-forwarded": "1" },
+        body: JSON.stringify({ units: state.ac_units || [] }),
+      }),
+      fetch(`${LIVE_REMOTE_URL}/api/sync-all`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-sync-forwarded": "1" },
+        body: JSON.stringify(pkg),
+      }),
+    ]);
+  } catch {}
+}
+
+async function pullFromLiveRemoteIfNeeded(force = false): Promise<void> {
+  const now = Date.now();
+  if (isPullingRemote) return;
+  // Skip pulling right after a local write so local write finishes propagating first
+  if (!force && now - lastLocalWriteTime < 8000) return;
+  if (!force && now - lastRemotePullTime < 3000) return;
+
+  isPullingRemote = true;
+  lastRemotePullTime = now;
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 2500);
+    const [pkgRes, logsRes, settingsRes] = await Promise.allSettled([
+      fetch(`${LIVE_REMOTE_URL}/api/export-package`, {
+        signal: controller.signal,
+        headers: { "x-sync-forwarded": "1" },
+      }),
+      fetch(`${LIVE_REMOTE_URL}/api/ac-logs`, {
+        signal: controller.signal,
+        headers: { "x-sync-forwarded": "1" },
+      }),
+      fetch(`${LIVE_REMOTE_URL}/api/settings`, {
+        signal: controller.signal,
+        headers: { "x-sync-forwarded": "1" },
+      }),
+    ]);
+    clearTimeout(timer);
+
+    let pkg: any = null;
+    if (pkgRes.status === "fulfilled" && pkgRes.value.ok) {
+      pkg = await pkgRes.value.json().catch(() => null);
+    }
+    let remoteLogsPayload: any = null;
+    if (logsRes.status === "fulfilled" && logsRes.value.ok) {
+      remoteLogsPayload = await logsRes.value.json().catch(() => null);
+    }
+    let remoteSettingsPayload: any = null;
+    if (settingsRes.status === "fulfilled" && settingsRes.value.ok) {
+      remoteSettingsPayload = await settingsRes.value.json().catch(() => null);
+    }
+
+    if (!pkg && !remoteLogsPayload && !remoteSettingsPayload) return;
+
+    const state = readState();
+    let changed = false;
+
+    if (pkg?.property_name && pkg.property_name !== state.property_name) {
+      state.property_name = pkg.property_name;
+      changed = true;
+    }
+
+    const incomingSettings = remoteSettingsPayload?.settings || pkg?.settings;
+    if (incomingSettings && typeof incomingSettings === "object") {
+      const mergedSettings = { ...state.settings, ...incomingSettings };
+      const defaultBg = DEFAULT_SERVER_STATE.settings.dashboard_bg_url;
+      if (
+        incomingSettings.dashboard_bg_url === defaultBg &&
+        state.settings.dashboard_bg_url &&
+        state.settings.dashboard_bg_url !== defaultBg
+      ) {
+        mergedSettings.dashboard_bg_url = state.settings.dashboard_bg_url;
+        fetch(`${LIVE_REMOTE_URL}/api/settings`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json", "x-sync-forwarded": "1" },
+          body: JSON.stringify(mergedSettings),
+        }).catch(() => {});
+      }
+      if (JSON.stringify(mergedSettings) !== JSON.stringify(state.settings)) {
+        state.settings = mergedSettings;
+        if (mergedSettings.property_name) {
+          state.property_name = mergedSettings.property_name;
+        }
+        changed = true;
+      }
+    }
+
+    if (pkg?.admin) {
+      if (pkg.admin.email && pkg.admin.email !== state.admin.email) {
+        state.admin.email = pkg.admin.email;
+        changed = true;
+      }
+      if (pkg.admin.name && pkg.admin.name !== state.admin.name) {
+        state.admin.name = pkg.admin.name;
+        changed = true;
+      }
+      if (pkg.admin.custom_password && pkg.admin.custom_password !== state.admin.password_hash) {
+        state.admin.password_hash = pkg.admin.custom_password;
+        changed = true;
+      }
+    }
+
+    if (Array.isArray(pkg?.deleted_user_ids)) {
+      const mergedDel = Array.from(new Set([...(state.deleted_user_ids || []), ...pkg.deleted_user_ids]));
+      if (mergedDel.length !== (state.deleted_user_ids || []).length) {
+        state.deleted_user_ids = mergedDel;
+        changed = true;
+      }
+    }
+
+    if (Array.isArray(pkg?.users) && pkg.users.length > 0) {
+      const delSet = new Set((state.deleted_user_ids || []).map((x) => x.toLowerCase()));
+      const userMap = new Map<string, StoredUser>();
+      state.users.forEach((u) => {
+        if (!delSet.has(u.email.toLowerCase()) && !delSet.has(u.user_id.toLowerCase())) {
+          userMap.set(u.email.toLowerCase(), u);
+        }
+      });
+      pkg.users.forEach((u: any) => {
+        const email = String(u.email || "").toLowerCase();
+        if (!email || delSet.has(email) || delSet.has(String(u.user_id || "").toLowerCase())) return;
+        userMap.set(email, {
+          user_id: u.user_id || `usr_${Date.now()}`,
+          name: u.name || "User",
+          email,
+          password_hash: u.password_hash || u.password || "123456",
+          role: u.role === "admin" ? "admin" : "user",
+          property_name: u.property_name || state.property_name,
+          deleted: !!u.deleted,
+          created_at: u.created_at || new Date().toISOString(),
+        });
+      });
+      const nextUsers = Array.from(userMap.values());
+      if (JSON.stringify(nextUsers) !== JSON.stringify(state.users)) {
+        state.users = nextUsers;
+        changed = true;
+      }
+    }
+
+    if (Array.isArray(pkg?.ac_units) && pkg.ac_units.length > 0) {
+      const delUnitSet = new Set([...(state.deleted_ac_unit_ids || []), ...(pkg.deleted_ac_unit_ids || [])]);
+      const validRemoteUnits = pkg.ac_units.filter((u: any) => u && u.id && !delUnitSet.has(u.id));
+      if (JSON.stringify(validRemoteUnits) !== JSON.stringify(state.ac_units)) {
+        state.ac_units = validRemoteUnits;
+        state.deleted_ac_unit_ids = Array.from(delUnitSet);
+        changed = true;
+      }
+    }
+
+    const remoteLogs = Array.isArray(remoteLogsPayload?.logs)
+      ? remoteLogsPayload.logs
+      : Array.isArray(pkg?.ac_logs)
+      ? pkg.ac_logs
+      : null;
+    const remoteDeletedLogIds = [
+      ...(Array.isArray(remoteLogsPayload?.deleted_log_ids) ? remoteLogsPayload.deleted_log_ids : []),
+      ...(Array.isArray(pkg?.deleted_ac_log_ids) ? pkg.deleted_ac_log_ids : []),
+    ];
+
+    if (remoteLogs !== null) {
+      const delLogSet = new Set([...(state.deleted_ac_log_ids || []), ...remoteDeletedLogIds]);
+      const logMap = new Map<string, any>();
+      (state.ac_logs || []).forEach((l: any) => {
+        if (l && l.log_id && !delLogSet.has(l.log_id)) logMap.set(l.log_id, l);
+      });
+      remoteLogs.forEach((l: any) => {
+        if (l && l.log_id && !delLogSet.has(l.log_id)) logMap.set(l.log_id, l);
+      });
+      const mergedLogs = Array.from(logMap.values()).sort(
+        (a: any, b: any) => new Date(b.recorded_at || 0).getTime() - new Date(a.recorded_at || 0).getTime()
+      );
+      if (
+        JSON.stringify(mergedLogs) !== JSON.stringify(state.ac_logs) ||
+        delLogSet.size !== (state.deleted_ac_log_ids || []).length
+      ) {
+        state.ac_logs = mergedLogs;
+        state.deleted_ac_log_ids = Array.from(delLogSet);
+        changed = true;
+      }
+    }
+
+    if (changed) {
+      writeState(state, false);
+    }
+  } catch {
+    // Silent ignore if offline or self-request
+  } finally {
+    isPullingRemote = false;
+  }
+}
+
+// Initial state ensure & initial pull from live server
+writeState(readState(), false);
+pullFromLiveRemoteIfNeeded(true).catch(() => {});
+
+// Periodic background pull every 5 seconds so server_data.json stays fresh
+setInterval(() => {
+  pullFromLiveRemoteIfNeeded(false).catch(() => {});
+}, 5000);
 
 // ----------------- API ROUTES -----------------
 
@@ -191,7 +434,10 @@ app.get("/api/health", (_req: Request, res: Response) => {
 });
 
 // GET users
-app.get("/api/users", (_req: Request, res: Response) => {
+app.get("/api/users", async (req: Request, res: Response) => {
+  if (req.headers["x-sync-forwarded"] !== "1") {
+    await pullFromLiveRemoteIfNeeded();
+  }
   const state = readState();
   const deletedSet = new Set(state.deleted_user_ids.map((id) => id.toLowerCase()));
 
@@ -210,6 +456,7 @@ app.get("/api/users", (_req: Request, res: Response) => {
   res.json({
     ok: true,
     users: activeUsers,
+    deleted_user_ids: state.deleted_user_ids || [],
     count: activeUsers.length,
     property_name: state.property_name,
   });
@@ -268,7 +515,15 @@ app.post("/api/users", (req: Request, res: Response) => {
     if (password) state.admin.password_hash = String(password).trim();
   }
 
-  writeState(state);
+  const shouldForward = req.headers["x-sync-forwarded"] !== "1";
+  writeState(state, shouldForward);
+  if (shouldForward) {
+    fetch(`${LIVE_REMOTE_URL}/api/users`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-sync-forwarded": "1" },
+      body: JSON.stringify(req.body),
+    }).catch(() => {});
+  }
 
   res.json({
     ok: true,
@@ -296,21 +551,30 @@ app.delete("/api/users/:id", (req: Request, res: Response) => {
     state.deleted_user_ids.push(found.email.toLowerCase());
   }
 
-  writeState(state);
+  const shouldForward = req.headers["x-sync-forwarded"] !== "1";
+  writeState(state, shouldForward);
+  if (shouldForward) {
+    fetch(`${LIVE_REMOTE_URL}/api/users/${encodeURIComponent(id)}`, {
+      method: "DELETE",
+      headers: { "x-sync-forwarded": "1" },
+    }).catch(() => {});
+  }
   res.json({ ok: true, deleted: id });
 });
 
-// PUT update user password
-app.put("/api/users/:id/password", (req: Request, res: Response) => {
+// PUT or PATCH update user password
+const handleUpdateUserPassword = (req: Request, res: Response) => {
   const { id } = req.params;
-  const { new_password } = req.body;
-  if (!new_password || !String(new_password).trim()) {
+  const { new_password, password } = req.body;
+  const rawPass = new_password || password;
+  if (!rawPass || !String(rawPass).trim()) {
     return res.status(400).json({ ok: false, error: "Password baru wajib diisi" });
   }
 
-  const cleanPass = String(new_password).trim();
+  const cleanPass = String(rawPass).trim();
   const state = readState();
   const cleanId = String(id).toLowerCase();
+  const shouldForward = req.headers["x-sync-forwarded"] !== "1";
 
   const user = state.users.find((u) => u.user_id.toLowerCase() === cleanId || u.email.toLowerCase() === cleanId);
   if (user) {
@@ -318,22 +582,35 @@ app.put("/api/users/:id/password", (req: Request, res: Response) => {
     if (user.role === "admin" || user.email.toLowerCase() === state.admin.email.toLowerCase()) {
       state.admin.password_hash = cleanPass;
     }
-    writeState(state);
+    writeState(state, shouldForward);
+    if (shouldForward) {
+      fetch(`${LIVE_REMOTE_URL}/api/users/${encodeURIComponent(id)}/password`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", "x-sync-forwarded": "1" },
+        body: JSON.stringify({ password: cleanPass, new_password: cleanPass }),
+      }).catch(() => {});
+    }
     return res.json({ ok: true, message: "Password berhasil diperbarui" });
   }
 
   // If admin default
   if (cleanId === "usr_admin_midtown" || cleanId === "usr_admin_default" || cleanId === state.admin.email.toLowerCase()) {
     state.admin.password_hash = cleanPass;
-    writeState(state);
+    writeState(state, shouldForward);
     return res.json({ ok: true, message: "Password admin berhasil diperbarui" });
   }
 
   res.status(404).json({ ok: false, error: "Pengguna tidak ditemukan" });
-});
+};
+
+app.put("/api/users/:id/password", handleUpdateUserPassword);
+app.patch("/api/users/:id/password", handleUpdateUserPassword);
 
 // GET / PUT admin credentials
-app.get("/api/auth/admin-creds", (_req: Request, res: Response) => {
+app.get("/api/auth/admin-creds", async (req: Request, res: Response) => {
+  if (req.headers["x-sync-forwarded"] !== "1") {
+    await pullFromLiveRemoteIfNeeded();
+  }
   const state = readState();
   res.json({
     ok: true,
@@ -343,7 +620,7 @@ app.get("/api/auth/admin-creds", (_req: Request, res: Response) => {
 });
 
 app.put("/api/auth/admin-creds", (req: Request, res: Response) => {
-  const { email, password, name, force_sync } = req.body;
+  const { email, password, name } = req.body;
   const state = readState();
 
   if (email && String(email).trim()) {
@@ -378,7 +655,15 @@ app.put("/api/auth/admin-creds", (req: Request, res: Response) => {
     });
   }
 
-  writeState(state);
+  const shouldForward = req.headers["x-sync-forwarded"] !== "1";
+  writeState(state, shouldForward);
+  if (shouldForward) {
+    fetch(`${LIVE_REMOTE_URL}/api/auth/admin-creds`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", "x-sync-forwarded": "1" },
+      body: JSON.stringify(req.body),
+    }).catch(() => {});
+  }
   res.json({
     ok: true,
     message: "Kredensial admin tersimpan di server",
@@ -387,7 +672,10 @@ app.put("/api/auth/admin-creds", (req: Request, res: Response) => {
 });
 
 // POST Login verification
-app.post("/api/auth/login", (req: Request, res: Response) => {
+app.post("/api/auth/login", async (req: Request, res: Response) => {
+  if (req.headers["x-sync-forwarded"] !== "1") {
+    await pullFromLiveRemoteIfNeeded();
+  }
   const { email, password } = req.body;
   if (!email || !password) {
     return res.status(400).json({ ok: false, error: "Email dan Password wajib diisi" });
@@ -460,7 +748,10 @@ app.post("/api/auth/login", (req: Request, res: Response) => {
 });
 
 // GET / PUT App Settings
-app.get("/api/settings", (_req: Request, res: Response) => {
+app.get("/api/settings", async (req: Request, res: Response) => {
+  if (req.headers["x-sync-forwarded"] !== "1") {
+    await pullFromLiveRemoteIfNeeded();
+  }
   const state = readState();
   res.json({ ok: true, settings: state.settings });
 });
@@ -468,11 +759,16 @@ app.get("/api/settings", (_req: Request, res: Response) => {
 app.put("/api/settings", (req: Request, res: Response) => {
   const patch = req.body;
   const state = readState();
-  state.settings = { ...state.settings, ...patch };
+  state.settings = {
+    ...state.settings,
+    ...patch,
+    updated_at: new Date().toISOString(),
+  };
   if (patch.property_name) {
     state.property_name = patch.property_name;
   }
-  writeState(state);
+  const shouldForward = req.headers["x-sync-forwarded"] !== "1";
+  writeState(state, shouldForward);
   res.json({ ok: true, settings: state.settings });
 });
 
@@ -490,6 +786,10 @@ app.post("/api/sync-all", (req: Request, res: Response) => {
     state.settings.property_name = pkg.property_name;
   }
 
+  if (pkg.settings && typeof pkg.settings === "object") {
+    state.settings = { ...state.settings, ...pkg.settings };
+  }
+
   if (pkg.admin) {
     if (pkg.admin.email) state.admin.email = pkg.admin.email.trim().toLowerCase();
     if (pkg.admin.name) state.admin.name = pkg.admin.name.trim();
@@ -501,14 +801,29 @@ app.post("/api/sync-all", (req: Request, res: Response) => {
     state.deleted_user_ids = Array.from(set);
   }
 
+  if (Array.isArray(pkg.deleted_ac_unit_ids)) {
+    const set = new Set([...(state.deleted_ac_unit_ids || []), ...pkg.deleted_ac_unit_ids]);
+    state.deleted_ac_unit_ids = Array.from(set);
+  }
+
+  if (Array.isArray(pkg.deleted_ac_log_ids)) {
+    const set = new Set([...(state.deleted_ac_log_ids || []), ...pkg.deleted_ac_log_ids]);
+    state.deleted_ac_log_ids = Array.from(set);
+  }
+
   if (Array.isArray(pkg.users)) {
+    const delSet = new Set((state.deleted_user_ids || []).map((id) => id.toLowerCase()));
     const userMap = new Map<string, StoredUser>();
     // Existing
-    state.users.forEach((u) => userMap.set(u.email.toLowerCase(), u));
+    state.users.forEach((u) => {
+      if (!delSet.has(u.email.toLowerCase()) && !delSet.has(u.user_id.toLowerCase())) {
+        userMap.set(u.email.toLowerCase(), u);
+      }
+    });
     // New / Updated
     pkg.users.forEach((u: any) => {
       const email = String(u.email || "").toLowerCase();
-      if (!email) return;
+      if (!email || delSet.has(email) || delSet.has(String(u.user_id || "").toLowerCase())) return;
       userMap.set(email, {
         user_id: u.user_id || `usr_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
         name: u.name || "User",
@@ -524,14 +839,25 @@ app.post("/api/sync-all", (req: Request, res: Response) => {
   }
 
   if (Array.isArray(pkg.ac_units) && pkg.ac_units.length > 0) {
-    state.ac_units = pkg.ac_units;
+    const delUnitSet = new Set(state.deleted_ac_unit_ids || []);
+    state.ac_units = pkg.ac_units.filter((u: any) => u && u.id && !delUnitSet.has(u.id));
   }
 
-  if (Array.isArray(pkg.ac_logs) && pkg.ac_logs.length > 0) {
-    state.ac_logs = pkg.ac_logs;
+  if (Array.isArray(pkg.ac_logs)) {
+    const delLogSet = new Set(state.deleted_ac_log_ids || []);
+    const logMap = new Map<string, any>();
+    (state.ac_logs || []).forEach((l: any) => {
+      if (l && l.log_id && !delLogSet.has(l.log_id)) logMap.set(l.log_id, l);
+    });
+    pkg.ac_logs.forEach((l: any) => {
+      if (l && l.log_id && !delLogSet.has(l.log_id)) logMap.set(l.log_id, l);
+    });
+    state.ac_logs = Array.from(logMap.values()).sort(
+      (a: any, b: any) => new Date(b.recorded_at || 0).getTime() - new Date(a.recorded_at || 0).getTime()
+    );
   }
 
-  writeState(state);
+  writeState(state, req.headers["x-sync-forwarded"] !== "1");
   res.json({
     ok: true,
     message: "Seluruh data user, admin, pengaturan, dan AC berhasil disinkronkan ke server!",
@@ -541,7 +867,10 @@ app.post("/api/sync-all", (req: Request, res: Response) => {
 });
 
 // GET export package
-app.get("/api/export-package", (_req: Request, res: Response) => {
+app.get("/api/export-package", async (req: Request, res: Response) => {
+  if (req.headers["x-sync-forwarded"] !== "1") {
+    await pullFromLiveRemoteIfNeeded();
+  }
   const state = readState();
   const deletedSet = new Set(state.deleted_user_ids.map((id) => id.toLowerCase()));
 
@@ -560,6 +889,8 @@ app.get("/api/export-package", (_req: Request, res: Response) => {
     },
     users: activeUsers,
     deleted_user_ids: state.deleted_user_ids,
+    deleted_ac_unit_ids: state.deleted_ac_unit_ids || [],
+    deleted_ac_log_ids: state.deleted_ac_log_ids || [],
     settings: state.settings,
     ac_units: state.ac_units || [],
     ac_logs: state.ac_logs || [],
@@ -569,7 +900,10 @@ app.get("/api/export-package", (_req: Request, res: Response) => {
 // ----------------- AC UNITS & LOGS API -----------------
 
 // GET all AC units
-app.get("/api/ac-units", (_req: Request, res: Response) => {
+app.get("/api/ac-units", async (req: Request, res: Response) => {
+  if (req.headers["x-sync-forwarded"] !== "1") {
+    await pullFromLiveRemoteIfNeeded();
+  }
   const state = readState();
   res.json({
     ok: true,
@@ -606,7 +940,15 @@ app.post("/api/ac-units", (req: Request, res: Response) => {
     state.ac_units.push(record);
   }
 
-  writeState(state);
+  const shouldForward = req.headers["x-sync-forwarded"] !== "1";
+  writeState(state, shouldForward);
+  if (shouldForward) {
+    fetch(`${LIVE_REMOTE_URL}/api/ac-units`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-sync-forwarded": "1" },
+      body: JSON.stringify(record),
+    }).catch(() => {});
+  }
   res.json({ ok: true, unit: record });
 });
 
@@ -632,7 +974,7 @@ app.put("/api/ac-units/bulk", (req: Request, res: Response) => {
       });
   }
 
-  writeState(state);
+  writeState(state, req.headers["x-sync-forwarded"] !== "1");
   res.json({ ok: true, count: state.ac_units.length });
 });
 
@@ -646,12 +988,22 @@ app.delete("/api/ac-units/:id", (req: Request, res: Response) => {
     state.deleted_ac_unit_ids.push(id);
   }
   state.ac_units = state.ac_units.filter((u) => u.id !== id);
-  writeState(state);
+  const shouldForward = req.headers["x-sync-forwarded"] !== "1";
+  writeState(state, shouldForward);
+  if (shouldForward) {
+    fetch(`${LIVE_REMOTE_URL}/api/ac-units/${encodeURIComponent(id)}`, {
+      method: "DELETE",
+      headers: { "x-sync-forwarded": "1" },
+    }).catch(() => {});
+  }
   res.json({ ok: true, deleted: id, deleted_unit_ids: state.deleted_ac_unit_ids });
 });
 
 // GET all AC maintenance logs
-app.get("/api/ac-logs", (_req: Request, res: Response) => {
+app.get("/api/ac-logs", async (req: Request, res: Response) => {
+  if (req.headers["x-sync-forwarded"] !== "1") {
+    await pullFromLiveRemoteIfNeeded();
+  }
   const state = readState();
   res.json({
     ok: true,
@@ -701,7 +1053,15 @@ app.post("/api/ac-logs", (req: Request, res: Response) => {
     state.ac_logs.unshift(record);
   }
 
-  writeState(state);
+  const shouldForward = req.headers["x-sync-forwarded"] !== "1";
+  writeState(state, shouldForward);
+  if (shouldForward) {
+    fetch(`${LIVE_REMOTE_URL}/api/ac-logs`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-sync-forwarded": "1" },
+      body: JSON.stringify(record),
+    }).catch(() => {});
+  }
   res.json({ ok: true, log: record });
 });
 
@@ -715,7 +1075,14 @@ app.delete("/api/ac-logs/:id", (req: Request, res: Response) => {
     state.deleted_ac_log_ids.push(id);
   }
   state.ac_logs = state.ac_logs.filter((l) => l.log_id !== id);
-  writeState(state);
+  const shouldForward = req.headers["x-sync-forwarded"] !== "1";
+  writeState(state, shouldForward);
+  if (shouldForward) {
+    fetch(`${LIVE_REMOTE_URL}/api/ac-logs/${encodeURIComponent(id)}`, {
+      method: "DELETE",
+      headers: { "x-sync-forwarded": "1" },
+    }).catch(() => {});
+  }
   res.json({ ok: true, deleted: id });
 });
 
@@ -733,13 +1100,21 @@ app.post("/api/ac-logs/bulk-delete", (req: Request, res: Response) => {
       }
     }
     state.ac_logs = state.ac_logs.filter((l) => !idSet.has(l.log_id));
-    writeState(state);
+    const shouldForward = req.headers["x-sync-forwarded"] !== "1";
+    writeState(state, shouldForward);
+    if (shouldForward) {
+      fetch(`${LIVE_REMOTE_URL}/api/ac-logs/bulk-delete`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-sync-forwarded": "1" },
+        body: JSON.stringify({ log_ids }),
+      }).catch(() => {});
+    }
   }
   res.json({ ok: true, remaining: state.ac_logs.length });
 });
 
 // POST clear all AC maintenance logs
-app.post("/api/ac-logs/clear", (_req: Request, res: Response) => {
+app.post("/api/ac-logs/clear", (req: Request, res: Response) => {
   const state = readState();
   if (!state.deleted_ac_log_ids) state.deleted_ac_log_ids = [];
   if (Array.isArray(state.ac_logs)) {
@@ -750,7 +1125,14 @@ app.post("/api/ac-logs/clear", (_req: Request, res: Response) => {
     }
   }
   state.ac_logs = [];
-  writeState(state);
+  const shouldForward = req.headers["x-sync-forwarded"] !== "1";
+  writeState(state, shouldForward);
+  if (shouldForward) {
+    fetch(`${LIVE_REMOTE_URL}/api/ac-logs/clear`, {
+      method: "POST",
+      headers: { "x-sync-forwarded": "1" },
+    }).catch(() => {});
+  }
   res.json({ ok: true, remaining: 0 });
 });
 
@@ -778,7 +1160,16 @@ app.post("/api/sync-from-remote", async (req: Request, res: Response) => {
       state.deleted_user_ids = pkg.deleted_user_ids;
     }
     if (pkg.settings) {
-      state.settings = { ...state.settings, ...pkg.settings };
+      const defaultBg = DEFAULT_SERVER_STATE.settings.dashboard_bg_url;
+      const mergedSettings = { ...state.settings, ...pkg.settings };
+      if (
+        pkg.settings.dashboard_bg_url === defaultBg &&
+        state.settings.dashboard_bg_url &&
+        state.settings.dashboard_bg_url !== defaultBg
+      ) {
+        mergedSettings.dashboard_bg_url = state.settings.dashboard_bg_url;
+      }
+      state.settings = mergedSettings;
     }
     if (Array.isArray(pkg.ac_units) && pkg.ac_units.length > 0) {
       state.ac_units = pkg.ac_units;

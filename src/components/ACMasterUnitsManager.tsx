@@ -92,6 +92,11 @@ export function ACMasterUnitsManager() {
 
   useEffect(() => {
     loadUnits();
+    const handleSynced = () => {
+      setUnits(getLocalACUnits());
+    };
+    window.addEventListener("ac-data-synced", handleSynced);
+    return () => window.removeEventListener("ac-data-synced", handleSynced);
   }, []);
 
   // All units strictly on selected real floor

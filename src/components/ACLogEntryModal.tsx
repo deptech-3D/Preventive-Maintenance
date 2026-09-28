@@ -75,13 +75,13 @@ export function ACLogEntryModal({
 
   const [recordedAt, setRecordedAt] = useState<string>(getNowLocalString());
 
-  // 3. Suhu Before & Suhu After (°C)
-  const [tempBefore, setTempBefore] = useState<string>("26.5");
-  const [tempAfter, setTempAfter] = useState<string>("20.2");
+  // 3. Suhu Before & Suhu After (°C) — dikosongkan agar wajib diisi manual
+  const [tempBefore, setTempBefore] = useState<string>("");
+  const [tempAfter, setTempAfter] = useState<string>("");
 
-  // 4. Anemometer Before & Anemometer After (m/s)
-  const [anemoBefore, setAnemoBefore] = useState<string>("1.8");
-  const [anemoAfter, setAnemoAfter] = useState<string>("3.5");
+  // 4. Anemometer Before & Anemometer After (m/s) — dikosongkan agar wajib diisi manual
+  const [anemoBefore, setAnemoBefore] = useState<string>("");
+  const [anemoAfter, setAnemoAfter] = useState<string>("");
 
   // 5. Catatan Tambahan (Kondisi sebelum dan sesudah)
   const [notes, setNotes] = useState<string>("");
@@ -178,19 +178,37 @@ export function ACLogEntryModal({
   }, [units, searchQuery, selectedFloorFilter]);
 
   // Calculations for delta comparison
-  const parsedTempBefore = parseFloat(tempBefore);
-  const parsedTempAfter = parseFloat(tempAfter);
+  const parseManualNumber = (val: string): number => {
+    const trimmed = val.trim().replace(",", ".");
+    if (!trimmed) return NaN;
+    return Number(trimmed);
+  };
+
+  const parsedTempBefore = parseManualNumber(tempBefore);
+  const parsedTempAfter = parseManualNumber(tempAfter);
   const tempDelta =
     !isNaN(parsedTempBefore) && !isNaN(parsedTempAfter)
       ? Number((parsedTempBefore - parsedTempAfter).toFixed(1))
       : null;
 
-  const parsedAnemoBefore = parseFloat(anemoBefore);
-  const parsedAnemoAfter = parseFloat(anemoAfter);
+  const parsedAnemoBefore = parseManualNumber(anemoBefore);
+  const parsedAnemoAfter = parseManualNumber(anemoAfter);
   const anemoDelta =
     !isNaN(parsedAnemoBefore) && !isNaN(parsedAnemoAfter)
       ? Number((parsedAnemoAfter - parsedAnemoBefore).toFixed(2))
       : null;
+
+  const isAllMeasurementsFilled =
+    tempBefore.trim() !== "" &&
+    !isNaN(parsedTempBefore) &&
+    tempAfter.trim() !== "" &&
+    !isNaN(parsedTempAfter) &&
+    anemoBefore.trim() !== "" &&
+    !isNaN(parsedAnemoBefore) &&
+    anemoAfter.trim() !== "" &&
+    !isNaN(parsedAnemoAfter);
+
+  const isCanSubmit = Boolean(selectedUnitId && selectedUnit && isAllMeasurementsFilled);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -201,13 +219,13 @@ export function ACLogEntryModal({
       return;
     }
 
-    if (isNaN(parsedTempBefore) || isNaN(parsedTempAfter)) {
-      setErrorMsg("Harap isi nilai Suhu Before dan Suhu After dengan angka valid!");
+    if (tempBefore.trim() === "" || tempAfter.trim() === "" || isNaN(parsedTempBefore) || isNaN(parsedTempAfter)) {
+      setErrorMsg("Harap isi manual nilai Suhu BEFORE dan Suhu AFTER terlebih dahulu!");
       return;
     }
 
-    if (isNaN(parsedAnemoBefore) || isNaN(parsedAnemoAfter)) {
-      setErrorMsg("Harap isi nilai Anemometer Before dan After dengan angka valid!");
+    if (anemoBefore.trim() === "" || anemoAfter.trim() === "" || isNaN(parsedAnemoBefore) || isNaN(parsedAnemoAfter)) {
+      setErrorMsg("Harap isi manual nilai Anemometer BEFORE dan AFTER terlebih dahulu!");
       return;
     }
 
@@ -606,30 +624,30 @@ export function ACLogEntryModal({
                 <div className="grid grid-cols-2 gap-2">
                   <div>
                     <label className="block text-[10px] font-bold text-amber-800 mb-0.5">
-                      Suhu BEFORE (°C)
+                      Suhu BEFORE (°C) <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="number"
                       step="0.1"
                       value={tempBefore}
                       onChange={(e) => setTempBefore(e.target.value)}
-                      placeholder="Contoh: 26.5"
+                      placeholder="Wajib isi..."
                       required
-                      className="w-full text-xs font-bold px-2.5 py-2 bg-white border border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:outline-hidden"
+                      className="w-full text-xs font-bold px-2.5 py-2 bg-white border border-amber-300 rounded-lg placeholder:font-normal placeholder:text-slate-400 focus:ring-2 focus:ring-amber-500 focus:outline-hidden"
                     />
                   </div>
                   <div>
                     <label className="block text-[10px] font-bold text-amber-800 mb-0.5">
-                      Suhu AFTER (°C)
+                      Suhu AFTER (°C) <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="number"
                       step="0.1"
                       value={tempAfter}
                       onChange={(e) => setTempAfter(e.target.value)}
-                      placeholder="Contoh: 20.2"
+                      placeholder="Wajib isi..."
                       required
-                      className="w-full text-xs font-bold px-2.5 py-2 bg-white border border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:outline-hidden"
+                      className="w-full text-xs font-bold px-2.5 py-2 bg-white border border-amber-300 rounded-lg placeholder:font-normal placeholder:text-slate-400 focus:ring-2 focus:ring-amber-500 focus:outline-hidden"
                     />
                   </div>
                 </div>
@@ -661,30 +679,30 @@ export function ACLogEntryModal({
                 <div className="grid grid-cols-2 gap-2">
                   <div>
                     <label className="block text-[10px] font-bold text-cyan-800 mb-0.5">
-                      Anemo BEFORE (m/s)
+                      Anemo BEFORE (m/s) <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="number"
                       step="0.1"
                       value={anemoBefore}
                       onChange={(e) => setAnemoBefore(e.target.value)}
-                      placeholder="Contoh: 1.8"
+                      placeholder="Wajib isi..."
                       required
-                      className="w-full text-xs font-bold px-2.5 py-2 bg-white border border-cyan-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:outline-hidden"
+                      className="w-full text-xs font-bold px-2.5 py-2 bg-white border border-cyan-300 rounded-lg placeholder:font-normal placeholder:text-slate-400 focus:ring-2 focus:ring-cyan-500 focus:outline-hidden"
                     />
                   </div>
                   <div>
                     <label className="block text-[10px] font-bold text-cyan-800 mb-0.5">
-                      Anemo AFTER (m/s)
+                      Anemo AFTER (m/s) <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="number"
                       step="0.1"
                       value={anemoAfter}
                       onChange={(e) => setAnemoAfter(e.target.value)}
-                      placeholder="Contoh: 3.5"
+                      placeholder="Wajib isi..."
                       required
-                      className="w-full text-xs font-bold px-2.5 py-2 bg-white border border-cyan-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:outline-hidden"
+                      className="w-full text-xs font-bold px-2.5 py-2 bg-white border border-cyan-300 rounded-lg placeholder:font-normal placeholder:text-slate-400 focus:ring-2 focus:ring-cyan-500 focus:outline-hidden"
                     />
                   </div>
                 </div>
@@ -984,23 +1002,40 @@ export function ACLogEntryModal({
           </div>
 
           {/* Action Buttons */}
-          <div className="pt-2 flex items-center justify-end gap-3 border-t border-slate-200">
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={submitting}
-              className="px-4 py-2 text-xs font-bold text-slate-600 hover:text-slate-900 transition"
-            >
-              Batal
-            </button>
-            <button
-              type="submit"
-              disabled={submitting || loadingUnits}
-              className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-500/20 flex items-center gap-2 transition disabled:opacity-50"
-            >
-              <CheckCircle2 className="w-4 h-4" />
-              {submitting ? "Menyimpan Data..." : "Simpan Perawatan AC"}
-            </button>
+          <div className="pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-t border-slate-200">
+            {!isCanSubmit ? (
+              <p className="text-[11px] font-semibold text-amber-700 flex items-center gap-1.5">
+                <AlertCircle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                <span>
+                  {!selectedUnit
+                    ? "Pilih kamar/unit AC dan isi seluruh angka Before & After untuk menyimpan."
+                    : "Isi lengkap ke-4 angka Suhu & Anemo (Before & After) terlebih dahulu."}
+                </span>
+              </p>
+            ) : (
+              <span className="text-[11px] font-semibold text-emerald-700 flex items-center gap-1.5">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                <span>Seluruh data pengukuran lengkap & siap disimpan.</span>
+              </span>
+            )}
+            <div className="flex items-center justify-end gap-3">
+              <button
+                type="button"
+                onClick={onClose}
+                disabled={submitting}
+                className="px-4 py-2 text-xs font-bold text-slate-600 hover:text-slate-900 transition cursor-pointer"
+              >
+                Batal
+              </button>
+              <button
+                type="submit"
+                disabled={!isCanSubmit || submitting || loadingUnits}
+                className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-500/20 flex items-center gap-2 transition disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+              >
+                <CheckCircle2 className="w-4 h-4" />
+                {submitting ? "Menyimpan Data..." : "Simpan Perawatan AC"}
+              </button>
+            </div>
           </div>
         </form>
       </div>

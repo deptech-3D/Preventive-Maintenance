@@ -282,6 +282,7 @@ export interface ACMaintenanceLog {
   photo_after?: string; // Legacy alias
   photo_url?: string;
   created_at?: string;
+  updated_at?: string;
 }
 
 export interface ACUnitScheduleStatus {

@@ -596,6 +596,11 @@ export async function fetchUsers(): Promise<User[]> {
         localStorage.setItem("meter_deleted_user_ids", JSON.stringify(mergedDel));
       }
       if (data?.ok && Array.isArray(data.users) && data.users.length > 0) {
+        if (typeof localStorage !== "undefined") {
+          try {
+            localStorage.setItem("meter_cached_users_list", JSON.stringify(data.users));
+          } catch {}
+        }
         if (typeof window !== "undefined") {
           window.dispatchEvent(new CustomEvent("users-data-synced", { detail: data.users }));
         }
@@ -691,6 +696,100 @@ export async function fetchUsers(): Promise<User[]> {
       !deletedIds.includes(u.user_id.toLowerCase()) &&
       !deletedIds.includes((u.email || "").toLowerCase())
   );
+}
+
+export function getRegisteredUserOptions(
+  providedUsers?: User[]
+): Array<{ user_id: string; name: string; role: "admin" | "user" }> {
+  let rawList: User[] = [];
+  if (Array.isArray(providedUsers) && providedUsers.length > 0) {
+    rawList = providedUsers;
+  } else {
+    if (typeof localStorage !== "undefined") {
+      try {
+        const cached = localStorage.getItem("meter_cached_users_list");
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            rawList = parsed;
+          }
+        }
+      } catch {}
+    }
+    if (rawList.length === 0) {
+      const deletedIds = getDeletedUserIds();
+      const locals = getLocalStoredUsers().filter(
+        (u) =>
+          !u.deleted &&
+          !deletedIds.includes(u.user_id.toLowerCase()) &&
+          !deletedIds.includes((u.email || "").toLowerCase())
+      );
+      rawList = [
+        ...OFFICIAL_USERS_LIST.filter(
+          (u) =>
+            !u.deleted &&
+            !deletedIds.includes(u.user_id.toLowerCase()) &&
+            !deletedIds.includes((u.email || "").toLowerCase())
+        ),
+        ...locals,
+      ];
+    }
+  }
+
+  const byName = new Map<string, { user_id: string; name: string; role: "admin" | "user" }>();
+  for (const u of rawList) {
+    const cleanName = (u?.name || "").trim();
+    if (!cleanName) continue;
+    const key = cleanName.toLowerCase();
+    // Skip generic fallback labels if real users exist
+    if (
+      rawList.length > 2 &&
+      (key === "chief engineer (admin)" || key === "chief engineer" || key === "teknisi engineering")
+    ) {
+      continue;
+    }
+    const existing = byName.get(key);
+    if (!existing) {
+      byName.set(key, {
+        user_id: u.user_id,
+        name: cleanName,
+        role: u.role === "admin" ? "admin" : "user",
+      });
+    } else if (existing.role === "admin" && u.role === "user") {
+      // Utamakan role teknisi/user jika nama sama memiliki 2 akun
+      byName.set(key, {
+        user_id: u.user_id,
+        name: cleanName,
+        role: "user",
+      });
+    }
+  }
+
+  const result = Array.from(byName.values());
+  // Urutkan Teknisi (role: user) di atas, lalu Admin
+  result.sort((a, b) => {
+    if (a.role !== b.role) return a.role === "user" ? -1 : 1;
+    return a.name.localeCompare(b.name, "id");
+  });
+  return result;
+}
+
+export function parseTechnicianNames(userNameStr?: string): [string, string] {
+  if (!userNameStr || !userNameStr.trim()) return ["", ""];
+  const parts = userNameStr
+    .split(/\s*(?:&|\+|\/|,|\bdan\b)\s*/i)
+    .map((s) => s.trim())
+    .filter(Boolean);
+  return [parts[0] || "", parts[1] || ""];
+}
+
+export function formatTechnicianNames(tech1: string, tech2?: string): string {
+  const t1 = (tech1 || "").trim();
+  const t2 = (tech2 || "").trim();
+  if (t1 && t2 && t1.toLowerCase() !== t2.toLowerCase()) {
+    return `${t1} & ${t2}`;
+  }
+  return t1 || t2 || "Teknisi Engineering";
 }
 
 export async function createUser(user: {
@@ -4087,7 +4186,11 @@ export async function updateACMaintenanceLog(
   const idx = current.findIndex((l) => l.log_id === log_id);
   if (idx === -1) throw new Error("Log perawatan tidak ditemukan");
 
-  const updatedItem: ACMaintenanceLog = { ...current[idx], ...updates };
+  const updatedItem: ACMaintenanceLog = {
+    ...current[idx],
+    ...updates,
+    updated_at: new Date().toISOString(),
+  };
   current[idx] = updatedItem;
   saveLocalACLogs(current);
 

@@ -23,6 +23,9 @@ import {
   CheckSquare,
   Square,
   Camera,
+  Users,
+  UserPlus,
+  Pencil,
 } from "lucide-react";
 import {
   ACCategory,
@@ -35,11 +38,16 @@ import {
   fetchACMaintenanceLogs,
   getLocalACLogs,
   getLocalACUnits,
+  updateACMaintenanceLog,
   deleteACMaintenanceLog,
   deleteBulkACMaintenanceLogs,
   clearAllACMaintenanceLogs,
   exportACLogsToExcel,
   copyACLogsToClipboardAsTsv,
+  fetchUsers,
+  getRegisteredUserOptions,
+  parseTechnicianNames,
+  formatTechnicianNames,
 } from "../supabaseService";
 import { ACLogEntryModal } from "./ACLogEntryModal";
 import {
@@ -50,9 +58,19 @@ import { resolveFloorFromUnit } from "../types";
 
 export function ACHistoryView() {
   const { user } = useAuth();
+  const isAdmin = user?.role === "admin" || !user;
   const [logs, setLogs] = useState<ACMaintenanceLog[]>(() => getLocalACLogs());
   const [loading, setLoading] = useState<boolean>(false);
   const [refreshing, setRefreshing] = useState<boolean>(false);
+
+  // Registered Users / Technicians for Admin selection (1 or 2 names)
+  const [registeredUsers, setRegisteredUsers] = useState<
+    Array<{ user_id: string; name: string; role: "admin" | "user" }>
+  >(() => getRegisteredUserOptions());
+  const [editingTechLog, setEditingTechLog] = useState<ACMaintenanceLog | null>(null);
+  const [editTech1, setEditTech1] = useState<string>("");
+  const [editTech2, setEditTech2] = useState<string>("");
+  const [savingTech, setSavingTech] = useState<boolean>(false);
 
   // Filters
   const [categoryFilter, setCategoryFilter] = useState<ACCategory | "all">("all");
@@ -89,12 +107,80 @@ export function ACHistoryView() {
 
   useEffect(() => {
     loadLogs();
+    fetchUsers()
+      .then((list) => {
+        if (list.length > 0) {
+          setRegisteredUsers(getRegisteredUserOptions(list));
+        }
+      })
+      .catch(() => {});
+
     const handleSynced = () => {
       setLogs(getLocalACLogs());
     };
+    const handleUsersSynced = (e: Event) => {
+      const detail = (e as CustomEvent)?.detail;
+      setRegisteredUsers(getRegisteredUserOptions(Array.isArray(detail) ? detail : undefined));
+    };
     window.addEventListener("ac-data-synced", handleSynced);
-    return () => window.removeEventListener("ac-data-synced", handleSynced);
+    window.addEventListener("users-data-synced", handleUsersSynced);
+    return () => {
+      window.removeEventListener("ac-data-synced", handleSynced);
+      window.removeEventListener("users-data-synced", handleUsersSynced);
+    };
   }, [loadLogs]);
+
+  const openEditTechModal = (log: ACMaintenanceLog) => {
+    const [t1, t2] = parseTechnicianNames(log.user_name);
+    setEditTech1(t1 || registeredUsers[0]?.name || "");
+    setEditTech2(t2 || "");
+    setEditingTechLog(log);
+  };
+
+  const handleQuickToggleEditTech = (name: string) => {
+    if (editTech1.toLowerCase() === name.toLowerCase()) {
+      if (editTech2) {
+        setEditTech1(editTech2);
+        setEditTech2("");
+      }
+    } else if (editTech2.toLowerCase() === name.toLowerCase()) {
+      setEditTech2("");
+    } else if (!editTech1) {
+      setEditTech1(name);
+    } else if (!editTech2) {
+      setEditTech2(name);
+    } else {
+      setEditTech2(name);
+    }
+  };
+
+  const handleSaveTechNames = async () => {
+    if (!editingTechLog) return;
+    const combined = formatTechnicianNames(editTech1, editTech2);
+    const targetId = editingTechLog.log_id;
+    const targetUnit = editingTechLog.unit_name;
+
+    try {
+      setSavingTech(true);
+      setLogs((prev) =>
+        prev.map((l) => (l.log_id === targetId ? { ...l, user_name: combined } : l))
+      );
+      if (selectedLog?.log_id === targetId) {
+        setSelectedLog((prev) => (prev ? { ...prev, user_name: combined } : null));
+      }
+      await updateACMaintenanceLog(targetId, { user_name: combined });
+      setEditingTechLog(null);
+      setToastMsg(
+        `Nama teknisi untuk ${targetUnit} berhasil disimpan: ${combined}`
+      );
+      setTimeout(() => setToastMsg(null), 3500);
+    } catch (err: any) {
+      alert(err.message || "Gagal memperbarui nama teknisi");
+      await loadLogs();
+    } finally {
+      setSavingTech(false);
+    }
+  };
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -547,9 +633,26 @@ export function ACHistoryView() {
 
                       {/* Nama Teknisi */}
                       <td className="py-3 px-4 whitespace-nowrap">
-                        <div className="flex items-center gap-1 text-slate-700">
-                          <UserIcon className="w-3.5 h-3.5 text-slate-400" />
-                          <span>{log.user_name}</span>
+                        <div className="flex items-center gap-1.5">
+                          <div className="flex items-center gap-1 text-slate-800 font-semibold">
+                            {log.user_name?.includes("&") ? (
+                              <Users className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                            ) : (
+                              <UserIcon className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                            )}
+                            <span>{log.user_name}</span>
+                          </div>
+                          {isAdmin && (
+                            <button
+                              type="button"
+                              onClick={() => openEditTechModal(log)}
+                              className="px-1.5 py-0.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-md text-[10px] font-bold flex items-center gap-1 transition cursor-pointer"
+                              title="Pilih / tambah sampai 2 nama teknisi terdaftar"
+                            >
+                              <UserPlus className="w-2.5 h-2.5 text-blue-600" />
+                              <span>Pilih</span>
+                            </button>
+                          )}
                         </div>
                       </td>
 
@@ -691,6 +794,15 @@ export function ACHistoryView() {
 
                       {/* Aksi */}
                       <td className="py-3 px-4 text-right whitespace-nowrap space-x-1">
+                        {isAdmin && (
+                          <button
+                            onClick={() => openEditTechModal(log)}
+                            className="p-1.5 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition cursor-pointer"
+                            title="Pilih / Tambah 2 Nama Teknisi Terdaftar"
+                          >
+                            <UserPlus className="w-4 h-4" />
+                          </button>
+                        )}
                         <button
                           onClick={() => setSelectedLog(log)}
                           className="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition cursor-pointer"
@@ -752,7 +864,19 @@ export function ACHistoryView() {
                   <span className="block text-[10px] font-bold uppercase text-slate-400">
                     Teknisi Bertugas
                   </span>
-                  <span className="font-bold text-slate-900">{selectedLog.user_name}</span>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="font-bold text-slate-900">{selectedLog.user_name}</span>
+                    {isAdmin && (
+                      <button
+                        type="button"
+                        onClick={() => openEditTechModal(selectedLog)}
+                        className="px-1.5 py-0.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded text-[10px] font-bold flex items-center gap-1 cursor-pointer transition"
+                      >
+                        <Pencil className="w-2.5 h-2.5" />
+                        <span>Pilih 1-2 Teknisi</span>
+                      </button>
+                    )}
+                  </div>
                 </div>
                 <div>
                   <span className="block text-[10px] font-bold uppercase text-slate-400">
@@ -1003,6 +1127,169 @@ export function ACHistoryView() {
                   className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition cursor-pointer"
                 >
                   Tutup
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL PILIH / UBAH NAMA USER / TEKNISI (BISA 1 ATAU 2 NAMA TERDAFTAR) */}
+      {editingTechLog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/65 backdrop-blur-xs">
+          <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-slate-200 overflow-hidden animate-in fade-in zoom-in-95">
+            <div className="bg-gradient-to-r from-blue-600 to-indigo-700 text-white px-5 py-4 flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-white/15 border border-white/25 flex items-center justify-center">
+                  <Users className="w-4 h-4 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold leading-tight">
+                    Pilih Nama User / Teknisi
+                  </h3>
+                  <p className="text-[11px] text-blue-100 mt-0.5">
+                    {editingTechLog.unit_name} • Bisa pilih 1 atau 2 nama terdaftar
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingTechLog(null)}
+                className="w-7 h-7 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-5 space-y-4 text-xs text-slate-700">
+              {/* Preview Hasil Gabungan Nama */}
+              <div className="p-3 bg-blue-50/80 border border-blue-200 rounded-xl flex items-center justify-between gap-2">
+                <div className="min-w-0">
+                  <span className="block text-[10px] font-bold uppercase text-blue-700">
+                    Nama Teknisi Terpilih:
+                  </span>
+                  <span className="text-sm font-extrabold text-slate-900 truncate block mt-0.5">
+                    {formatTechnicianNames(editTech1, editTech2)}
+                  </span>
+                </div>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200 shrink-0">
+                  {editTech2 ? "2 Nama Teknisi" : "1 Nama Teknisi"}
+                </span>
+              </div>
+
+              {/* Klik Cepat Daftar Nama User / Teknisi Terdaftar */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-bold text-slate-700">
+                    Klik Nama User / Teknisi yang Terdaftar (Maks. 2 Nama):
+                  </span>
+                  {editTech2 && (
+                    <button
+                      type="button"
+                      onClick={() => setEditTech2("")}
+                      className="text-[10px] font-bold text-red-600 hover:underline cursor-pointer"
+                    >
+                      Hapus Nama ke-2
+                    </button>
+                  )}
+                </div>
+                <div className="flex flex-wrap gap-1.5 p-2.5 bg-slate-50 rounded-xl border border-slate-200">
+                  {registeredUsers.map((u) => {
+                    const isFirst = editTech1.toLowerCase() === u.name.toLowerCase();
+                    const isSecond = editTech2.toLowerCase() === u.name.toLowerCase();
+                    const isPicked = isFirst || isSecond;
+                    return (
+                      <button
+                        key={`edit_chip_${u.user_id}_${u.name}`}
+                        type="button"
+                        onClick={() => handleQuickToggleEditTech(u.name)}
+                        className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 border cursor-pointer ${
+                          isFirst
+                            ? "bg-blue-600 text-white border-blue-600 shadow-2xs"
+                            : isSecond
+                            ? "bg-indigo-600 text-white border-indigo-600 shadow-2xs"
+                            : "bg-white text-slate-700 border-slate-200 hover:border-blue-400 hover:text-blue-700"
+                        }`}
+                      >
+                        {isPicked && (
+                          <span className="w-4 h-4 rounded-full bg-white/25 text-white text-[10px] font-black flex items-center justify-center">
+                            {isFirst ? "1" : "2"}
+                          </span>
+                        )}
+                        <span>{u.name}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Pilihan Melalui 2 Dropdown */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1 border-t border-slate-100">
+                <div>
+                  <label className="block text-[10px] font-bold uppercase text-slate-500 mb-1">
+                    1. Nama Teknisi Pertama
+                  </label>
+                  <select
+                    value={editTech1}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setEditTech1(val);
+                      if (val.toLowerCase() === editTech2.toLowerCase()) {
+                        setEditTech2("");
+                      }
+                    }}
+                    className="w-full px-2.5 py-2 bg-white border border-slate-300 rounded-lg text-xs font-bold text-slate-800 focus:ring-2 focus:ring-blue-500 focus:outline-hidden cursor-pointer"
+                  >
+                    {registeredUsers.map((u) => (
+                      <option key={`sel1_${u.user_id}_${u.name}`} value={u.name}>
+                        {u.name} ({u.role === "admin" ? "Admin" : "Teknisi"})
+                      </option>
+                    ))}
+                    {editTech1 &&
+                      !registeredUsers.some(
+                        (u) => u.name.toLowerCase() === editTech1.toLowerCase()
+                      ) && <option value={editTech1}>{editTech1}</option>}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold uppercase text-slate-500 mb-1">
+                    2. Nama Teknisi Kedua (Opsional)
+                  </label>
+                  <select
+                    value={editTech2}
+                    onChange={(e) => setEditTech2(e.target.value)}
+                    className="w-full px-2.5 py-2 bg-white border border-slate-300 rounded-lg text-xs font-bold text-slate-800 focus:ring-2 focus:ring-indigo-500 focus:outline-hidden cursor-pointer"
+                  >
+                    <option value="">— Tanpa Nama ke-2 —</option>
+                    {registeredUsers
+                      .filter((u) => u.name.toLowerCase() !== editTech1.toLowerCase())
+                      .map((u) => (
+                        <option key={`sel2_${u.user_id}_${u.name}`} value={u.name}>
+                          + {u.name} ({u.role === "admin" ? "Admin" : "Teknisi"})
+                        </option>
+                      ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="pt-2 flex items-center justify-end gap-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setEditingTechLog(null)}
+                  disabled={savingTech}
+                  className="px-4 py-2 text-xs font-bold text-slate-600 hover:text-slate-900 transition cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveTechNames}
+                  disabled={savingTech || !editTech1.trim()}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-sm transition flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
+                >
+                  <Check className="w-3.5 h-3.5" />
+                  <span>{savingTech ? "Menyimpan..." : "Simpan Nama Teknisi"}</span>
                 </button>
               </div>
             </div>

@@ -4,6 +4,8 @@ import {
   Calendar,
   Clock,
   User as UserIcon,
+  Users,
+  UserPlus,
   Thermometer,
   Wind,
   FileText,
@@ -31,6 +33,9 @@ import {
   fetchACUnits,
   getLocalACUnits,
   createACMaintenanceLog,
+  fetchUsers,
+  getRegisteredUserOptions,
+  formatTechnicianNames,
 } from "../supabaseService";
 import { compressImageFile } from "../utils/imageCompressor";
 import {
@@ -50,6 +55,21 @@ export function ACLogEntryModal({
   onSuccess,
 }: ACLogEntryModalProps) {
   const { user } = useAuth();
+  const isAdmin = user?.role === "admin" || !user;
+
+  // Registered Users / Technicians for selection (1 or 2 names)
+  const [registeredUsers, setRegisteredUsers] = useState<
+    Array<{ user_id: string; name: string; role: "admin" | "user" }>
+  >(() => getRegisteredUserOptions());
+
+  const [selectedTech1, setSelectedTech1] = useState<string>(() => {
+    const opts = getRegisteredUserOptions();
+    if (user?.name && user.name !== "Chief Engineer (Admin)") {
+      return user.name;
+    }
+    return opts[0]?.name || user?.name || "Teknisi Engineering";
+  });
+  const [selectedTech2, setSelectedTech2] = useState<string>("");
 
   // Master Units & Selection
   const [units, setUnits] = useState<ACUnitLocation[]>(() => getLocalACUnits());
@@ -118,12 +138,25 @@ export function ACLogEntryModal({
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // Load all units and set initial selection
+  // Load all units & registered users
   useEffect(() => {
     (async () => {
       try {
-        const data = await fetchACUnits();
+        const [data, fetchedUsers] = await Promise.all([
+          fetchACUnits(),
+          fetchUsers().catch(() => []),
+        ]);
         setUnits(data);
+        if (fetchedUsers.length > 0) {
+          const opts = getRegisteredUserOptions(fetchedUsers);
+          setRegisteredUsers(opts);
+          setSelectedTech1((prev) => {
+            if (!prev || prev === "Chief Engineer (Admin)" || prev === "Teknisi Engineering") {
+              return opts[0]?.name || prev;
+            }
+            return prev;
+          });
+        }
 
         if (initialUnitId) {
           const match = data.find((u) => u.id === initialUnitId);
@@ -139,7 +172,49 @@ export function ACLogEntryModal({
         setLoadingUnits(false);
       }
     })();
+
+    const handleUsersSynced = (e: Event) => {
+      const detail = (e as CustomEvent)?.detail;
+      const opts = getRegisteredUserOptions(Array.isArray(detail) ? detail : undefined);
+      setRegisteredUsers(opts);
+    };
+    window.addEventListener("users-data-synced", handleUsersSynced);
+    return () => window.removeEventListener("users-data-synced", handleUsersSynced);
   }, [initialUnitId]);
+
+  const handleQuickToggleTech = (name: string) => {
+    if (!isAdmin) {
+      // Untuk user biasa, nama ke-1 tetap dirinya, klik nama lain akan mengisi/menghapus Teknisi 2
+      if (name.toLowerCase() === selectedTech1.toLowerCase()) return;
+      if (selectedTech2.toLowerCase() === name.toLowerCase()) {
+        setSelectedTech2("");
+      } else {
+        setSelectedTech2(name);
+      }
+      return;
+    }
+
+    // Untuk Admin: bisa pilih 1 atau 2 nama dari daftar User/Teknisi terdaftar
+    if (selectedTech1.toLowerCase() === name.toLowerCase()) {
+      if (selectedTech2) {
+        setSelectedTech1(selectedTech2);
+        setSelectedTech2("");
+      }
+    } else if (selectedTech2.toLowerCase() === name.toLowerCase()) {
+      setSelectedTech2("");
+    } else if (!selectedTech1) {
+      setSelectedTech1(name);
+    } else if (!selectedTech2) {
+      setSelectedTech2(name);
+    } else {
+      setSelectedTech2(name);
+    }
+  };
+
+  const combinedTechnicianName = useMemo(
+    () => formatTechnicianNames(selectedTech1 || user?.name || "Teknisi AC", selectedTech2),
+    [selectedTech1, selectedTech2, user?.name]
+  );
 
   // Selected unit entity
   const selectedUnit = useMemo(() => {
@@ -234,7 +309,7 @@ export function ACLogEntryModal({
       const newLog = await createACMaintenanceLog({
         recorded_at: new Date(recordedAt).toISOString(),
         user_id: user?.user_id || "usr_tech",
-        user_name: user?.name || "Teknisi AC",
+        user_name: combinedTechnicianName,
         category: normalizeACCategory(selectedUnit.category),
         unit_id: selectedUnit.id,
         unit_name: selectedUnit.name,
@@ -295,45 +370,170 @@ export function ACLogEntryModal({
             </div>
           )}
 
-          {/* Section 1: Locked Meta Info (Waktu & Teknisi) */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-slate-50 p-3.5 rounded-xl border border-slate-200">
-            {/* Tanggal & Jam */}
-            <div>
-              <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1 flex items-center justify-between">
-                <span className="flex items-center gap-1.5">
-                  <Clock className="w-3.5 h-3.5 text-blue-600" />
-                  Tanggal & Jam Perawatan
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setRecordedAt(getNowLocalString())}
-                  className="text-[10px] text-blue-600 hover:text-blue-800 font-semibold cursor-pointer"
-                >
-                  Waktu Sekarang
-                </button>
-              </label>
-              <input
-                type="datetime-local"
-                value={recordedAt}
-                onChange={(e) => setRecordedAt(e.target.value)}
-                required
-                className="w-full text-xs font-semibold px-3 py-2 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
-              />
+          {/* Section 1: Waktu & Pemilihan Nama User / Teknisi (Bisa 1 atau 2 Nama) */}
+          <div className="space-y-3 bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {/* Tanggal & Jam */}
+              <div>
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1 flex items-center justify-between">
+                  <span className="flex items-center gap-1.5">
+                    <Clock className="w-3.5 h-3.5 text-blue-600" />
+                    Tanggal & Jam Perawatan
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setRecordedAt(getNowLocalString())}
+                    className="text-[10px] text-blue-600 hover:text-blue-800 font-semibold cursor-pointer"
+                  >
+                    Waktu Sekarang
+                  </button>
+                </label>
+                <input
+                  type="datetime-local"
+                  value={recordedAt}
+                  onChange={(e) => setRecordedAt(e.target.value)}
+                  required
+                  className="w-full text-xs font-semibold px-3 py-2 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
+                />
+              </div>
+
+              {/* Ringkasan Nama Teknisi Terpilih */}
+              <div>
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1 flex items-center justify-between">
+                  <span className="flex items-center gap-1.5">
+                    <Users className="w-3.5 h-3.5 text-blue-600" />
+                    {isAdmin ? "Teknisi Terpilih (1-2 Nama)" : "Nama Teknisi Bertugas"}
+                  </span>
+                  <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200">
+                    {selectedTech2 ? "2 Teknisi" : "1 Teknisi"}
+                  </span>
+                </label>
+                <div className="flex items-center gap-2 px-3 py-2 bg-blue-50/70 border border-blue-200 rounded-lg text-xs font-bold text-slate-900">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span>
+                  <span className="truncate">{combinedTechnicianName}</span>
+                </div>
+              </div>
             </div>
 
-            {/* Nama Teknisi (Locked from Session) */}
-            <div>
-              <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-500 mb-1 flex items-center gap-1.5">
-                <UserIcon className="w-3.5 h-3.5 text-blue-600" />
-                Nama Teknisi (Terkunci)
-              </label>
-              <div className="flex items-center gap-2 px-3 py-2 bg-slate-200/80 border border-slate-300 rounded-lg text-xs font-bold text-slate-800">
-                <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                <span className="truncate">{user?.name || "Teknisi Engineering"}</span>
-                <span className="ml-auto text-[10px] uppercase font-bold text-slate-500 bg-white px-1.5 py-0.5 rounded border border-slate-200">
-                  {user?.role || "user"}
-                </span>
+            {/* Pilihan Dropdown Teknisi 1 & Teknisi 2 (Khusus Admin bisa pilih keduanya, User bisa tambah rekan ke-2) */}
+            <div className="pt-2 border-t border-slate-200/80 space-y-2.5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                {/* Dropdown Teknisi 1 */}
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-600 mb-1 flex items-center gap-1">
+                    <UserIcon className="w-3 h-3 text-blue-600" />
+                    <span>Nama User / Teknisi 1 {isAdmin ? "(Pilih Terdaftar)" : ""}</span>
+                  </label>
+                  {isAdmin ? (
+                    <select
+                      value={selectedTech1}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setSelectedTech1(val);
+                        if (val.toLowerCase() === selectedTech2.toLowerCase()) {
+                          setSelectedTech2("");
+                        }
+                      }}
+                      className="w-full text-xs font-bold px-2.5 py-2 bg-white border border-slate-300 rounded-lg text-slate-800 focus:ring-2 focus:ring-blue-500 focus:outline-hidden cursor-pointer"
+                    >
+                      {registeredUsers.map((u) => (
+                        <option key={`t1_${u.user_id}_${u.name}`} value={u.name}>
+                          {u.name} ({u.role === "admin" ? "Admin" : "Teknisi"})
+                        </option>
+                      ))}
+                      {selectedTech1 &&
+                        !registeredUsers.some(
+                          (u) => u.name.toLowerCase() === selectedTech1.toLowerCase()
+                        ) && <option value={selectedTech1}>{selectedTech1}</option>}
+                    </select>
+                  ) : (
+                    <div className="px-2.5 py-2 bg-slate-200/70 border border-slate-300 rounded-lg text-xs font-bold text-slate-800 truncate">
+                      {selectedTech1}
+                    </div>
+                  )}
+                </div>
+
+                {/* Dropdown Teknisi 2 (Opsional) */}
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-600 mb-1 flex items-center justify-between">
+                    <span className="flex items-center gap-1">
+                      <UserPlus className="w-3 h-3 text-indigo-600" />
+                      <span>Tambah Nama Teknisi 2 (Opsional)</span>
+                    </span>
+                    {selectedTech2 && (
+                      <button
+                        type="button"
+                        onClick={() => setSelectedTech2("")}
+                        className="text-[10px] text-red-600 hover:underline font-bold cursor-pointer"
+                      >
+                        Hapus ke-2
+                      </button>
+                    )}
+                  </label>
+                  <select
+                    value={selectedTech2}
+                    onChange={(e) => setSelectedTech2(e.target.value)}
+                    className="w-full text-xs font-bold px-2.5 py-2 bg-white border border-slate-300 rounded-lg text-slate-800 focus:ring-2 focus:ring-indigo-500 focus:outline-hidden cursor-pointer"
+                  >
+                    <option value="">— Hanya 1 Teknisi (Tanpa Nama ke-2) —</option>
+                    {registeredUsers
+                      .filter((u) => u.name.toLowerCase() !== selectedTech1.toLowerCase())
+                      .map((u) => (
+                        <option key={`t2_${u.user_id}_${u.name}`} value={u.name}>
+                          + {u.name} ({u.role === "admin" ? "Admin" : "Teknisi"})
+                        </option>
+                      ))}
+                  </select>
+                </div>
               </div>
+
+              {/* Tombol Klik Cepat Daftar Nama User/Teknisi yang Sudah Terdaftar */}
+              {registeredUsers.length > 0 && (
+                <div className="bg-white p-2.5 rounded-xl border border-slate-200 space-y-1.5">
+                  <div className="flex items-center justify-between text-[10px]">
+                    <span className="font-bold text-slate-600">
+                      Klik Cepat Nama User / Teknisi Terdaftar (Bisa pilih sampai 2 nama):
+                    </span>
+                    {selectedTech2 && (
+                      <button
+                        type="button"
+                        onClick={() => setSelectedTech2("")}
+                        className="text-slate-500 hover:text-red-600 font-semibold cursor-pointer"
+                      >
+                        Reset 1 Nama
+                      </button>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    {registeredUsers.map((u) => {
+                      const isFirst = selectedTech1.toLowerCase() === u.name.toLowerCase();
+                      const isSecond = selectedTech2.toLowerCase() === u.name.toLowerCase();
+                      const isPicked = isFirst || isSecond;
+                      return (
+                        <button
+                          key={`chip_${u.user_id}_${u.name}`}
+                          type="button"
+                          onClick={() => handleQuickToggleTech(u.name)}
+                          className={`px-2.5 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1.5 border cursor-pointer ${
+                            isFirst
+                              ? "bg-blue-600 text-white border-blue-600 shadow-2xs"
+                              : isSecond
+                              ? "bg-indigo-600 text-white border-indigo-600 shadow-2xs"
+                              : "bg-slate-50 text-slate-700 border-slate-200 hover:border-blue-400 hover:bg-blue-50/50"
+                          }`}
+                        >
+                          {isPicked && (
+                            <span className="w-4 h-4 rounded-full bg-white/25 text-white text-[10px] font-black flex items-center justify-center">
+                              {isFirst ? "1" : "2"}
+                            </span>
+                          )}
+                          <span>{u.name}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 

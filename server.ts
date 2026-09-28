@@ -392,7 +392,18 @@ async function pullFromLiveRemoteIfNeeded(force = false): Promise<void> {
         if (l && l.log_id && !delLogSet.has(l.log_id)) logMap.set(l.log_id, l);
       });
       remoteLogs.forEach((l: any) => {
-        if (l && l.log_id && !delLogSet.has(l.log_id)) logMap.set(l.log_id, l);
+        if (l && l.log_id && !delLogSet.has(l.log_id)) {
+          const existing = logMap.get(l.log_id);
+          if (!existing) {
+            logMap.set(l.log_id, l);
+          } else {
+            const existTime = new Date(existing.updated_at || existing.created_at || 0).getTime();
+            const remTime = new Date(l.updated_at || l.created_at || 0).getTime();
+            if (remTime >= existTime) {
+              logMap.set(l.log_id, l);
+            }
+          }
+        }
       });
       const mergedLogs = Array.from(logMap.values()).sort(
         (a: any, b: any) => new Date(b.recorded_at || 0).getTime() - new Date(a.recorded_at || 0).getTime()
@@ -850,7 +861,18 @@ app.post("/api/sync-all", (req: Request, res: Response) => {
       if (l && l.log_id && !delLogSet.has(l.log_id)) logMap.set(l.log_id, l);
     });
     pkg.ac_logs.forEach((l: any) => {
-      if (l && l.log_id && !delLogSet.has(l.log_id)) logMap.set(l.log_id, l);
+      if (l && l.log_id && !delLogSet.has(l.log_id)) {
+        const existing = logMap.get(l.log_id);
+        if (!existing) {
+          logMap.set(l.log_id, l);
+        } else {
+          const existTime = new Date(existing.updated_at || existing.created_at || 0).getTime();
+          const remTime = new Date(l.updated_at || l.created_at || 0).getTime();
+          if (remTime >= existTime) {
+            logMap.set(l.log_id, l);
+          }
+        }
+      }
     });
     state.ac_logs = Array.from(logMap.values()).sort(
       (a: any, b: any) => new Date(b.recorded_at || 0).getTime() - new Date(a.recorded_at || 0).getTime()
@@ -1027,6 +1049,7 @@ app.post("/api/ac-logs", (req: Request, res: Response) => {
     ...log,
     log_id,
     created_at: log.created_at || new Date().toISOString(),
+    updated_at: log.updated_at || new Date().toISOString(),
   };
 
   if (existingIdx >= 0) {

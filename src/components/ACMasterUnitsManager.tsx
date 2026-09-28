@@ -43,6 +43,7 @@ import {
   getSmartUnitSuggestions,
   smartFilterAndSortUnits,
 } from "../utils/smartSearch";
+import { useBackHandler } from "../utils/backNavigation";
 
 export function ACMasterUnitsManager() {
   const [units, setUnits] = useState<ACUnitLocation[]>(() => getLocalACUnits());
@@ -80,6 +81,12 @@ export function ACMasterUnitsManager() {
   // Delete confirmation state
   const [deleteTarget, setDeleteTarget] = useState<ACUnitLocation | null>(null);
   const [deleting, setDeleting] = useState<boolean>(false);
+
+  // Tombol Kembali (Back) untuk menutup modal tambah/edit/hapus/pindah posisi
+  useBackHandler(reorderMode, () => setReorderMode(false), 18);
+  useBackHandler(modalMode !== null, () => setModalMode(null), 20);
+  useBackHandler(quickMoveModal !== null, () => setQuickMoveModal(null), 30);
+  useBackHandler(deleteTarget !== null, () => setDeleteTarget(null), 30);
 
   // Success toast
   const [successMsg, setSuccessMsg] = useState<string | null>(null);

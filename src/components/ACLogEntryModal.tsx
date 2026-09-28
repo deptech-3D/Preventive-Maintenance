@@ -51,6 +51,7 @@ import {
   getSmartUnitSuggestions,
   smartFilterAndSortUnits,
 } from "../utils/smartSearch";
+import { useBackHandler } from "../utils/backNavigation";
 
 interface ACLogEntryModalProps {
   initialUnitId?: string | null;
@@ -251,6 +252,21 @@ export function ACLogEntryModal({
   const selectedUnit = useMemo(() => {
     return units.find((u) => u.id === selectedUnitId) || null;
   }, [units, selectedUnitId]);
+
+  // Tombol Kembali (Back) di HP / Browser:
+  // 1. Menutup modal Form Pencatatan AC
+  useBackHandler(true, onClose, 20);
+  // 2. Menutup daftar riwayat cuci terdahulu jika sedang dibuka
+  useBackHandler(showAllUnitHistory, () => setShowAllUnitHistory(false), 24);
+  // 3. Menutup menu pencarian "Ganti Kamar" kembali ke unit yang sudah dipilih
+  useBackHandler(
+    Boolean(selectedUnit && isChangingUnit),
+    () => {
+      setIsChangingUnit(false);
+      setSearchQuery("");
+    },
+    25
+  );
 
   // Schedule & Last Cleaning Map across all units
   const scheduleStatusMap = useMemo(() => {

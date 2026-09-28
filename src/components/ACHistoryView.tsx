@@ -55,6 +55,7 @@ import {
   getSmartUnitSuggestions,
 } from "../utils/smartSearch";
 import { resolveFloorFromUnit } from "../types";
+import { useBackHandler } from "../utils/backNavigation";
 
 export function ACHistoryView() {
   const { user } = useAuth();
@@ -87,6 +88,14 @@ export function ACHistoryView() {
   const [showBulkDeleteModal, setShowBulkDeleteModal] = useState<boolean>(false);
   const [showClearAllModal, setShowClearAllModal] = useState<boolean>(false);
   const [clearingAll, setClearingAll] = useState<boolean>(false);
+
+  // Tombol Kembali (Back) untuk menutup modal secara bertingkat dari yang paling atas
+  useBackHandler(Boolean(selectedLog), () => setSelectedLog(null), 20);
+  useBackHandler(Boolean(editingTechLog), () => setEditingTechLog(null), 30);
+  useBackHandler(Boolean(deleteTarget), () => setDeleteTarget(null), 30);
+  useBackHandler(showBulkDeleteModal, () => setShowBulkDeleteModal(false), 30);
+  useBackHandler(showClearAllModal, () => setShowClearAllModal(false), 30);
+  useBackHandler(Boolean(viewingPhoto), () => setViewingPhoto(null), 40);
 
   // Clipboard & Excel state
   const [copiedTsv, setCopiedTsv] = useState<boolean>(false);

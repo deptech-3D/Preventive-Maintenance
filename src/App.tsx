@@ -26,6 +26,7 @@ import { Settings } from "./components/Settings";
 import { ACSearchMode } from "./components/ACSearchMode";
 import { ACLogEntryModal } from "./components/ACLogEntryModal";
 import { ACMaintenanceLog } from "./types";
+import { useBackHandler } from "./utils/backNavigation";
 
 export function App() {
   const { user, loading } = useAuth();
@@ -36,6 +37,13 @@ export function App() {
   const [selectedACUnitId, setSelectedACUnitId] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [propertyTitle, setPropertyTitle] = useState(user?.property_name || "Engineering Hotel");
+
+  // Tombol Kembali (Back) untuk kembali ke tab Dashboard jika sedang berada di tab lain
+  useBackHandler(
+    Boolean(!loading && user && activeTab !== "dashboard"),
+    () => setActiveTab("dashboard"),
+    10
+  );
 
   useEffect(() => {
     const syncAllData = () => {

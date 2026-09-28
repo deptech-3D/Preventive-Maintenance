@@ -28,6 +28,7 @@ import {
   getLocalACScheduleOverview,
   getLocalAppSettings,
 } from "../supabaseService";
+import { useBackHandler } from "../utils/backNavigation";
 
 interface ACScheduleNotificationPanelProps {
   onLogSaved?: (log: ACMaintenanceLog) => void;
@@ -54,6 +55,9 @@ export function ACScheduleNotificationPanel({
     "all" | "overdue" | "approaching" | "safe" | "never"
   >("all");
   const [searchQuery, setSearchQuery] = useState<string>("");
+
+  // Tombol Kembali (Back) untuk menutup daftar kolom jadwal yang sedang terbuka
+  useBackHandler(selectedColumn !== null, () => setSelectedColumn(null), 15);
 
   const loadData = useCallback(async () => {
     try {

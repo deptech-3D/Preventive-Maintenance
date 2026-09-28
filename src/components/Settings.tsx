@@ -50,6 +50,7 @@ import { User, AppSettings } from "../types";
 import { useAuth } from "../auth";
 import { useI18n, Lang } from "../i18n";
 import { SUPABASE_URL } from "../supabase";
+import { useBackHandler } from "../utils/backNavigation";
 import {
   fetchAppSettings,
   updateAppSettings,
@@ -141,6 +142,13 @@ export function Settings() {
   const [showUserImportModal, setShowUserImportModal] = useState(false);
   const [userImportText, setUserImportText] = useState("");
   const [copiedUserCode, setCopiedUserCode] = useState(false);
+
+  // Tombol Kembali (Back) untuk menutup modal di Pengaturan
+  useBackHandler(showAddUser, () => setShowAddUser(false), 20);
+  useBackHandler(Boolean(editPassUser), () => setEditPassUser(null), 25);
+  useBackHandler(showPasteModal, () => setShowPasteModal(false), 25);
+  useBackHandler(showUserImportModal, () => setShowUserImportModal(false), 25);
+  useBackHandler(Boolean(confirmModal?.open), () => setConfirmModal(null), 35);
 
   const handleSyncUsersToServer = async () => {
     setSyncingUsersServer(true);

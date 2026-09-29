@@ -97,6 +97,9 @@ export interface AppSettings {
   lvmdp_max_room_temp?: number; // default: 32.0 °C
   ac_maintenance_cycle?: "1 Bulan Sekali" | "2 Bulan Sekali" | "3 Bulan Sekali";
   ac_maintenance_cycle_months?: number; // 1, 2, or 3
+  gdrive_folder_id?: string; // ID atau Link Folder Google Drive Admin
+  gdrive_script_url?: string; // URL Web App Jembatan Google Apps Script (/exec)
+  gdrive_enabled?: boolean; // Aktifkan penyimpanan foto otomatis ke Google Drive
 }
 
 export type ACCategory =

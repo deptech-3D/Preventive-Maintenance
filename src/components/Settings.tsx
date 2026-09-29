@@ -41,11 +41,13 @@ import {
   Activity,
   Flame,
   CalendarClock,
+  HardDrive,
 } from "lucide-react";
 import { ACMasterUnitsManager } from "./ACMasterUnitsManager";
 import { ACMaintenanceCycleSettings } from "./ACMaintenanceCycleSettings";
 import { ACIntegrationReportPanel } from "./ACIntegrationReportPanel";
 import { ACDataBackupSyncCard } from "./ACDataBackupSyncCard";
+import { GoogleDrivePhotoSettingsCard } from "./GoogleDrivePhotoSettingsCard";
 import { User, AppSettings } from "../types";
 import { useAuth } from "../auth";
 import { useI18n, Lang } from "../i18n";
@@ -195,7 +197,7 @@ export function Settings() {
   };
 
   // Admin AC Management Submenu State
-  const [adminSubmenu, setAdminSubmenu] = useState<"master_ac" | "cycle_ac" | "reports" | "users" | "general">("master_ac");
+  const [adminSubmenu, setAdminSubmenu] = useState<"master_ac" | "cycle_ac" | "gdrive_photo" | "reports" | "users" | "general">("gdrive_photo");
 
   const [updatingApp, setUpdatingApp] = useState(false);
 
@@ -614,6 +616,23 @@ export function Settings() {
             </button>
 
             <button
+              id="tab-admin-gdrive"
+              type="button"
+              onClick={() => setAdminSubmenu("gdrive_photo")}
+              className={`px-3.5 py-2.5 rounded-xl font-bold transition flex items-center gap-2 shrink-0 border cursor-pointer ${
+                adminSubmenu === "gdrive_photo"
+                  ? "bg-emerald-600 text-white border-emerald-600 shadow-xs"
+                  : "bg-emerald-50/70 text-emerald-900 border-emerald-200 hover:bg-emerald-100"
+              }`}
+            >
+              <HardDrive className="w-4 h-4" />
+              <span>C. Folder Foto Google Drive</span>
+              <span className="px-1.5 py-0.2 bg-emerald-500 text-white text-[9px] font-black rounded-full">
+                Hemat DB
+              </span>
+            </button>
+
+            <button
               id="tab-admin-reports"
               type="button"
               onClick={() => setAdminSubmenu("reports")}
@@ -624,10 +643,7 @@ export function Settings() {
               }`}
             >
               <FileSpreadsheet className="w-4 h-4" />
-              <span>C. Laporan & Integrasi Sheets</span>
-              <span className="px-1.5 py-0.2 bg-emerald-500 text-white text-[9px] font-black rounded-full">
-                Tema AC
-              </span>
+              <span>D. Laporan & Integrasi Sheets</span>
             </button>
 
             <button
@@ -641,7 +657,7 @@ export function Settings() {
               }`}
             >
               <Users className="w-4 h-4" />
-              <span>D. Kelola Pengguna</span>
+              <span>E. Kelola Pengguna</span>
             </button>
 
             <button
@@ -655,7 +671,7 @@ export function Settings() {
               }`}
             >
               <SettingsIcon className="w-4 h-4" />
-              <span>E. Konfigurasi Property</span>
+              <span>F. Konfigurasi Property</span>
             </button>
           </div>
 
@@ -665,9 +681,25 @@ export function Settings() {
           {/* Submenu B: Durasi Siklus Perawatan */}
           {adminSubmenu === "cycle_ac" && <ACMaintenanceCycleSettings />}
 
-          {/* Submenu C: Integrasi Google Sheets, Excel & Laporan Otomatis */}
+          {/* Submenu C: Penyimpanan Foto Otomatis ke Google Drive */}
+          {adminSubmenu === "gdrive_photo" && (
+            <GoogleDrivePhotoSettingsCard
+              onSaved={(updated) => {
+                setSettings(updated);
+              }}
+            />
+          )}
+
+          {/* Submenu D: Integrasi Google Sheets, Excel & Laporan Otomatis */}
           {adminSubmenu === "reports" && (
-            <ACIntegrationReportPanel propertyName={propertyName || "Midtown Hotel Samarinda"} />
+            <div className="space-y-4">
+              <ACIntegrationReportPanel propertyName={propertyName || "Midtown Hotel Samarinda"} />
+              <GoogleDrivePhotoSettingsCard
+                onSaved={(updated) => {
+                  setSettings(updated);
+                }}
+              />
+            </div>
           )}
 
           {/* Submenu D: Konfigurasi Property & Operasional */}

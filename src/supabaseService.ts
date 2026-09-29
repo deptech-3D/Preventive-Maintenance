@@ -47,6 +47,9 @@ export const DEFAULT_SETTINGS: AppSettings = {
   chart_years_count: 2,
   ac_maintenance_cycle: "1 Bulan Sekali",
   ac_maintenance_cycle_months: 1,
+  gdrive_folder_id: "",
+  gdrive_script_url: "",
+  gdrive_enabled: true,
 };
 
 // Helper untuk base API URL: Menangani web browser biasa maupun Capacitor WebView di Android HP
@@ -419,9 +422,17 @@ export function getLocalAppSettings(): AppSettings {
   if (typeof localStorage !== "undefined") {
     try {
       const raw = localStorage.getItem("meter_app_settings");
-      if (raw) {
-        return { ...DEFAULT_SETTINGS, ...JSON.parse(raw) };
-      }
+      const savedFolder = localStorage.getItem("meter_gdrive_folder_id");
+      const savedScript = localStorage.getItem("meter_gdrive_script_url");
+      const parsed = raw ? JSON.parse(raw) : {};
+      return {
+        ...DEFAULT_SETTINGS,
+        ...parsed,
+        gdrive_folder_id:
+          savedFolder !== null ? savedFolder : parsed.gdrive_folder_id || "",
+        gdrive_script_url:
+          savedScript !== null ? savedScript : parsed.gdrive_script_url || "",
+      };
     } catch {}
   }
   return DEFAULT_SETTINGS;
@@ -431,8 +442,7 @@ export async function fetchAppSettings(): Promise<AppSettings> {
   let cached: AppSettings | null = null;
   if (typeof localStorage !== "undefined") {
     try {
-      const raw = localStorage.getItem("meter_app_settings");
-      if (raw) cached = JSON.parse(raw);
+      cached = getLocalAppSettings();
     } catch {}
   }
 
@@ -449,16 +459,53 @@ export async function fetchAppSettings(): Promise<AppSettings> {
             ? localStorage.getItem("meter_dashboard_custom_bg") || localStorage.getItem("meter_login_custom_bg")
             : null;
         let effectiveBg = s.dashboard_bg_url || cached?.dashboard_bg_url || DEFAULT_SETTINGS.dashboard_bg_url;
+        let needPushBack = false;
+        const pushPatch: Record<string, any> = {};
+
         if (
           effectiveBg === DEFAULT_SETTINGS.dashboard_bg_url &&
           localCustomBg &&
           localCustomBg !== DEFAULT_SETTINGS.dashboard_bg_url
         ) {
           effectiveBg = localCustomBg;
+          pushPatch.dashboard_bg_url = localCustomBg;
+          needPushBack = true;
+        }
+
+        const localFolder =
+          typeof localStorage !== "undefined"
+            ? localStorage.getItem("meter_gdrive_folder_id")
+            : null;
+        const localScript =
+          typeof localStorage !== "undefined"
+            ? localStorage.getItem("meter_gdrive_script_url")
+            : null;
+
+        const effectiveFolderId =
+          (localFolder !== null && localFolder !== "" ? localFolder : "") ||
+          s.gdrive_folder_id ||
+          cached?.gdrive_folder_id ||
+          "";
+        const effectiveScriptUrl =
+          (localScript !== null && localScript !== "" ? localScript : "") ||
+          s.gdrive_script_url ||
+          cached?.gdrive_script_url ||
+          "";
+
+        if (effectiveFolderId && !s.gdrive_folder_id) {
+          pushPatch.gdrive_folder_id = effectiveFolderId;
+          needPushBack = true;
+        }
+        if (effectiveScriptUrl && !s.gdrive_script_url) {
+          pushPatch.gdrive_script_url = effectiveScriptUrl;
+          needPushBack = true;
+        }
+
+        if (needPushBack) {
           fetch(apiUrl("/api/settings"), {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ dashboard_bg_url: localCustomBg }),
+            body: JSON.stringify(pushPatch),
           }).catch(() => {});
         }
 
@@ -469,10 +516,19 @@ export async function fetchAppSettings(): Promise<AppSettings> {
           dashboard_bg_url: effectiveBg,
           ac_maintenance_cycle: (s.ac_maintenance_cycle || cached?.ac_maintenance_cycle || "1 Bulan Sekali") as any,
           ac_maintenance_cycle_months: Number(s.ac_maintenance_cycle_months ?? cached?.ac_maintenance_cycle_months ?? 1),
+          gdrive_folder_id: effectiveFolderId,
+          gdrive_script_url: effectiveScriptUrl,
+          gdrive_enabled: s.gdrive_enabled ?? cached?.gdrive_enabled ?? true,
         };
         if (typeof localStorage !== "undefined") {
           try {
             localStorage.setItem("meter_app_settings", JSON.stringify(merged));
+            if (merged.gdrive_folder_id) {
+              localStorage.setItem("meter_gdrive_folder_id", merged.gdrive_folder_id);
+            }
+            if (merged.gdrive_script_url) {
+              localStorage.setItem("meter_gdrive_script_url", merged.gdrive_script_url);
+            }
             if (merged.dashboard_bg_url) {
               localStorage.setItem("meter_dashboard_custom_bg", merged.dashboard_bg_url);
               localStorage.setItem("meter_login_custom_bg", merged.dashboard_bg_url);
@@ -491,7 +547,7 @@ export async function fetchAppSettings(): Promise<AppSettings> {
 }
 
 export async function updateAppSettings(patch: Partial<AppSettings>): Promise<AppSettings> {
-  const current = await fetchAppSettings();
+  const current = getLocalAppSettings();
   const cleanMalam = patch.shift_malam_start !== undefined
     ? normalizeShiftTime(patch.shift_malam_start, "22:00", true)
     : current.shift_malam_start;
@@ -512,6 +568,12 @@ export async function updateAppSettings(patch: Partial<AppSettings>): Promise<Ap
 
   if (typeof localStorage !== "undefined") {
     try {
+      if (patch.gdrive_folder_id !== undefined) {
+        localStorage.setItem("meter_gdrive_folder_id", patch.gdrive_folder_id);
+      }
+      if (patch.gdrive_script_url !== undefined) {
+        localStorage.setItem("meter_gdrive_script_url", patch.gdrive_script_url);
+      }
       localStorage.setItem("meter_app_settings", JSON.stringify(updated));
       if (updated.dashboard_bg_url) {
         localStorage.setItem("meter_dashboard_custom_bg", updated.dashboard_bg_url);
@@ -2865,20 +2927,20 @@ export async function copyReadingsToClipboardAsTsv(
     headers = [
       "No", "Tanggal", "Jam", "Shift", "Titik Meter",
       "Stand Awal", "Stand Akhir", "Pemakaian", "Satuan",
-      "Nama Petugas", "Catatan"
+      "Nama Petugas", "Link Foto (Google Drive)", "Catatan"
     ];
   } else if (isSpecificSingleSystem) {
     headers = [
       "No", "Tanggal", "Jam", "Shift", "Titik Meter",
       "Stand Awal", "Stand Akhir", "Pemakaian", "Satuan",
-      "Nama Petugas", "Status Alarm", "Catatan"
+      "Nama Petugas", "Status Alarm", "Link Foto (Google Drive)", "Catatan"
     ];
   } else if (isPlnMode) {
     headers = [
       "No", "Tanggal", "Jam", "Shift", "Titik Meter",
       "Stand Awal", "Stand Akhir", "Pemakaian", "Satuan",
       "Voltase (V)", "Ampere (A)", "LWBP (kWh)", "WBP (kWh)", "kVARh",
-      "Nama Petugas", "Status Alarm", "Catatan"
+      "Nama Petugas", "Status Alarm", "Link Foto (Google Drive)", "Catatan"
     ];
   } else {
     // Complete
@@ -2886,13 +2948,19 @@ export async function copyReadingsToClipboardAsTsv(
       "No", "Tanggal", "Jam", "Shift", "Titik Meter",
       "Stand Awal", "Stand Akhir", "Pemakaian", "Satuan",
       "Voltase (V)", "Ampere (A)", "LWBP (kWh)", "WBP (kWh)", "kVARh",
-      "Nama Petugas", "Status Alarm", "Catatan"
+      "Nama Petugas", "Status Alarm", "Link Foto (Google Drive)", "Catatan"
     ];
   }
 
   const escapeCell = (val: any) => {
     if (val === null || val === undefined) return "";
     return String(val).replace(/[\r\n\t]+/g, " ").trim();
+  };
+
+  const formatPhotoLinkForSheet = (photo?: string) => {
+    if (!photo) return "-";
+    if (photo.startsWith("http://") || photo.startsWith("https://")) return photo;
+    return "Tersimpan di Aplikasi";
   };
 
   const tsvLines: string[] = [headers.join("\t")];
@@ -2906,19 +2974,20 @@ export async function copyReadingsToClipboardAsTsv(
     const shiftUpper = (r.shift || "").toUpperCase();
     const officer = r.user_name || "Petugas";
     const alarmStatus = r.alarm ? "ALARM (Lonjakan)" : "Normal";
+    const photoLink = formatPhotoLinkForSheet(r.photo_path);
 
     let rowValues: any[];
     if (isSimpleMode) {
       rowValues = [
         idx + 1, dateStr, timeStr, shiftUpper, r.meter_name,
         r.awal, r.akhir, r.total, r.meter_unit,
-        officer, r.notes || "-"
+        officer, photoLink, r.notes || "-"
       ];
     } else if (isSpecificSingleSystem) {
       rowValues = [
         idx + 1, dateStr, timeStr, shiftUpper, r.meter_name,
         r.awal, r.akhir, r.total, r.meter_unit,
-        officer, alarmStatus, r.notes || "-"
+        officer, alarmStatus, photoLink, r.notes || "-"
       ];
     } else {
       rowValues = [
@@ -2928,12 +2997,22 @@ export async function copyReadingsToClipboardAsTsv(
         r.lwbp_akhir ?? r.lwbp ?? "-",
         r.wbp_akhir ?? r.wbp ?? "-",
         r.kvar_akhir ?? r.kvar ?? "-",
-        officer, alarmStatus, r.notes || "-"
+        officer, alarmStatus, photoLink, r.notes || "-"
       ];
     }
 
     tsvLines.push(rowValues.map(escapeCell).join("\t"));
-    htmlRows.push(`<tr>${rowValues.map((v) => `<td style="border:1px solid #e5e7eb;padding:4px 8px;">${escapeCell(v)}</td>`).join("")}</tr>`);
+    htmlRows.push(
+      `<tr>${rowValues
+        .map((v) => {
+          const cellStr = escapeCell(v);
+          if (cellStr.startsWith("http://") || cellStr.startsWith("https://")) {
+            return `<td style="border:1px solid #e5e7eb;padding:4px 8px;"><a href="${cellStr}" target="_blank">${cellStr}</a></td>`;
+          }
+          return `<td style="border:1px solid #e5e7eb;padding:4px 8px;">${cellStr}</td>`;
+        })
+        .join("")}</tr>`
+    );
   });
 
   const tsvText = tsvLines.join("\r\n");
@@ -3958,20 +4037,21 @@ function stripOlderUnitPhotos(logs: ACMaintenanceLog[]): ACMaintenanceLog[] {
     (a, b) => new Date(b.recorded_at).getTime() - new Date(a.recorded_at).getTime()
   );
   const seenUnits = new Set<string>();
+  const keepUrlOnly = (val?: string) => (val && val.startsWith("data:") ? undefined : val);
+
   return sorted.map((log) => {
     const unitKey = log.unit_id || log.unit_name;
     if (seenUnits.has(unitKey)) {
-      const {
-        photo_temp_before,
-        photo_temp_after,
-        photo_anemo_before,
-        photo_anemo_after,
-        photo_before,
-        photo_after,
-        photo_url,
-        ...rest
-      } = log;
-      return rest as ACMaintenanceLog;
+      return {
+        ...log,
+        photo_temp_before: keepUrlOnly(log.photo_temp_before),
+        photo_temp_after: keepUrlOnly(log.photo_temp_after),
+        photo_anemo_before: keepUrlOnly(log.photo_anemo_before),
+        photo_anemo_after: keepUrlOnly(log.photo_anemo_after),
+        photo_before: keepUrlOnly(log.photo_before),
+        photo_after: keepUrlOnly(log.photo_after),
+        photo_url: keepUrlOnly(log.photo_url),
+      };
     }
     seenUnits.add(unitKey);
     return log;
@@ -4000,9 +4080,31 @@ export async function fetchACMaintenanceLogs(): Promise<ACMaintenanceLog[]> {
           addDeletedACLogIds(json.deleted_log_ids);
         }
         const deletedIds = new Set(getDeletedACLogIds());
-        const valid = stripOlderUnitPhotos(
-          json.logs.filter((l: any) => l && l.log_id && !deletedIds.has(l.log_id))
-        );
+        const localLogs = getLocalACLogs();
+        const mergedMap = new Map<string, ACMaintenanceLog>();
+
+        for (const l of localLogs) {
+          if (l && l.log_id && !deletedIds.has(l.log_id)) {
+            mergedMap.set(l.log_id, l);
+          }
+        }
+
+        for (const l of json.logs) {
+          if (l && l.log_id && !deletedIds.has(l.log_id)) {
+            const existing = mergedMap.get(l.log_id);
+            if (!existing) {
+              mergedMap.set(l.log_id, l);
+            } else {
+              const existTime = new Date(existing.updated_at || existing.created_at || 0).getTime();
+              const srvTime = new Date(l.updated_at || l.created_at || 0).getTime();
+              if (srvTime >= existTime) {
+                mergedMap.set(l.log_id, l);
+              }
+            }
+          }
+        }
+
+        const valid = stripOlderUnitPhotos(Array.from(mergedMap.values()));
         const prevRaw = typeof localStorage !== "undefined" ? localStorage.getItem("ac_pm_maintenance_logs") : null;
         saveLocalACLogs(valid);
         if (typeof localStorage !== "undefined") {
@@ -4034,20 +4136,20 @@ export async function createACMaintenanceLog(
   };
 
   const current = getLocalACLogs();
-  // Otomatis hapus foto lama dari cleaning sebelumnya untuk unit/kamar yang sama agar hemat penyimpanan
+  const keepUrlOnly = (val?: string) => (val && val.startsWith("data:") ? undefined : val);
+  // Otomatis hapus foto base64 lama dari cleaning sebelumnya untuk unit/kamar yang sama agar hemat penyimpanan, namun PERTAHANKAN link Google Drive
   const cleanedPastLogs = current.map((item) => {
     if (item.unit_id === record.unit_id || item.unit_name === record.unit_name) {
-      const {
-        photo_temp_before,
-        photo_temp_after,
-        photo_anemo_before,
-        photo_anemo_after,
-        photo_before,
-        photo_after,
-        photo_url,
-        ...rest
-      } = item;
-      return rest as ACMaintenanceLog;
+      return {
+        ...item,
+        photo_temp_before: keepUrlOnly(item.photo_temp_before),
+        photo_temp_after: keepUrlOnly(item.photo_temp_after),
+        photo_anemo_before: keepUrlOnly(item.photo_anemo_before),
+        photo_anemo_after: keepUrlOnly(item.photo_anemo_after),
+        photo_before: keepUrlOnly(item.photo_before),
+        photo_after: keepUrlOnly(item.photo_after),
+        photo_url: keepUrlOnly(item.photo_url),
+      };
     }
     return item;
   });
@@ -4109,15 +4211,7 @@ export async function createACMaintenanceLog(
     console.warn("Supabase insert ac_maintenance_logs error (falling back to local resilient storage):", err);
   }
 
-  // Hapus foto lama di Supabase untuk unit_id ini (hanya menyisakan log teks)
-  try {
-    await supabase
-      .from("ac_maintenance_logs")
-      .update({ photo_before: null, photo_after: null, photo_url: null })
-      .eq("unit_id", record.unit_id)
-      .neq("log_id", record.log_id);
-  } catch {}
-
+  // Hapus hanya jika foto lama di Supabase berupa base64 (link Google Drive tetap dipertahankan karena hemat kuota)
   return record;
 }
 
@@ -4297,15 +4391,26 @@ export async function updateACMaintenanceLog(
     updated_at: new Date().toISOString(),
   };
   current[idx] = updatedItem;
+  current.sort(
+    (a, b) => new Date(b.recorded_at || 0).getTime() - new Date(a.recorded_at || 0).getTime()
+  );
   saveLocalACLogs(current);
 
   try {
-    await fetch(apiUrl("/api/ac-logs"), {
-      method: "POST",
+    await fetch(apiUrl(`/api/ac-logs/${encodeURIComponent(log_id)}`), {
+      method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(updatedItem),
     });
-  } catch {}
+  } catch {
+    try {
+      await fetch(apiUrl("/api/ac-logs"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updatedItem),
+      });
+    } catch {}
+  }
 
   try {
     await supabase.from("ac_maintenance_logs").update(updates).eq("log_id", log_id);
@@ -4484,6 +4589,12 @@ export async function getACScheduleOverview(): Promise<ACUnitScheduleStatus[]> {
 // ------------------- EXCEL & TSV EXPORT FOR AC LOGS -------------------
 
 export function exportACLogsToExcel(logs: ACMaintenanceLog[], propertyName = "Engineering Hotel") {
+  const formatPhotoExcel = (val?: string) => {
+    if (!val) return "-";
+    if (val.startsWith("http://") || val.startsWith("https://")) return val;
+    return "Ada Foto (Tersimpan di Aplikasi)";
+  };
+
   const rows = logs.map((l, index) => {
     const d = new Date(l.recorded_at);
     const dateStr = d.toLocaleDateString("id-ID", { day: "2-digit", month: "long", year: "numeric" });
@@ -4504,8 +4615,10 @@ export function exportACLogsToExcel(logs: ACMaintenanceLog[], propertyName = "En
       "Anemometer Before (m/s)": l.anemo_before,
       "Anemometer After (m/s)": l.anemo_after,
       "Peningkatan Hembusan (m/s)": anemoDiff > 0 ? `+${anemoDiff} m/s` : `${anemoDiff} m/s`,
-      "Foto Before": l.photo_before ? "Ada Foto (Tersimpan)" : "-",
-      "Foto After": l.photo_after ? "Ada Foto (Tersimpan)" : "-",
+      "Link Foto Suhu Before": formatPhotoExcel(l.photo_temp_before || l.photo_before),
+      "Link Foto Suhu After": formatPhotoExcel(l.photo_temp_after || l.photo_after),
+      "Link Foto Anemo Before": formatPhotoExcel(l.photo_anemo_before),
+      "Link Foto Anemo After": formatPhotoExcel(l.photo_anemo_after),
       "Catatan Kondisi": l.notes || "-",
     };
   });
@@ -4525,8 +4638,10 @@ export function exportACLogsToExcel(logs: ACMaintenanceLog[], propertyName = "En
     { wch: 22 }, // Anemo Before
     { wch: 22 }, // Anemo After
     { wch: 24 }, // Peningkatan Hembusan
-    { wch: 20 }, // Foto Before
-    { wch: 20 }, // Foto After
+    { wch: 36 }, // Link Foto Suhu Before
+    { wch: 36 }, // Link Foto Suhu After
+    { wch: 36 }, // Link Foto Anemo Before
+    { wch: 36 }, // Link Foto Anemo After
     { wch: 38 }, // Catatan
   ];
 
@@ -4556,10 +4671,29 @@ export async function copyACLogsToClipboardAsTsv(logs: ACMaintenanceLog[]): Prom
     "Anemometer Before (m/s)",
     "Anemometer After (m/s)",
     "Peningkatan Angin (m/s)",
+    "Link Foto Suhu Before",
+    "Link Foto Suhu After",
+    "Link Foto Anemo Before",
+    "Link Foto Anemo After",
     "Catatan Kondisi",
   ];
 
+  const formatPhotoLink = (val?: string) => {
+    if (!val) return "-";
+    if (val.startsWith("http://") || val.startsWith("https://")) return val;
+    return "Tersimpan di Aplikasi";
+  };
+
   const tsvLines: string[] = [headers.join("\t")];
+  const htmlRows: string[] = [];
+  htmlRows.push(
+    `<tr>${headers
+      .map(
+        (h) =>
+          `<th style="border:1px solid #d1d5db;padding:6px 10px;background:#f3f4f6;font-weight:bold;text-align:left;">${h}</th>`
+      )
+      .join("")}</tr>`
+  );
 
   logs.forEach((l, index) => {
     const d = new Date(l.recorded_at);
@@ -4581,25 +4715,55 @@ export async function copyACLogsToClipboardAsTsv(logs: ACMaintenanceLog[]): Prom
       String(l.anemo_before),
       String(l.anemo_after),
       `${anemoDiff} m/s`,
+      formatPhotoLink(l.photo_temp_before || l.photo_before),
+      formatPhotoLink(l.photo_temp_after || l.photo_after),
+      formatPhotoLink(l.photo_anemo_before),
+      formatPhotoLink(l.photo_anemo_after),
       (l.notes || "").replace(/\t|\r|\n/g, " "),
     ];
     tsvLines.push(row.join("\t"));
+    htmlRows.push(
+      `<tr>${row
+        .map((cell) => {
+          if (cell.startsWith("http://") || cell.startsWith("https://")) {
+            return `<td style="border:1px solid #e5e7eb;padding:4px 8px;"><a href="${cell}" target="_blank">${cell}</a></td>`;
+          }
+          return `<td style="border:1px solid #e5e7eb;padding:4px 8px;">${cell}</td>`;
+        })
+        .join("")}</tr>`
+    );
   });
 
   const tsvText = tsvLines.join("\r\n");
+  const htmlTable = `<table border="1" style="border-collapse:collapse;font-family:sans-serif;font-size:12px;">${htmlRows.join("")}</table>`;
 
   try {
-    await navigator.clipboard.writeText(tsvText);
+    if (typeof ClipboardItem !== "undefined" && navigator.clipboard && navigator.clipboard.write) {
+      const textBlob = new Blob([tsvText], { type: "text/plain" });
+      const htmlBlob = new Blob([htmlTable], { type: "text/html" });
+      await navigator.clipboard.write([
+        new ClipboardItem({
+          "text/plain": textBlob,
+          "text/html": htmlBlob,
+        }),
+      ]);
+    } else {
+      await navigator.clipboard.writeText(tsvText);
+    }
   } catch {
-    const textarea = document.createElement("textarea");
-    textarea.value = tsvText;
-    document.body.appendChild(textarea);
-    textarea.select();
-    document.execCommand("copy");
-    document.body.removeChild(textarea);
+    try {
+      await navigator.clipboard.writeText(tsvText);
+    } catch {
+      const textarea = document.createElement("textarea");
+      textarea.value = tsvText;
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand("copy");
+      document.body.removeChild(textarea);
+    }
   }
 
-  return { success: true, rowCount: logs.length, message: "Data riwayat AC berhasil disalin ke clipboard! Tekan Ctrl+V di Excel/Google Sheets." };
+  return { success: true, rowCount: logs.length, message: "Data riwayat AC (beserta link foto Google Drive) berhasil disalin ke clipboard! Tekan Ctrl+V di Excel/Google Sheets." };
 }
 
 export async function copyACScheduleToClipboardAsTsv(
@@ -4691,6 +4855,12 @@ export function exportACMasterReportToExcel(
 ) {
   const workbook = XLSX.utils.book_new();
 
+  const formatPhotoExcel = (val?: string) => {
+    if (!val) return "-";
+    if (val.startsWith("http://") || val.startsWith("https://")) return val;
+    return "Ada Foto (Tersimpan di Aplikasi)";
+  };
+
   // Sheet 1: Riwayat Log Cuci AC
   const logRows = logs.map((l, index) => {
     const d = new Date(l.recorded_at);
@@ -4712,8 +4882,10 @@ export function exportACMasterReportToExcel(
       "Anemometer Before (m/s)": l.anemo_before,
       "Anemometer After (m/s)": l.anemo_after,
       "Peningkatan Hembusan (m/s)": anemoDiff > 0 ? `+${anemoDiff} m/s` : `${anemoDiff} m/s`,
-      "Foto Before": l.photo_before ? "Ada Foto (Tersimpan)" : "-",
-      "Foto After": l.photo_after ? "Ada Foto (Tersimpan)" : "-",
+      "Link Foto Suhu Before": formatPhotoExcel(l.photo_temp_before || l.photo_before),
+      "Link Foto Suhu After": formatPhotoExcel(l.photo_temp_after || l.photo_after),
+      "Link Foto Anemo Before": formatPhotoExcel(l.photo_anemo_before),
+      "Link Foto Anemo After": formatPhotoExcel(l.photo_anemo_after),
       "Catatan Kondisi": l.notes || "-",
     };
   });
@@ -4722,7 +4894,7 @@ export function exportACMasterReportToExcel(
   wsLogs["!cols"] = [
     { wch: 5 }, { wch: 18 }, { wch: 10 }, { wch: 22 }, { wch: 26 }, { wch: 20 },
     { wch: 16 }, { wch: 16 }, { wch: 18 }, { wch: 22 }, { wch: 22 }, { wch: 24 },
-    { wch: 20 }, { wch: 20 }, { wch: 38 }
+    { wch: 36 }, { wch: 36 }, { wch: 36 }, { wch: 36 }, { wch: 38 }
   ];
   XLSX.utils.book_append_sheet(workbook, wsLogs, "Riwayat Cuci AC");
 
@@ -4789,8 +4961,18 @@ export function downloadACLogsAsCsv(logs: ACMaintenanceLog[], filename = "Lapora
     "Anemometer Before (m/s)",
     "Anemometer After (m/s)",
     "Peningkatan Angin (m/s)",
+    "Link Foto Suhu Before",
+    "Link Foto Suhu After",
+    "Link Foto Anemo Before",
+    "Link Foto Anemo After",
     "Catatan Kondisi",
   ];
+
+  const formatPhotoLink = (val?: string) => {
+    if (!val) return "-";
+    if (val.startsWith("http://") || val.startsWith("https://")) return val;
+    return "Tersimpan di Aplikasi";
+  };
 
   const csvRows = [headers.map((h) => `"${h}"`).join(",")];
 
@@ -4814,6 +4996,10 @@ export function downloadACLogsAsCsv(logs: ACMaintenanceLog[], filename = "Lapora
       String(l.anemo_before),
       String(l.anemo_after),
       anemoDiff,
+      formatPhotoLink(l.photo_temp_before || l.photo_before),
+      formatPhotoLink(l.photo_temp_after || l.photo_after),
+      formatPhotoLink(l.photo_anemo_before),
+      formatPhotoLink(l.photo_anemo_after),
       l.notes || "",
     ].map((val) => `"${String(val).replace(/"/g, '""')}"`);
 

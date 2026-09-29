@@ -18,6 +18,11 @@ import { MeterMenu, Reading } from "../types";
 import { apiFetch, useAuth } from "../auth";
 import { useI18n } from "../i18n";
 import { fetchMenus, fetchLastReading, createReading, fetchAppSettings, determineShift } from "../supabaseService";
+import {
+  uploadPhotoToGoogleDriveIfConfigured,
+  isGoogleDriveConfigureReady,
+} from "../utils/googleDrivePhoto";
+import { useBackHandler } from "../utils/backNavigation";
 
 interface LogEntryModalProps {
   meterId: string;
@@ -45,8 +50,11 @@ export function LogEntryModal({ meterId, onClose, onSuccess }: LogEntryModalProp
   const [notes, setNotes] = useState("");
 
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [photoDataUrl, setPhotoDataUrl] = useState<string | null>(null);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPath, setPhotoPath] = useState<string | null>(null);
+
+  useBackHandler(true, onClose, 20);
   const [uploading, setUploading] = useState(false);
   const [ocrLoading, setOcrLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -191,6 +199,7 @@ export function LogEntryModal({ meterId, onClose, onSuccess }: LogEntryModalProp
     const compressed = await compressImage(file);
     if (compressed) {
       setPhotoPreview(compressed);
+      setPhotoDataUrl(compressed);
       setPhotoPath(compressed); // Immediate offline-safe fallback
     }
 
@@ -275,13 +284,26 @@ export function LogEntryModal({ meterId, onClose, onSuccess }: LogEntryModalProp
         role: "user" as const,
       };
 
+      let finalPhotoPath = photoPath || undefined;
+
+      // Upload otomatis ke Folder Google Drive Admin saat petugas menekan Simpan
+      if (photoDataUrl && isGoogleDriveConfigureReady()) {
+        finalPhotoPath = await uploadPhotoToGoogleDriveIfConfigured(photoDataUrl, {
+          pointName: menu?.name || meterId,
+          photoType: "Meter",
+          shift: selectedShift,
+          recordedAt: new Date().toISOString(),
+          userName: activeUser.name,
+        });
+      }
+
       const res = await createReading({
         meter_id: meterId,
         awal: a,
         akhir: b,
         user: activeUser,
         shift: selectedShift,
-        photo_path: photoPath || undefined,
+        photo_path: finalPhotoPath,
         voltase: voltase ? parseFloat(voltase) : undefined,
         ampere: ampere ? parseFloat(ampere) : undefined,
         lwbp: lwbpAkhir ? parseFloat(lwbpAkhir) : (lwbpAwal ? parseFloat(lwbpAwal) : undefined),
@@ -354,7 +376,14 @@ export function LogEntryModal({ meterId, onClose, onSuccess }: LogEntryModalProp
               <label className="text-xs font-bold uppercase tracking-wider text-slate-600">
                 {t("photo")}
               </label>
-              <span className="text-[11px] text-slate-500 font-medium">Kamera atau Galeri</span>
+              {isGoogleDriveConfigureReady() ? (
+                <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-full text-[10px] font-bold flex items-center gap-1">
+                  <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                  <span>Auto-Upload ke Google Drive Admin</span>
+                </span>
+              ) : (
+                <span className="text-[11px] text-slate-500 font-medium">Kamera atau Galeri</span>
+              )}
             </div>
 
             {/* Hidden native inputs: one with capture for direct camera, one standard for gallery file picker */}

@@ -26,16 +26,19 @@ import {
   Users,
   UserPlus,
   Pencil,
+  ExternalLink,
 } from "lucide-react";
 import {
   ACCategory,
   AC_CATEGORIES,
   ACMaintenanceLog,
+  ACUnitLocation,
   normalizeACCategory,
 } from "../types";
 import { useAuth } from "../auth";
 import {
   fetchACMaintenanceLogs,
+  fetchACUnits,
   getLocalACLogs,
   getLocalACUnits,
   updateACMaintenanceLog,
@@ -56,6 +59,11 @@ import {
 } from "../utils/smartSearch";
 import { resolveFloorFromUnit } from "../types";
 import { useBackHandler } from "../utils/backNavigation";
+import {
+  getPhotoDisplayUrl,
+  getPhotoViewLink,
+  isGoogleDrivePhotoUrl,
+} from "../utils/googleDrivePhoto";
 
 export function ACHistoryView() {
   const { user } = useAuth();
@@ -72,6 +80,17 @@ export function ACHistoryView() {
   const [editTech1, setEditTech1] = useState<string>("");
   const [editTech2, setEditTech2] = useState<string>("");
   const [savingTech, setSavingTech] = useState<boolean>(false);
+
+  // Admin Edit Tanggal & Kamar / Unit State
+  const [masterUnits, setMasterUnits] = useState<ACUnitLocation[]>(() => getLocalACUnits());
+  const [editingDateUnitLog, setEditingDateUnitLog] = useState<ACMaintenanceLog | null>(null);
+  const [editDateStr, setEditDateStr] = useState<string>("");
+  const [editTimeStr, setEditTimeStr] = useState<string>("");
+  const [editUnitId, setEditUnitId] = useState<string>("");
+  const [editUnitName, setEditUnitName] = useState<string>("");
+  const [editCategory, setEditCategory] = useState<ACCategory>("Area Privat / Kamar Hotel");
+  const [editUnitSearch, setEditUnitSearch] = useState<string>("");
+  const [savingDateUnit, setSavingDateUnit] = useState<boolean>(false);
 
   // Filters
   const [categoryFilter, setCategoryFilter] = useState<ACCategory | "all">("all");
@@ -92,6 +111,7 @@ export function ACHistoryView() {
   // Tombol Kembali (Back) untuk menutup modal secara bertingkat dari yang paling atas
   useBackHandler(Boolean(selectedLog), () => setSelectedLog(null), 20);
   useBackHandler(Boolean(editingTechLog), () => setEditingTechLog(null), 30);
+  useBackHandler(Boolean(editingDateUnitLog), () => setEditingDateUnitLog(null), 30);
   useBackHandler(Boolean(deleteTarget), () => setDeleteTarget(null), 30);
   useBackHandler(showBulkDeleteModal, () => setShowBulkDeleteModal(false), 30);
   useBackHandler(showClearAllModal, () => setShowClearAllModal(false), 30);
@@ -116,6 +136,11 @@ export function ACHistoryView() {
 
   useEffect(() => {
     loadLogs();
+    fetchACUnits()
+      .then((uList) => {
+        if (uList.length > 0) setMasterUnits(uList);
+      })
+      .catch(() => {});
     fetchUsers()
       .then((list) => {
         if (list.length > 0) {
@@ -126,6 +151,7 @@ export function ACHistoryView() {
 
     const handleSynced = () => {
       setLogs(getLocalACLogs());
+      setMasterUnits(getLocalACUnits());
     };
     const handleUsersSynced = (e: Event) => {
       const detail = (e as CustomEvent)?.detail;
@@ -188,6 +214,108 @@ export function ACHistoryView() {
       await loadLogs();
     } finally {
       setSavingTech(false);
+    }
+  };
+
+  const toLocalDateAndTime = (isoString: string): { date: string; time: string } => {
+    const d = new Date(isoString);
+    const valid = isNaN(d.getTime()) ? new Date() : d;
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return {
+      date: `${valid.getFullYear()}-${pad(valid.getMonth() + 1)}-${pad(valid.getDate())}`,
+      time: `${pad(valid.getHours())}:${pad(valid.getMinutes())}`,
+    };
+  };
+
+  const openEditDateUnitModal = (log: ACMaintenanceLog) => {
+    setMasterUnits(getLocalACUnits());
+    const { date, time } = toLocalDateAndTime(log.recorded_at);
+    setEditDateStr(date);
+    setEditTimeStr(time);
+    setEditUnitId(log.unit_id || "");
+    setEditUnitName(log.unit_name || "");
+    setEditCategory(normalizeACCategory(log.category));
+    setEditUnitSearch("");
+    setEditingDateUnitLog(log);
+  };
+
+  const editUnitSuggestions = React.useMemo(() => {
+    if (!editUnitSearch.trim()) return [];
+    return getSmartUnitSuggestions(masterUnits, (u) => u, editUnitSearch, 12);
+  }, [masterUnits, editUnitSearch]);
+
+  const handleSelectEditMasterUnit = (u: ACUnitLocation) => {
+    setEditUnitId(u.id);
+    setEditUnitName(u.name);
+    setEditCategory(normalizeACCategory(u.category));
+    setEditUnitSearch("");
+  };
+
+  const handleSaveDateAndUnit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingDateUnitLog) return;
+    const cleanName = editUnitName.trim();
+    if (!cleanName || !editDateStr) return;
+
+    const combinedLocal = `${editDateStr}T${editTimeStr || "09:00"}`;
+    const parsedDate = new Date(combinedLocal);
+    const newIso = isNaN(parsedDate.getTime())
+      ? editingDateUnitLog.recorded_at
+      : parsedDate.toISOString();
+
+    const matchedMaster = masterUnits.find(
+      (u) => u.id === editUnitId || u.name.toLowerCase() === cleanName.toLowerCase()
+    );
+    const finalUnitId = matchedMaster ? matchedMaster.id : editUnitId || editingDateUnitLog.unit_id;
+    const finalCategory = matchedMaster
+      ? normalizeACCategory(matchedMaster.category)
+      : normalizeACCategory(editCategory);
+
+    const targetId = editingDateUnitLog.log_id;
+    const patch: Partial<ACMaintenanceLog> = {
+      recorded_at: newIso,
+      unit_id: finalUnitId,
+      unit_name: cleanName,
+      category: finalCategory,
+    };
+
+    try {
+      setSavingDateUnit(true);
+      setLogs((prev) => {
+        const next = prev.map((l) => (l.log_id === targetId ? { ...l, ...patch } : l));
+        next.sort(
+          (a, b) => new Date(b.recorded_at || 0).getTime() - new Date(a.recorded_at || 0).getTime()
+        );
+        return next;
+      });
+      if (selectedLog?.log_id === targetId) {
+        setSelectedLog((prev) => (prev ? { ...prev, ...patch } : null));
+      }
+
+      // Pastikan baris yang diedit tidak tersembunyi oleh filter rentang tanggal / kategori aktif
+      if (categoryFilter !== "all" && categoryFilter !== finalCategory) {
+        setCategoryFilter("all");
+      }
+      const diffDays = (Date.now() - new Date(newIso).getTime()) / (1000 * 60 * 60 * 24);
+      if (
+        (dateFilter === "today" && diffDays > 1) ||
+        (dateFilter === "7d" && diffDays > 7) ||
+        (dateFilter === "30d" && diffDays > 30)
+      ) {
+        setDateFilter("all");
+      }
+
+      await updateACMaintenanceLog(targetId, patch);
+      setEditingDateUnitLog(null);
+      setToastMsg(
+        `Tanggal & kamar berhasil diperbarui: ${cleanName} (${formatDateTime(newIso)})`
+      );
+      setTimeout(() => setToastMsg(null), 3500);
+    } catch (err: any) {
+      alert(err.message || "Gagal memperbarui tanggal dan kamar");
+      await loadLogs();
+    } finally {
+      setSavingDateUnit(false);
     }
   };
 
@@ -622,9 +750,22 @@ export function ACHistoryView() {
 
                       {/* Tanggal & Jam */}
                       <td className="py-3 px-4 whitespace-nowrap">
-                        <div className="font-bold text-slate-900 flex items-center gap-1.5">
-                          <Clock className="w-3.5 h-3.5 text-blue-600" />
-                          <span>{formatDateTime(log.recorded_at)}</span>
+                        <div className="flex items-center gap-1.5">
+                          <div className="font-bold text-slate-900 flex items-center gap-1.5">
+                            <Clock className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                            <span>{formatDateTime(log.recorded_at)}</span>
+                          </div>
+                          {isAdmin && (
+                            <button
+                              type="button"
+                              onClick={() => openEditDateUnitModal(log)}
+                              className="px-1.5 py-0.5 bg-slate-100 hover:bg-blue-50 text-slate-600 hover:text-blue-700 border border-slate-200 hover:border-blue-200 rounded-md text-[10px] font-bold flex items-center gap-0.5 transition cursor-pointer"
+                              title="Edit Tanggal & Jam Pencatatan (Admin)"
+                            >
+                              <Pencil className="w-2.5 h-2.5 text-blue-600" />
+                              <span>Edit</span>
+                            </button>
+                          )}
                         </div>
                       </td>
 
@@ -636,8 +777,21 @@ export function ACHistoryView() {
                       </td>
 
                       {/* Nama Ruangan */}
-                      <td className="py-3 px-4">
-                        <div className="font-bold text-slate-900">{log.unit_name}</div>
+                      <td className="py-3 px-4 whitespace-nowrap">
+                        <div className="flex items-center gap-1.5">
+                          <div className="font-bold text-slate-900">{log.unit_name}</div>
+                          {isAdmin && (
+                            <button
+                              type="button"
+                              onClick={() => openEditDateUnitModal(log)}
+                              className="px-1.5 py-0.5 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 rounded-md text-[10px] font-bold flex items-center gap-0.5 transition cursor-pointer"
+                              title="Edit Kamar / Ruangan Unit (Admin)"
+                            >
+                              <Pencil className="w-2.5 h-2.5 text-amber-600" />
+                              <span>Edit</span>
+                            </button>
+                          )}
+                        </div>
                       </td>
 
                       {/* Nama Teknisi */}
@@ -805,6 +959,15 @@ export function ACHistoryView() {
                       <td className="py-3 px-4 text-right whitespace-nowrap space-x-1">
                         {isAdmin && (
                           <button
+                            onClick={() => openEditDateUnitModal(log)}
+                            className="p-1.5 text-slate-500 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition cursor-pointer"
+                            title="Edit Tanggal & Kamar / Unit (Admin)"
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </button>
+                        )}
+                        {isAdmin && (
+                          <button
                             onClick={() => openEditTechModal(log)}
                             className="p-1.5 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition cursor-pointer"
                             title="Pilih / Tambah 2 Nama Teknisi Terdaftar"
@@ -865,9 +1028,21 @@ export function ACHistoryView() {
                   <span className="block text-[10px] font-bold uppercase text-slate-400">
                     Waktu Pengisian
                   </span>
-                  <span className="font-bold text-slate-900">
-                    {formatDateTime(selectedLog.recorded_at)}
-                  </span>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="font-bold text-slate-900">
+                      {formatDateTime(selectedLog.recorded_at)}
+                    </span>
+                    {isAdmin && (
+                      <button
+                        type="button"
+                        onClick={() => openEditDateUnitModal(selectedLog)}
+                        className="px-1.5 py-0.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded text-[10px] font-bold flex items-center gap-1 cursor-pointer transition"
+                      >
+                        <Pencil className="w-2.5 h-2.5" />
+                        <span>Edit Tanggal</span>
+                      </button>
+                    )}
+                  </div>
                 </div>
                 <div>
                   <span className="block text-[10px] font-bold uppercase text-slate-400">
@@ -897,7 +1072,19 @@ export function ACHistoryView() {
                   <span className="block text-[10px] font-bold uppercase text-slate-400">
                     Nama / Nomor Unit
                   </span>
-                  <span className="font-bold text-slate-900">{selectedLog.unit_name}</span>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="font-bold text-slate-900">{selectedLog.unit_name}</span>
+                    {isAdmin && (
+                      <button
+                        type="button"
+                        onClick={() => openEditDateUnitModal(selectedLog)}
+                        className="px-1.5 py-0.5 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 rounded text-[10px] font-bold flex items-center gap-1 cursor-pointer transition"
+                      >
+                        <Pencil className="w-2.5 h-2.5" />
+                        <span>Edit Kamar</span>
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -989,9 +1176,22 @@ export function ACHistoryView() {
                       </span>
                       <div className="grid grid-cols-2 gap-2">
                         <div className="bg-amber-50/50 p-1.5 rounded-lg border border-amber-200 space-y-1">
-                          <span className="block text-[9px] font-bold text-amber-800 uppercase">
-                            Before Suhu
-                          </span>
+                          <div className="flex items-center justify-between">
+                            <span className="block text-[9px] font-bold text-amber-800 uppercase">
+                              Before Suhu
+                            </span>
+                            {isGoogleDrivePhotoUrl(selectedLog.photo_temp_before || selectedLog.photo_before) && (
+                              <a
+                                href={getPhotoViewLink(selectedLog.photo_temp_before || selectedLog.photo_before)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-[9px] font-bold text-blue-600 hover:underline flex items-center gap-0.5"
+                              >
+                                <span>Drive</span>
+                                <ExternalLink className="w-2.5 h-2.5" />
+                              </a>
+                            )}
+                          </div>
                           {selectedLog.photo_temp_before || selectedLog.photo_before ? (
                             <button
                               type="button"
@@ -1004,7 +1204,7 @@ export function ACHistoryView() {
                               className="w-full h-20 rounded-md overflow-hidden bg-slate-900 border border-amber-300 block cursor-pointer hover:opacity-90 transition"
                             >
                               <img
-                                src={selectedLog.photo_temp_before || selectedLog.photo_before}
+                                src={getPhotoDisplayUrl(selectedLog.photo_temp_before || selectedLog.photo_before)}
                                 alt="Before Suhu"
                                 className="w-full h-full object-cover"
                               />
@@ -1017,9 +1217,22 @@ export function ACHistoryView() {
                         </div>
 
                         <div className="bg-emerald-50/50 p-1.5 rounded-lg border border-emerald-200 space-y-1">
-                          <span className="block text-[9px] font-bold text-emerald-800 uppercase">
-                            After Suhu
-                          </span>
+                          <div className="flex items-center justify-between">
+                            <span className="block text-[9px] font-bold text-emerald-800 uppercase">
+                              After Suhu
+                            </span>
+                            {isGoogleDrivePhotoUrl(selectedLog.photo_temp_after || selectedLog.photo_after) && (
+                              <a
+                                href={getPhotoViewLink(selectedLog.photo_temp_after || selectedLog.photo_after)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-[9px] font-bold text-blue-600 hover:underline flex items-center gap-0.5"
+                              >
+                                <span>Drive</span>
+                                <ExternalLink className="w-2.5 h-2.5" />
+                              </a>
+                            )}
+                          </div>
                           {selectedLog.photo_temp_after || selectedLog.photo_after ? (
                             <button
                               type="button"
@@ -1032,7 +1245,7 @@ export function ACHistoryView() {
                               className="w-full h-20 rounded-md overflow-hidden bg-slate-900 border border-emerald-300 block cursor-pointer hover:opacity-90 transition"
                             >
                               <img
-                                src={selectedLog.photo_temp_after || selectedLog.photo_after}
+                                src={getPhotoDisplayUrl(selectedLog.photo_temp_after || selectedLog.photo_after)}
                                 alt="After Suhu"
                                 className="w-full h-full object-cover"
                               />
@@ -1055,9 +1268,22 @@ export function ACHistoryView() {
                       </span>
                       <div className="grid grid-cols-2 gap-2">
                         <div className="bg-cyan-50/50 p-1.5 rounded-lg border border-cyan-200 space-y-1">
-                          <span className="block text-[9px] font-bold text-cyan-800 uppercase">
-                            Before Anemometer
-                          </span>
+                          <div className="flex items-center justify-between">
+                            <span className="block text-[9px] font-bold text-cyan-800 uppercase">
+                              Before Anemometer
+                            </span>
+                            {isGoogleDrivePhotoUrl(selectedLog.photo_anemo_before) && (
+                              <a
+                                href={getPhotoViewLink(selectedLog.photo_anemo_before)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-[9px] font-bold text-blue-600 hover:underline flex items-center gap-0.5"
+                              >
+                                <span>Drive</span>
+                                <ExternalLink className="w-2.5 h-2.5" />
+                              </a>
+                            )}
+                          </div>
                           {selectedLog.photo_anemo_before ? (
                             <button
                               type="button"
@@ -1070,7 +1296,7 @@ export function ACHistoryView() {
                               className="w-full h-20 rounded-md overflow-hidden bg-slate-900 border border-cyan-300 block cursor-pointer hover:opacity-90 transition"
                             >
                               <img
-                                src={selectedLog.photo_anemo_before}
+                                src={getPhotoDisplayUrl(selectedLog.photo_anemo_before)}
                                 alt="Before Anemometer"
                                 className="w-full h-full object-cover"
                               />
@@ -1083,9 +1309,22 @@ export function ACHistoryView() {
                         </div>
 
                         <div className="bg-emerald-50/50 p-1.5 rounded-lg border border-emerald-200 space-y-1">
-                          <span className="block text-[9px] font-bold text-emerald-800 uppercase">
-                            After Anemometer
-                          </span>
+                          <div className="flex items-center justify-between">
+                            <span className="block text-[9px] font-bold text-emerald-800 uppercase">
+                              After Anemometer
+                            </span>
+                            {isGoogleDrivePhotoUrl(selectedLog.photo_anemo_after) && (
+                              <a
+                                href={getPhotoViewLink(selectedLog.photo_anemo_after)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-[9px] font-bold text-blue-600 hover:underline flex items-center gap-0.5"
+                              >
+                                <span>Drive</span>
+                                <ExternalLink className="w-2.5 h-2.5" />
+                              </a>
+                            )}
+                          </div>
                           {selectedLog.photo_anemo_after ? (
                             <button
                               type="button"
@@ -1098,7 +1337,7 @@ export function ACHistoryView() {
                               className="w-full h-20 rounded-md overflow-hidden bg-slate-900 border border-emerald-300 block cursor-pointer hover:opacity-90 transition"
                             >
                               <img
-                                src={selectedLog.photo_anemo_after}
+                                src={getPhotoDisplayUrl(selectedLog.photo_anemo_after)}
                                 alt="After Anemometer"
                                 className="w-full h-full object-cover"
                               />
@@ -1139,6 +1378,236 @@ export function ACHistoryView() {
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL EDIT TANGGAL & KAMAR / RUANGAN UNIT (KHUSUS ADMIN) */}
+      {editingDateUnitLog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/65 backdrop-blur-xs">
+          <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-slate-200 overflow-hidden animate-in fade-in zoom-in-95">
+            <div className="bg-gradient-to-r from-amber-600 via-orange-600 to-blue-700 text-white px-5 py-4 flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-white/15 border border-white/25 flex items-center justify-center">
+                  <Pencil className="w-4 h-4 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold leading-tight">
+                    Edit Tanggal & Kamar / Unit AC
+                  </h3>
+                  <p className="text-[11px] text-amber-100 mt-0.5">
+                    Ubah waktu pencatatan atau pindahkan ke kamar/ruangan lain
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingDateUnitLog(null)}
+                className="w-7 h-7 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveDateAndUnit} className="p-5 space-y-4 text-xs text-slate-700">
+              {/* 1. Edit Tanggal & Jam */}
+              <div className="p-3.5 bg-blue-50/60 border border-blue-200 rounded-xl space-y-2.5">
+                <div className="flex items-center justify-between flex-wrap gap-1.5">
+                  <label className="text-[11px] font-bold uppercase tracking-wider text-blue-900 flex items-center gap-1.5">
+                    <Calendar className="w-3.5 h-3.5 text-blue-600" />
+                    <span>1. Tanggal & Jam Pencatatan</span>
+                  </label>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const { date, time } = toLocalDateAndTime(new Date().toISOString());
+                        setEditDateStr(date);
+                        setEditTimeStr(time);
+                      }}
+                      className="px-2 py-0.5 bg-white hover:bg-blue-100 text-blue-700 border border-blue-200 rounded text-[10px] font-bold cursor-pointer transition"
+                    >
+                      Hari Ini
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const yest = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+                        const { date } = toLocalDateAndTime(yest);
+                        setEditDateStr(date);
+                      }}
+                      className="px-2 py-0.5 bg-white hover:bg-blue-100 text-blue-700 border border-blue-200 rounded text-[10px] font-bold cursor-pointer transition"
+                    >
+                      Kemarin
+                    </button>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-2.5">
+                  <div>
+                    <span className="block text-[10px] font-semibold text-slate-600 mb-1">
+                      Tanggal Cuci AC:
+                    </span>
+                    <input
+                      type="date"
+                      value={editDateStr}
+                      onChange={(e) => setEditDateStr(e.target.value)}
+                      required
+                      className="w-full px-3 py-2 bg-white border border-blue-300 rounded-lg text-xs font-bold text-slate-900 focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
+                    />
+                  </div>
+                  <div>
+                    <span className="block text-[10px] font-semibold text-slate-600 mb-1">
+                      Jam Pencatatan:
+                    </span>
+                    <input
+                      type="time"
+                      value={editTimeStr}
+                      onChange={(e) => setEditTimeStr(e.target.value)}
+                      required
+                      className="w-full px-3 py-2 bg-white border border-blue-300 rounded-lg text-xs font-bold text-slate-900 focus:ring-2 focus:ring-blue-500 focus:outline-hidden"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* 2. Edit Kamar / Ruangan Unit */}
+              <div className="p-3.5 bg-amber-50/60 border border-amber-200 rounded-xl space-y-3">
+                <label className="text-[11px] font-bold uppercase tracking-wider text-amber-900 flex items-center gap-1.5">
+                  <Building2 className="w-3.5 h-3.5 text-amber-600" />
+                  <span>2. Kamar / Ruangan Unit AC</span>
+                </label>
+
+                {/* Pencarian Cepat Nomor Kamar */}
+                <div className="space-y-1.5">
+                  <span className="text-[10px] font-semibold text-slate-600 block">
+                    Cari Cepat Nomor Kamar / Nama Unit:
+                  </span>
+                  <div className="relative">
+                    <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
+                    <input
+                      type="text"
+                      value={editUnitSearch}
+                      onChange={(e) => setEditUnitSearch(e.target.value)}
+                      placeholder="Ketik nomor kamar (misal: 805, 502, 1108) untuk ganti cepat..."
+                      className="w-full pl-8 pr-7 py-2 bg-white border border-amber-300 rounded-lg text-xs font-semibold text-slate-800 focus:ring-2 focus:ring-amber-500 focus:outline-hidden"
+                    />
+                    {editUnitSearch && (
+                      <button
+                        type="button"
+                        onClick={() => setEditUnitSearch("")}
+                        className="absolute right-2.5 top-2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+
+                  {editUnitSearch.trim() && editUnitSuggestions.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 pt-1 max-h-32 overflow-y-auto">
+                      {editUnitSuggestions.map(({ unit: u }) => {
+                        const isCurrent =
+                          editUnitName.trim().toLowerCase() === u.name.trim().toLowerCase();
+                        return (
+                          <button
+                            key={u.id}
+                            type="button"
+                            onClick={() => handleSelectEditMasterUnit(u)}
+                            className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition cursor-pointer flex items-center gap-1 ${
+                              isCurrent
+                                ? "bg-amber-600 text-white border-amber-600"
+                                : "bg-white text-slate-800 border-amber-300 hover:bg-amber-100"
+                            }`}
+                          >
+                            <span>{u.name}</span>
+                            <span className="text-[9px] opacity-75">
+                              ({resolveFloorFromUnit(u)})
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {/* Dropdown Pilih dari Master Unit */}
+                <div>
+                  <span className="text-[10px] font-semibold text-slate-600 block mb-1">
+                    Atau Pilih dari Daftar Master Unit:
+                  </span>
+                  <select
+                    value={editUnitId}
+                    onChange={(e) => {
+                      const found = masterUnits.find((u) => u.id === e.target.value);
+                      if (found) {
+                        handleSelectEditMasterUnit(found);
+                      } else {
+                        setEditUnitId(e.target.value);
+                      }
+                    }}
+                    className="w-full px-2.5 py-2 bg-white border border-slate-300 rounded-lg text-xs font-bold text-slate-800 focus:ring-2 focus:ring-amber-500 focus:outline-hidden cursor-pointer"
+                  >
+                    <option value="">-- Pilih Kamar / Unit Terdaftar --</option>
+                    {masterUnits.map((u) => (
+                      <option key={u.id} value={u.id}>
+                        {u.name} — {resolveFloorFromUnit(u)} ({u.category})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Nama Kamar / Unit & Kategori Area */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1 border-t border-amber-200/70">
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase text-slate-500 mb-1">
+                      Nama Kamar / Unit Terpilih
+                    </label>
+                    <input
+                      type="text"
+                      value={editUnitName}
+                      onChange={(e) => setEditUnitName(e.target.value)}
+                      required
+                      placeholder="Contoh: Kamar 805"
+                      className="w-full px-2.5 py-2 bg-white border border-slate-300 rounded-lg text-xs font-bold text-slate-900 focus:ring-2 focus:ring-amber-500 focus:outline-hidden"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase text-slate-500 mb-1">
+                      Kategori Area
+                    </label>
+                    <select
+                      value={editCategory}
+                      onChange={(e) => setEditCategory(e.target.value as ACCategory)}
+                      className="w-full px-2.5 py-2 bg-white border border-slate-300 rounded-lg text-xs font-bold text-slate-800 focus:ring-2 focus:ring-amber-500 focus:outline-hidden cursor-pointer"
+                    >
+                      {AC_CATEGORIES.map((cat) => (
+                        <option key={cat} value={cat}>
+                          {cat}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-2 flex items-center justify-end gap-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setEditingDateUnitLog(null)}
+                  disabled={savingDateUnit}
+                  className="px-4 py-2 text-xs font-bold text-slate-600 hover:text-slate-900 transition cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingDateUnit || !editUnitName.trim() || !editDateStr}
+                  className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold shadow-sm transition flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
+                >
+                  <Check className="w-3.5 h-3.5" />
+                  <span>{savingDateUnit ? "Menyimpan..." : "Simpan Tanggal & Kamar"}</span>
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
@@ -1424,22 +1893,35 @@ export function ACHistoryView() {
             className="bg-slate-900 border border-slate-700 rounded-2xl max-w-2xl w-full overflow-hidden shadow-2xl animate-in fade-in zoom-in-95"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="px-4 py-3 border-b border-slate-800 flex items-center justify-between text-white">
-              <div className="flex items-center gap-2 text-xs font-bold">
-                <Camera className="w-4 h-4 text-blue-400" />
-                <span>{viewingPhoto.title}</span>
+            <div className="px-4 py-3 border-b border-slate-800 flex items-center justify-between text-white gap-2">
+              <div className="flex items-center gap-2 text-xs font-bold min-w-0">
+                <Camera className="w-4 h-4 text-blue-400 shrink-0" />
+                <span className="truncate">{viewingPhoto.title}</span>
               </div>
-              <button
-                type="button"
-                onClick={() => setViewingPhoto(null)}
-                className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
+              <div className="flex items-center gap-2 shrink-0">
+                {viewingPhoto.src.startsWith("http") && (
+                  <a
+                    href={getPhotoViewLink(viewingPhoto.src)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-[11px] font-bold flex items-center gap-1 transition"
+                  >
+                    <ExternalLink className="w-3 h-3" />
+                    <span>Buka di Google Drive</span>
+                  </a>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setViewingPhoto(null)}
+                  className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
             </div>
             <div className="p-3 flex items-center justify-center bg-black max-h-[75vh]">
               <img
-                src={viewingPhoto.src}
+                src={getPhotoDisplayUrl(viewingPhoto.src)}
                 alt={viewingPhoto.title}
                 className="max-w-full max-h-[70vh] object-contain rounded-lg"
               />

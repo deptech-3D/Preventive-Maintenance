@@ -349,12 +349,24 @@ async function pullFromLiveRemoteIfNeeded(force = false): Promise<void> {
     if (incomingSettings && typeof incomingSettings === "object") {
       const mergedSettings = { ...state.settings, ...incomingSettings };
       const defaultBg = DEFAULT_SERVER_STATE.settings.dashboard_bg_url;
+      let shouldPushBackSettings = false;
       if (
         incomingSettings.dashboard_bg_url === defaultBg &&
         state.settings.dashboard_bg_url &&
         state.settings.dashboard_bg_url !== defaultBg
       ) {
         mergedSettings.dashboard_bg_url = state.settings.dashboard_bg_url;
+        shouldPushBackSettings = true;
+      }
+      if (!incomingSettings.gdrive_folder_id && state.settings.gdrive_folder_id) {
+        mergedSettings.gdrive_folder_id = state.settings.gdrive_folder_id;
+        shouldPushBackSettings = true;
+      }
+      if (!incomingSettings.gdrive_script_url && state.settings.gdrive_script_url) {
+        mergedSettings.gdrive_script_url = state.settings.gdrive_script_url;
+        shouldPushBackSettings = true;
+      }
+      if (shouldPushBackSettings) {
         fetch(`${LIVE_REMOTE_URL}/api/settings`, {
           method: "PUT",
           headers: { "Content-Type": "application/json", "x-sync-forwarded": "1" },
@@ -469,8 +481,15 @@ async function pullFromLiveRemoteIfNeeded(force = false): Promise<void> {
           } else {
             const existTime = new Date(existing.updated_at || existing.created_at || 0).getTime();
             const remTime = new Date(l.updated_at || l.created_at || 0).getTime();
-            if (remTime >= existTime) {
+            if (remTime > existTime) {
               logMap.set(l.log_id, l);
+            } else if (existTime > remTime) {
+              // Push newer local edit to remote so remote stays in sync
+              fetch(`${LIVE_REMOTE_URL}/api/ac-logs`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json", "x-sync-forwarded": "1" },
+                body: JSON.stringify(existing),
+              }).catch(() => {});
             }
           }
         }
@@ -1137,21 +1156,27 @@ app.post("/api/ac-logs", (req: Request, res: Response) => {
 
   if (existingIdx >= 0) {
     state.ac_logs[existingIdx] = record;
+    state.ac_logs.sort(
+      (a: any, b: any) =>
+        new Date(b.recorded_at || 0).getTime() - new Date(a.recorded_at || 0).getTime()
+    );
   } else {
-    // Otomatis hapus foto lama dari pembersihan sebelumnya di kamar/unit yang sama
+    // Otomatis hapus foto base64 lama dari pembersihan sebelumnya di kamar/unit yang sama, namun PERTAHANKAN link foto Google Drive (http/https)
     if (record.unit_id || record.unit_name) {
+      const stripIfBase64 = (val: any) =>
+        typeof val === "string" && val.startsWith("data:") ? undefined : val;
       state.ac_logs = state.ac_logs.map((pastLog: any) => {
         if (
           (pastLog.unit_id === record.unit_id || pastLog.unit_name === record.unit_name) &&
           pastLog.log_id !== log_id
         ) {
-          delete pastLog.photo_temp_before;
-          delete pastLog.photo_temp_after;
-          delete pastLog.photo_anemo_before;
-          delete pastLog.photo_anemo_after;
-          delete pastLog.photo_before;
-          delete pastLog.photo_after;
-          delete pastLog.photo_url;
+          pastLog.photo_temp_before = stripIfBase64(pastLog.photo_temp_before);
+          pastLog.photo_temp_after = stripIfBase64(pastLog.photo_temp_after);
+          pastLog.photo_anemo_before = stripIfBase64(pastLog.photo_anemo_before);
+          pastLog.photo_anemo_after = stripIfBase64(pastLog.photo_anemo_after);
+          pastLog.photo_before = stripIfBase64(pastLog.photo_before);
+          pastLog.photo_after = stripIfBase64(pastLog.photo_after);
+          pastLog.photo_url = stripIfBase64(pastLog.photo_url);
         }
         return pastLog;
       });
@@ -1160,7 +1185,8 @@ app.post("/api/ac-logs", (req: Request, res: Response) => {
   }
 
   const shouldForward = req.headers["x-sync-forwarded"] !== "1";
-  writeState(state, shouldForward);
+  lastLocalWriteTime = Date.now();
+  writeState(state, false);
   if (shouldForward) {
     fetch(`${LIVE_REMOTE_URL}/api/ac-logs`, {
       method: "POST",
@@ -1169,6 +1195,208 @@ app.post("/api/ac-logs", (req: Request, res: Response) => {
     }).catch(() => {});
   }
   res.json({ ok: true, log: record });
+});
+
+// PUT update single AC maintenance log (e.g. Admin edit tanggal, kamar, teknisi)
+app.put("/api/ac-logs/:id", (req: Request, res: Response) => {
+  const { id } = req.params;
+  const patch = req.body;
+  if (!id || !patch) {
+    return res.status(400).json({ ok: false, error: "ID dan data perubahan wajib diisi" });
+  }
+  const state = readState();
+  if (!state.ac_logs) state.ac_logs = [];
+  const existingIdx = state.ac_logs.findIndex((l) => l.log_id === id);
+  const nowIso = new Date().toISOString();
+
+  let updatedRecord: any;
+  if (existingIdx >= 0) {
+    updatedRecord = {
+      ...state.ac_logs[existingIdx],
+      ...patch,
+      log_id: id,
+      updated_at: patch.updated_at || nowIso,
+    };
+    state.ac_logs[existingIdx] = updatedRecord;
+  } else {
+    updatedRecord = {
+      ...patch,
+      log_id: id,
+      created_at: patch.created_at || nowIso,
+      updated_at: patch.updated_at || nowIso,
+    };
+    state.ac_logs.unshift(updatedRecord);
+  }
+
+  state.ac_logs.sort(
+    (a: any, b: any) =>
+      new Date(b.recorded_at || 0).getTime() - new Date(a.recorded_at || 0).getTime()
+  );
+
+  const shouldForward = req.headers["x-sync-forwarded"] !== "1";
+  lastLocalWriteTime = Date.now();
+  writeState(state, false);
+  if (shouldForward) {
+    fetch(`${LIVE_REMOTE_URL}/api/ac-logs`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-sync-forwarded": "1" },
+      body: JSON.stringify(updatedRecord),
+    }).catch(() => {});
+  }
+  res.json({ ok: true, log: updatedRecord });
+});
+
+// POST Google Drive Photo Upload Proxy (forwards to Admin's Google Apps Script Web App)
+app.post("/api/gdrive/upload", async (req: Request, res: Response) => {
+  try {
+    const state = readState();
+    const {
+      scriptUrl: bodyScriptUrl,
+      folderId: bodyFolderId,
+      fileName,
+      mimeType,
+      base64,
+      subfolder,
+      propertyName,
+    } = req.body || {};
+
+    const scriptUrl = String(bodyScriptUrl || state.settings?.gdrive_script_url || "").trim();
+    const folderId = String(bodyFolderId || state.settings?.gdrive_folder_id || "").trim();
+
+    if (!scriptUrl || !scriptUrl.startsWith("http")) {
+      return res.status(400).json({
+        ok: false,
+        error: "URL jembatan Google Apps Script belum diatur di menu Pengaturan.",
+      });
+    }
+
+    if (!base64) {
+      return res.status(400).json({
+        ok: false,
+        error: "Data foto (base64) tidak ditemukan.",
+      });
+    }
+
+    const response = await fetch(scriptUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "text/plain;charset=utf-8",
+      },
+      redirect: "follow",
+      body: JSON.stringify({
+        action: "upload_photo",
+        fileName: fileName || `Foto_${Date.now()}.jpg`,
+        mimeType: mimeType || "image/jpeg",
+        base64,
+        folderId,
+        subfolder: subfolder || "",
+        propertyName: propertyName || state.property_name || "Midtown Hotel Samarinda",
+      }),
+    });
+
+    const text = await response.text();
+    let parsed: any = null;
+    try {
+      parsed = JSON.parse(text);
+    } catch {
+      return res.status(502).json({
+        ok: false,
+        error: "Respons dari Google Apps Script bukan format JSON. Pastikan akses Web App disetel ke 'Siapa saja' (Anyone).",
+      });
+    }
+
+    if (parsed && parsed.ok) {
+      return res.json(parsed);
+    }
+
+    return res.status(400).json({
+      ok: false,
+      error: parsed?.error || "Gagal menyimpan foto ke Google Drive.",
+    });
+  } catch (err: any) {
+    return res.status(500).json({
+      ok: false,
+      error: err?.message || "Gagal menghubungi jembatan Google Apps Script.",
+    });
+  }
+});
+
+// GET CSV Export for Google Sheets =IMPORTDATA() formula
+app.get("/api/export/csv", async (req: Request, res: Response) => {
+  await pullFromLiveRemoteIfNeeded();
+  const state = readState();
+  const type = String(req.query.type || "").toLowerCase();
+  const category = String(req.query.category || "");
+
+  if (type === "ac_maintenance") {
+    let logs = Array.isArray(state.ac_logs) ? [...state.ac_logs] : [];
+    if (category && category !== "all") {
+      logs = logs.filter((l: any) => l.category === category);
+    }
+    logs.sort((a: any, b: any) => new Date(a.recorded_at || 0).getTime() - new Date(b.recorded_at || 0).getTime());
+
+    const headers = [
+      "No",
+      "Tanggal",
+      "Jam",
+      "Kategori",
+      "Ruangan / Unit",
+      "Teknisi",
+      "Suhu Before (C)",
+      "Suhu After (C)",
+      "Penurunan Suhu (C)",
+      "Anemometer Before (m/s)",
+      "Anemometer After (m/s)",
+      "Peningkatan Angin (m/s)",
+      "Link Foto Suhu Before",
+      "Link Foto Suhu After",
+      "Link Foto Anemo Before",
+      "Link Foto Anemo After",
+      "Catatan Kondisi",
+    ];
+
+    const formatPhotoCell = (val?: string) => {
+      if (!val) return "-";
+      if (val.startsWith("http")) return val;
+      return "Tersimpan di Aplikasi";
+    };
+
+    const csvRows = [headers.map((h) => `"${h}"`).join(",")];
+    logs.forEach((l: any, idx: number) => {
+      const d = new Date(l.recorded_at || Date.now());
+      const dateStr = d.toLocaleDateString("id-ID", { day: "2-digit", month: "2-digit", year: "numeric" });
+      const timeStr = d.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
+      const tempDiff = ((Number(l.temp_before) || 0) - (Number(l.temp_after) || 0)).toFixed(1);
+      const anemoDiff = ((Number(l.anemo_after) || 0) - (Number(l.anemo_before) || 0)).toFixed(2);
+
+      const row = [
+        String(idx + 1),
+        dateStr,
+        timeStr,
+        l.category || "-",
+        l.unit_name || "-",
+        l.user_name || "-",
+        String(l.temp_before ?? "-"),
+        String(l.temp_after ?? "-"),
+        tempDiff,
+        String(l.anemo_before ?? "-"),
+        String(l.anemo_after ?? "-"),
+        anemoDiff,
+        formatPhotoCell(l.photo_temp_before || l.photo_before),
+        formatPhotoCell(l.photo_temp_after || l.photo_after),
+        formatPhotoCell(l.photo_anemo_before),
+        formatPhotoCell(l.photo_anemo_after),
+        (l.notes || "").replace(/[\r\n]+/g, " "),
+      ].map((v) => `"${String(v).replace(/"/g, '""')}"`);
+      csvRows.push(row.join(","));
+    });
+
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    return res.send(csvRows.join("\r\n"));
+  }
+
+  res.setHeader("Content-Type", "text/csv; charset=utf-8");
+  res.send('"Status"\r\n"OK"');
 });
 
 // DELETE AC maintenance log

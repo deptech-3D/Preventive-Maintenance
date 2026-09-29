@@ -16,6 +16,11 @@ import {
   determineShift,
 } from "../supabaseService";
 import {
+  uploadPhotoToGoogleDriveIfConfigured,
+  getPhotoDisplayUrl,
+  getPhotoViewLink,
+} from "../utils/googleDrivePhoto";
+import {
   Activity,
   AlertTriangle,
   CheckCircle2,
@@ -270,9 +275,21 @@ export const PlantLogSheet: React.FC<PlantLogSheetProps> = ({
     e.preventDefault();
     setIsSubmitting(true);
     try {
+      let finalPhotoTemuanUrl = formData.photo_temuan_url;
+      if (finalPhotoTemuanUrl && finalPhotoTemuanUrl.startsWith("data:")) {
+        finalPhotoTemuanUrl = await uploadPhotoToGoogleDriveIfConfigured(finalPhotoTemuanUrl, {
+          pointName: `Ruang_${activeTab.toUpperCase()}`,
+          photoType: "Temuan",
+          shift: formData.shift || getDetectedShift(activeSettings),
+          recordedAt: formData.recorded_at || new Date().toISOString(),
+          userName: activeUser?.name || formData.user_name,
+        });
+      }
+
       if (editingLogId) {
         const updated = await updatePlantLog(editingLogId, {
           ...formData,
+          photo_temuan_url: finalPhotoTemuanUrl,
           user_id: activeUser?.user_id || formData.user_id,
           user_name: activeUser?.name || formData.user_name,
           property_name: activeSettings?.property_name || formData.property_name,
@@ -291,6 +308,7 @@ export const PlantLogSheet: React.FC<PlantLogSheetProps> = ({
       } else {
         const saved = await savePlantLog({
           ...formData,
+          photo_temuan_url: finalPhotoTemuanUrl,
           user_id: activeUser?.user_id,
           user_name: activeUser?.name,
           property_name: activeSettings?.property_name,
@@ -1008,10 +1026,22 @@ export const PlantLogSheet: React.FC<PlantLogSheetProps> = ({
                     </p>
                   )}
                   {selectedLog.photo_temuan_url && (
-                    <div>
-                      <span className="text-[11px] text-slate-400 block mb-1">Foto Temuan Anomali:</span>
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] text-slate-400 block">Foto Temuan Anomali:</span>
+                        {selectedLog.photo_temuan_url.startsWith("http") && (
+                          <a
+                            href={getPhotoViewLink(selectedLog.photo_temuan_url)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-[11px] font-bold text-blue-600 hover:underline"
+                          >
+                            Buka di Google Drive ↗
+                          </a>
+                        )}
+                      </div>
                       <img
-                        src={selectedLog.photo_temuan_url}
+                        src={getPhotoDisplayUrl(selectedLog.photo_temuan_url)}
                         alt="Temuan"
                         className="max-h-64 rounded-lg object-cover border border-slate-200 dark:border-slate-700"
                       />

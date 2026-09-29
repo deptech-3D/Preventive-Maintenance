@@ -52,6 +52,11 @@ import {
   smartFilterAndSortUnits,
 } from "../utils/smartSearch";
 import { useBackHandler } from "../utils/backNavigation";
+import {
+  uploadPhotoToGoogleDriveIfConfigured,
+  isGoogleDriveConfigureReady,
+  getPhotoViewLink,
+} from "../utils/googleDrivePhoto";
 
 interface ACLogEntryModalProps {
   initialUnitId?: string | null;
@@ -437,8 +442,52 @@ export function ACLogEntryModal({
 
     try {
       setSubmitting(true);
+
+      let finalPhotoTempBefore = photoTempBefore || undefined;
+      let finalPhotoTempAfter = photoTempAfter || undefined;
+      let finalPhotoAnemoBefore = photoAnemoBefore || undefined;
+      let finalPhotoAnemoAfter = photoAnemoAfter || undefined;
+
+      const recordedIso = new Date(recordedAt).toISOString();
+
+      // Upload otomatis ke Folder Google Drive Admin jika aktif dan ada foto yang diambil
+      if (isGoogleDriveConfigureReady()) {
+        if (finalPhotoTempBefore) {
+          finalPhotoTempBefore = await uploadPhotoToGoogleDriveIfConfigured(finalPhotoTempBefore, {
+            pointName: selectedUnit.name,
+            photoType: "Suhu-Before",
+            recordedAt: recordedIso,
+            userName: combinedTechnicianName,
+          });
+        }
+        if (finalPhotoTempAfter) {
+          finalPhotoTempAfter = await uploadPhotoToGoogleDriveIfConfigured(finalPhotoTempAfter, {
+            pointName: selectedUnit.name,
+            photoType: "Suhu-After",
+            recordedAt: recordedIso,
+            userName: combinedTechnicianName,
+          });
+        }
+        if (finalPhotoAnemoBefore) {
+          finalPhotoAnemoBefore = await uploadPhotoToGoogleDriveIfConfigured(finalPhotoAnemoBefore, {
+            pointName: selectedUnit.name,
+            photoType: "Anemo-Before",
+            recordedAt: recordedIso,
+            userName: combinedTechnicianName,
+          });
+        }
+        if (finalPhotoAnemoAfter) {
+          finalPhotoAnemoAfter = await uploadPhotoToGoogleDriveIfConfigured(finalPhotoAnemoAfter, {
+            pointName: selectedUnit.name,
+            photoType: "Anemo-After",
+            recordedAt: recordedIso,
+            userName: combinedTechnicianName,
+          });
+        }
+      }
+
       const newLog = await createACMaintenanceLog({
-        recorded_at: new Date(recordedAt).toISOString(),
+        recorded_at: recordedIso,
         user_id: user?.user_id || "usr_tech",
         user_name: combinedTechnicianName,
         category: normalizeACCategory(selectedUnit.category),
@@ -449,12 +498,12 @@ export function ACLogEntryModal({
         anemo_before: parsedAnemoBefore,
         anemo_after: parsedAnemoAfter,
         notes: notes.trim(),
-        photo_temp_before: photoTempBefore || undefined,
-        photo_temp_after: photoTempAfter || undefined,
-        photo_anemo_before: photoAnemoBefore || undefined,
-        photo_anemo_after: photoAnemoAfter || undefined,
-        photo_before: photoTempBefore || undefined,
-        photo_after: photoTempAfter || undefined,
+        photo_temp_before: finalPhotoTempBefore,
+        photo_temp_after: finalPhotoTempAfter,
+        photo_anemo_before: finalPhotoAnemoBefore,
+        photo_anemo_after: finalPhotoAnemoAfter,
+        photo_before: finalPhotoTempBefore,
+        photo_after: finalPhotoTempAfter,
       });
 
       onSuccess(newLog);
@@ -876,6 +925,67 @@ export function ACLogEntryModal({
                           <p className="text-slate-700 italic leading-relaxed">
                             &ldquo;{selectedUnitLastLog.notes}&rdquo;
                           </p>
+                        </div>
+                      )}
+
+                      {/* Baris 3b: Link Dokumentasi Foto Cuci Terakhir (Google Drive / Lokal) */}
+                      {(selectedUnitLastLog.photo_temp_before ||
+                        selectedUnitLastLog.photo_before ||
+                        selectedUnitLastLog.photo_temp_after ||
+                        selectedUnitLastLog.photo_after ||
+                        selectedUnitLastLog.photo_anemo_before ||
+                        selectedUnitLastLog.photo_anemo_after) && (
+                        <div className="bg-white p-2.5 rounded-lg border border-slate-200 text-xs space-y-1.5">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1">
+                            <Camera className="w-3 h-3 text-blue-600" />
+                            Dokumentasi Foto Cuci Terakhir:
+                          </span>
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            {(selectedUnitLastLog.photo_temp_before || selectedUnitLastLog.photo_before) && (
+                              <a
+                                href={getPhotoViewLink(selectedUnitLastLog.photo_temp_before || selectedUnitLastLog.photo_before)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="px-2 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 rounded-md text-[10px] font-bold flex items-center gap-1 transition"
+                              >
+                                <Camera className="w-3 h-3 text-amber-600" />
+                                <span>Foto Suhu Before</span>
+                              </a>
+                            )}
+                            {(selectedUnitLastLog.photo_temp_after || selectedUnitLastLog.photo_after) && (
+                              <a
+                                href={getPhotoViewLink(selectedUnitLastLog.photo_temp_after || selectedUnitLastLog.photo_after)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="px-2 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-md text-[10px] font-bold flex items-center gap-1 transition"
+                              >
+                                <Camera className="w-3 h-3 text-emerald-600" />
+                                <span>Foto Suhu After</span>
+                              </a>
+                            )}
+                            {selectedUnitLastLog.photo_anemo_before && (
+                              <a
+                                href={getPhotoViewLink(selectedUnitLastLog.photo_anemo_before)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="px-2 py-1 bg-cyan-50 hover:bg-cyan-100 text-cyan-800 border border-cyan-200 rounded-md text-[10px] font-bold flex items-center gap-1 transition"
+                              >
+                                <Camera className="w-3 h-3 text-cyan-600" />
+                                <span>Foto Anemo Before</span>
+                              </a>
+                            )}
+                            {selectedUnitLastLog.photo_anemo_after && (
+                              <a
+                                href={getPhotoViewLink(selectedUnitLastLog.photo_anemo_after)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="px-2 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-md text-[10px] font-bold flex items-center gap-1 transition"
+                              >
+                                <Camera className="w-3 h-3 text-emerald-600" />
+                                <span>Foto Anemo After</span>
+                              </a>
+                            )}
+                          </div>
                         </div>
                       )}
 
@@ -1345,14 +1455,21 @@ export function ACLogEntryModal({
 
           {/* Section 3: Dokumentasi Foto (4 Foto Bersandingan) */}
           <div className="space-y-3 bg-slate-50/90 p-3.5 rounded-xl border border-slate-200">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-0.5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
               <h3 className="text-xs font-bold uppercase tracking-wider text-slate-800 flex items-center gap-1.5">
                 <Camera className="w-4 h-4 text-blue-600" />
                 3. Dokumentasi Foto (Before & After)
               </h3>
-              <span className="text-[10px] text-slate-500 italic">
-                *Foto lama di kamar ini otomatis terhapus saat cuci berikutnya
-              </span>
+              {isGoogleDriveConfigureReady() ? (
+                <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-full text-[10px] font-bold flex items-center gap-1">
+                  <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                  <span>Auto-Upload ke Folder Google Drive Admin Aktif</span>
+                </span>
+              ) : (
+                <span className="text-[10px] text-slate-500 italic">
+                  *Foto otomatis tersimpan ke Google Drive jika Folder Admin diatur di Pengaturan
+                </span>
+              )}
             </div>
 
             {/* 1. Foto Before & After Suhu */}
@@ -1663,7 +1780,11 @@ export function ACLogEntryModal({
                 className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-500/20 flex items-center gap-2 transition disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
               >
                 <CheckCircle2 className="w-4 h-4" />
-                {submitting ? "Menyimpan Data..." : "Simpan Perawatan AC"}
+                {submitting
+                  ? isGoogleDriveConfigureReady()
+                    ? "Mengunggah Foto ke Google Drive & Menyimpan..."
+                    : "Menyimpan Data..."
+                  : "Simpan Perawatan AC"}
               </button>
             </div>
           </div>

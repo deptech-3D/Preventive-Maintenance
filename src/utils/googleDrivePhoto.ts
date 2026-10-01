@@ -4,6 +4,7 @@ import {
   apiUrl,
   determineShift,
   getLocalACLogs,
+  getLocalACUnits,
   fetchACMaintenanceLogs,
   updateACMaintenanceLog,
   fetchReadings,
@@ -933,3 +934,78 @@ export async function migrateAllOldPhotosToGoogleDrive(options?: {
         : "Gagal memindahkan foto lama. Pastikan URL Jembatan Google Script sudah benar dan disetel 'Siapa saja' (Anyone).",
   };
 }
+
+/**
+ * Mencadangkan otomatis (Auto-Backup) seluruh database pencatatan AC & Master Unit
+ * dalam format JSON ke Folder Google Drive Admin setiap kali ada pencatatan baru
+ * atau ketika tombol Backup Drive ditekan.
+ */
+export async function backupACLogsDatabaseToGoogleDrive(): Promise<{
+  ok: boolean;
+  viewUrl?: string;
+  fileName?: string;
+  error?: string;
+}> {
+  if (!isGoogleDriveConfigureReady()) {
+    return { ok: false, error: "Google Drive belum dikonfigurasi." };
+  }
+  try {
+    const logs = getLocalACLogs();
+    const units = getLocalACUnits();
+    const settings = getLocalAppSettings();
+    const now = new Date();
+    const pad = (n: number) => String(n).padStart(2, "0");
+    const datePart = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+    const timePart = `${pad(now.getHours())}-${pad(now.getMinutes())}`;
+    const fileName = `Backup_DB_Perawatan_AC_Midtown_${datePart}_${timePart}.json`;
+
+    // Hindari menyimpan base64 foto mentah di file JSON backup agar ukuran JSON tetap ringan (<200KB), link Drive tetap utuh
+    const cleanLogs = logs.map((l) => ({
+      ...l,
+      photo_temp_before: l.photo_temp_before?.startsWith("data:") ? "[Base64_Local]" : l.photo_temp_before,
+      photo_temp_after: l.photo_temp_after?.startsWith("data:") ? "[Base64_Local]" : l.photo_temp_after,
+      photo_anemo_before: l.photo_anemo_before?.startsWith("data:") ? "[Base64_Local]" : l.photo_anemo_before,
+      photo_anemo_after: l.photo_anemo_after?.startsWith("data:") ? "[Base64_Local]" : l.photo_anemo_after,
+      photo_before: l.photo_before?.startsWith("data:") ? "[Base64_Local]" : l.photo_before,
+      photo_after: l.photo_after?.startsWith("data:") ? "[Base64_Local]" : l.photo_after,
+    }));
+
+    const payloadObj = {
+      backup_created_at: now.toISOString(),
+      hotel: "Midtown Hotel Samarinda",
+      total_units: units.length,
+      total_ac_logs: cleanLogs.length,
+      ac_maintenance_cycle_months: settings.ac_maintenance_cycle_months || 1,
+      ac_logs: cleanLogs,
+      ac_units: units,
+    };
+
+    const jsonStr = JSON.stringify(payloadObj, null, 2);
+    const base64 = btoa(unescape(encodeURIComponent(jsonStr)));
+    const dataUrl = `data:application/json;base64,${base64}`;
+
+    const res = await uploadPhotoToGoogleDrive({
+      dataUrl,
+      fileName,
+    });
+
+    if (res.ok && res.uploadedToDrive) {
+      if (typeof localStorage !== "undefined") {
+        localStorage.setItem(
+          "ac_last_gdrive_json_backup",
+          JSON.stringify({
+            timestamp: now.toISOString(),
+            fileName,
+            viewUrl: res.viewUrl || "",
+            logsCount: cleanLogs.length,
+          })
+        );
+      }
+      return { ok: true, viewUrl: res.viewUrl, fileName };
+    }
+    return { ok: false, error: res.error || "Gagal mengunggah JSON ke Google Drive" };
+  } catch (err: any) {
+    return { ok: false, error: err?.message || "Gagal membuat backup JSON Google Drive" };
+  }
+}
+

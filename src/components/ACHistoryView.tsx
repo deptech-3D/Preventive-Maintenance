@@ -51,6 +51,10 @@ import {
   getRegisteredUserOptions,
   parseTechnicianNames,
   formatTechnicianNames,
+  getDeletedACLogsTrash,
+  restoreDeletedACLog,
+  getUnsyncedACLogIds,
+  syncPendingACLogsNow,
 } from "../supabaseService";
 import { ACLogEntryModal } from "./ACLogEntryModal";
 import {
@@ -63,6 +67,8 @@ import {
   getPhotoDisplayUrl,
   getPhotoViewLink,
   isGoogleDrivePhotoUrl,
+  isGoogleDriveConfigureReady,
+  backupACLogsDatabaseToGoogleDrive,
 } from "../utils/googleDrivePhoto";
 
 export function ACHistoryView() {
@@ -81,7 +87,7 @@ export function ACHistoryView() {
   const [editTech2, setEditTech2] = useState<string>("");
   const [savingTech, setSavingTech] = useState<boolean>(false);
 
-  // Admin Edit Tanggal & Kamar / Unit State
+  // Admin Edit Tanggal, Kamar / Unit, Teknisi, Suhu, Anemometer & Catatan State
   const [masterUnits, setMasterUnits] = useState<ACUnitLocation[]>(() => getLocalACUnits());
   const [editingDateUnitLog, setEditingDateUnitLog] = useState<ACMaintenanceLog | null>(null);
   const [editDateStr, setEditDateStr] = useState<string>("");
@@ -90,7 +96,24 @@ export function ACHistoryView() {
   const [editUnitName, setEditUnitName] = useState<string>("");
   const [editCategory, setEditCategory] = useState<ACCategory>("Area Privat / Kamar Hotel");
   const [editUnitSearch, setEditUnitSearch] = useState<string>("");
+  const [editFullTech1, setEditFullTech1] = useState<string>("");
+  const [editFullTech2, setEditFullTech2] = useState<string>("");
+  const [editTempBefore, setEditTempBefore] = useState<string>("");
+  const [editTempAfter, setEditTempAfter] = useState<string>("");
+  const [editAnemoBefore, setEditAnemoBefore] = useState<string>("");
+  const [editAnemoAfter, setEditAnemoAfter] = useState<string>("");
+  const [editNotes, setEditNotes] = useState<string>("");
   const [savingDateUnit, setSavingDateUnit] = useState<boolean>(false);
+
+  // Trash / Restore & Offline Sync Status State
+  const [trashLogs, setTrashLogs] = useState<Array<ACMaintenanceLog & { deleted_at?: string }>>(() =>
+    getDeletedACLogsTrash()
+  );
+  const [showTrashModal, setShowTrashModal] = useState<boolean>(false);
+  const [restoringId, setRestoringId] = useState<string | null>(null);
+  const [unsyncedIds, setUnsyncedIds] = useState<string[]>(() => getUnsyncedACLogIds());
+  const [syncingPending, setSyncingPending] = useState<boolean>(false);
+  const [backingUpDrive, setBackingUpDrive] = useState<boolean>(false);
 
   // Filters
   const [categoryFilter, setCategoryFilter] = useState<ACCategory | "all">("all");
@@ -115,6 +138,7 @@ export function ACHistoryView() {
   useBackHandler(Boolean(deleteTarget), () => setDeleteTarget(null), 30);
   useBackHandler(showBulkDeleteModal, () => setShowBulkDeleteModal(false), 30);
   useBackHandler(showClearAllModal, () => setShowClearAllModal(false), 30);
+  useBackHandler(showTrashModal, () => setShowTrashModal(false), 30);
   useBackHandler(Boolean(viewingPhoto), () => setViewingPhoto(null), 40);
 
   // Clipboard & Excel state
@@ -152,15 +176,22 @@ export function ACHistoryView() {
     const handleSynced = () => {
       setLogs(getLocalACLogs());
       setMasterUnits(getLocalACUnits());
+      setTrashLogs(getDeletedACLogsTrash());
+      setUnsyncedIds(getUnsyncedACLogIds());
+    };
+    const handleSyncStatusChanged = () => {
+      setUnsyncedIds(getUnsyncedACLogIds());
     };
     const handleUsersSynced = (e: Event) => {
       const detail = (e as CustomEvent)?.detail;
       setRegisteredUsers(getRegisteredUserOptions(Array.isArray(detail) ? detail : undefined));
     };
     window.addEventListener("ac-data-synced", handleSynced);
+    window.addEventListener("ac-sync-status-changed", handleSyncStatusChanged);
     window.addEventListener("users-data-synced", handleUsersSynced);
     return () => {
       window.removeEventListener("ac-data-synced", handleSynced);
+      window.removeEventListener("ac-sync-status-changed", handleSyncStatusChanged);
       window.removeEventListener("users-data-synced", handleUsersSynced);
     };
   }, [loadLogs]);
@@ -236,7 +267,81 @@ export function ACHistoryView() {
     setEditUnitName(log.unit_name || "");
     setEditCategory(normalizeACCategory(log.category));
     setEditUnitSearch("");
+    const [t1, t2] = parseTechnicianNames(log.user_name);
+    setEditFullTech1(t1 || log.user_name || "");
+    setEditFullTech2(t2 || "");
+    setEditTempBefore(String(log.temp_before ?? ""));
+    setEditTempAfter(String(log.temp_after ?? ""));
+    setEditAnemoBefore(String(log.anemo_before ?? ""));
+    setEditAnemoAfter(String(log.anemo_after ?? ""));
+    setEditNotes(log.notes || "");
     setEditingDateUnitLog(log);
+  };
+
+  const handleQuickToggleFullEditTech = (name: string) => {
+    if (editFullTech1.toLowerCase() === name.toLowerCase()) {
+      if (editFullTech2) {
+        setEditFullTech1(editFullTech2);
+        setEditFullTech2("");
+      }
+    } else if (editFullTech2.toLowerCase() === name.toLowerCase()) {
+      setEditFullTech2("");
+    } else if (!editFullTech1) {
+      setEditFullTech1(name);
+    } else if (!editFullTech2) {
+      setEditFullTech2(name);
+    } else {
+      setEditFullTech2(name);
+    }
+  };
+
+  const handleRestoreTrashLog = async (logId: string) => {
+    try {
+      setRestoringId(logId);
+      const restored = await restoreDeletedACLog(logId);
+      setTrashLogs(getDeletedACLogsTrash());
+      setLogs(getLocalACLogs());
+      setToastMsg(
+        `Log perawatan "${restored?.unit_name || logId}" berhasil dipulihkan kembali ke Riwayat!`
+      );
+      setTimeout(() => setToastMsg(null), 4000);
+    } catch (err: any) {
+      setToastMsg(err?.message || "Gagal memulihkan log.");
+    } finally {
+      setRestoringId(null);
+    }
+  };
+
+  const handleManualSyncPending = async () => {
+    try {
+      setSyncingPending(true);
+      const res = await syncPendingACLogsNow();
+      setUnsyncedIds(getUnsyncedACLogIds());
+      await loadLogs();
+      setToastMsg(
+        res.remaining === 0
+          ? `Seluruh data log (${res.synced} item) berhasil disinkronkan ke Server!`
+          : `${res.synced} log tersinkron, ${res.remaining} masih menunggu sinyal.`
+      );
+      setTimeout(() => setToastMsg(null), 4000);
+    } finally {
+      setSyncingPending(false);
+    }
+  };
+
+  const handleManualDriveJsonBackup = async () => {
+    try {
+      setBackingUpDrive(true);
+      const res = await backupACLogsDatabaseToGoogleDrive();
+      if (res.ok) {
+        setToastMsg(`Backup JSON "${res.fileName}" berhasil disimpan ke Folder Google Drive Admin!`);
+      } else {
+        setToastMsg(res.error || "Gagal mem-backup JSON ke Google Drive.");
+      }
+      setTimeout(() => setToastMsg(null), 4000);
+    } finally {
+      setBackingUpDrive(false);
+    }
   };
 
   const editUnitSuggestions = React.useMemo(() => {
@@ -272,11 +377,26 @@ export function ACHistoryView() {
       : normalizeACCategory(editCategory);
 
     const targetId = editingDateUnitLog.log_id;
+    const combinedTech = formatTechnicianNames(
+      editFullTech1.trim() || editingDateUnitLog.user_name,
+      editFullTech2.trim()
+    );
+    const parsedTB = Number(String(editTempBefore).replace(",", "."));
+    const parsedTA = Number(String(editTempAfter).replace(",", "."));
+    const parsedAB = Number(String(editAnemoBefore).replace(",", "."));
+    const parsedAA = Number(String(editAnemoAfter).replace(",", "."));
+
     const patch: Partial<ACMaintenanceLog> = {
       recorded_at: newIso,
       unit_id: finalUnitId,
       unit_name: cleanName,
       category: finalCategory,
+      user_name: combinedTech,
+      temp_before: !isNaN(parsedTB) && String(editTempBefore).trim() !== "" ? parsedTB : editingDateUnitLog.temp_before,
+      temp_after: !isNaN(parsedTA) && String(editTempAfter).trim() !== "" ? parsedTA : editingDateUnitLog.temp_after,
+      anemo_before: !isNaN(parsedAB) && String(editAnemoBefore).trim() !== "" ? parsedAB : editingDateUnitLog.anemo_before,
+      anemo_after: !isNaN(parsedAA) && String(editAnemoAfter).trim() !== "" ? parsedAA : editingDateUnitLog.anemo_after,
+      notes: editNotes.trim(),
     };
 
     try {
@@ -530,6 +650,61 @@ export function ACHistoryView() {
         </div>
       )}
 
+
+      {/* Bar Status Sinkronisasi Server, Backup Drive & Sampah/Restore */}
+      <div className="bg-white px-4 py-2.5 rounded-2xl border border-slate-200 shadow-2xs flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {unsyncedIds.length === 0 ? (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
+              <span className="w-2 h-2 rounded-full bg-emerald-500" />
+              <span>Tersinkron ke Server ({logs.length} Log)</span>
+            </span>
+          ) : (
+            <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-50 text-amber-900 border border-amber-300">
+              <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+              <span>{unsyncedIds.length} Log Menunggu Sinkronisasi (Offline)</span>
+              <button
+                type="button"
+                onClick={handleManualSyncPending}
+                disabled={syncingPending}
+                className="px-2 py-0.5 bg-amber-600 hover:bg-amber-700 text-white rounded-md text-[10px] font-bold cursor-pointer transition"
+              >
+                {syncingPending ? "Menyinkronkan..." : "Sinkronkan Sekarang"}
+              </button>
+            </div>
+          )}
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          {isGoogleDriveConfigureReady() && (
+            <button
+              type="button"
+              onClick={handleManualDriveJsonBackup}
+              disabled={backingUpDrive}
+              className="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 rounded-xl text-xs font-bold flex items-center gap-1.5 transition cursor-pointer"
+              title="Cadangkan file JSON seluruh database perawatan AC ke Folder Google Drive Admin"
+            >
+              <Download className="w-3.5 h-3.5 text-emerald-600" />
+              <span>{backingUpDrive ? "Mem-backup ke Drive..." : "Backup JSON ke Drive"}</span>
+            </button>
+          )}
+
+          {isAdmin && (
+            <button
+              type="button"
+              onClick={() => {
+                setTrashLogs(getDeletedACLogsTrash());
+                setShowTrashModal(true);
+              }}
+              className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 rounded-xl text-xs font-bold flex items-center gap-1.5 transition cursor-pointer"
+              title="Lihat dan pulihkan data log yang baru dihapus"
+            >
+              <Trash2 className="w-3.5 h-3.5 text-slate-600" />
+              <span>Sampah / Pulihkan ({trashLogs.length})</span>
+            </button>
+          )}
+        </div>
+      </div>
 
       {/* Filter & Search Bar */}
       <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs space-y-3">
@@ -1589,6 +1764,122 @@ export function ACHistoryView() {
                 </div>
               </div>
 
+              {/* 3. Edit Nama Teknisi (1 atau 2 Nama) */}
+              <div className="p-3.5 bg-indigo-50/50 border border-indigo-200 rounded-xl space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-[11px] font-bold uppercase tracking-wider text-indigo-900 flex items-center gap-1.5">
+                    <Users className="w-3.5 h-3.5 text-indigo-600" />
+                    <span>3. Nama Teknisi ({formatTechnicianNames(editFullTech1, editFullTech2)})</span>
+                  </label>
+                  {editFullTech2 && (
+                    <button
+                      type="button"
+                      onClick={() => setEditFullTech2("")}
+                      className="text-[10px] font-bold text-red-600 hover:underline cursor-pointer"
+                    >
+                      Hapus Teknisi 2
+                    </button>
+                  )}
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {registeredUsers.map((u) => {
+                    const isFirst = editFullTech1.toLowerCase() === u.name.toLowerCase();
+                    const isSecond = editFullTech2.toLowerCase() === u.name.toLowerCase();
+                    return (
+                      <button
+                        key={`full_edit_tech_${u.user_id}_${u.name}`}
+                        type="button"
+                        onClick={() => handleQuickToggleFullEditTech(u.name)}
+                        className={`px-2 py-1 rounded-lg text-[11px] font-bold border transition cursor-pointer flex items-center gap-1 ${
+                          isFirst
+                            ? "bg-indigo-600 text-white border-indigo-600"
+                            : isSecond
+                            ? "bg-blue-600 text-white border-blue-600"
+                            : "bg-white text-slate-700 border-slate-200 hover:border-indigo-400"
+                        }`}
+                      >
+                        {(isFirst || isSecond) && (
+                          <span className="w-3.5 h-3.5 rounded-full bg-white/25 text-white text-[9px] font-black flex items-center justify-center">
+                            {isFirst ? "1" : "2"}
+                          </span>
+                        )}
+                        <span>{u.name}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* 4. Edit Suhu & Anemometer (Before & After) + Catatan */}
+              <div className="p-3.5 bg-emerald-50/50 border border-emerald-200 rounded-xl space-y-3">
+                <label className="text-[11px] font-bold uppercase tracking-wider text-emerald-900 flex items-center gap-1.5">
+                  <Thermometer className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>4. Angka Suhu (°C), Anemometer (m/s) & Catatan</span>
+                </label>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  <div>
+                    <span className="block text-[10px] font-bold text-slate-600 mb-1">
+                      Suhu Before (°C)
+                    </span>
+                    <input
+                      type="number"
+                      step="0.1"
+                      value={editTempBefore}
+                      onChange={(e) => setEditTempBefore(e.target.value)}
+                      className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-bold text-slate-900"
+                    />
+                  </div>
+                  <div>
+                    <span className="block text-[10px] font-bold text-slate-600 mb-1">
+                      Suhu After (°C)
+                    </span>
+                    <input
+                      type="number"
+                      step="0.1"
+                      value={editTempAfter}
+                      onChange={(e) => setEditTempAfter(e.target.value)}
+                      className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-bold text-slate-900"
+                    />
+                  </div>
+                  <div>
+                    <span className="block text-[10px] font-bold text-slate-600 mb-1">
+                      Anemo Before (m/s)
+                    </span>
+                    <input
+                      type="number"
+                      step="0.1"
+                      value={editAnemoBefore}
+                      onChange={(e) => setEditAnemoBefore(e.target.value)}
+                      className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-bold text-slate-900"
+                    />
+                  </div>
+                  <div>
+                    <span className="block text-[10px] font-bold text-slate-600 mb-1">
+                      Anemo After (m/s)
+                    </span>
+                    <input
+                      type="number"
+                      step="0.1"
+                      value={editAnemoAfter}
+                      onChange={(e) => setEditAnemoAfter(e.target.value)}
+                      className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-bold text-slate-900"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <span className="block text-[10px] font-bold text-slate-600 mb-1">
+                    Catatan Kondisi:
+                  </span>
+                  <textarea
+                    rows={2}
+                    value={editNotes}
+                    onChange={(e) => setEditNotes(e.target.value)}
+                    placeholder="Catatan kondisi unit AC..."
+                    className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-xs text-slate-800 resize-none"
+                  />
+                </div>
+              </div>
+
               <div className="pt-2 flex items-center justify-end gap-2 border-t border-slate-100">
                 <button
                   type="button"
@@ -1604,7 +1895,7 @@ export function ACHistoryView() {
                   className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold shadow-sm transition flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
                 >
                   <Check className="w-3.5 h-3.5" />
-                  <span>{savingDateUnit ? "Menyimpan..." : "Simpan Tanggal & Kamar"}</span>
+                  <span>{savingDateUnit ? "Menyimpan..." : "Simpan Perubahan Admin"}</span>
                 </button>
               </div>
             </form>
@@ -1925,6 +2216,89 @@ export function ACHistoryView() {
                 alt={viewingPhoto.title}
                 className="max-w-full max-h-[70vh] object-contain rounded-lg"
               />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL SAMPAH / PULIHKAN LOG YANG DIHAPUS (SOFT-DELETE RESTORE) */}
+      {showTrashModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/65 backdrop-blur-xs">
+          <div className="bg-white w-full max-w-xl rounded-2xl shadow-2xl border border-slate-200 overflow-hidden animate-in fade-in zoom-in-95 max-h-[85vh] flex flex-col">
+            <div className="bg-gradient-to-r from-slate-800 to-slate-900 text-white px-5 py-4 flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-white/10 border border-white/20 flex items-center justify-center">
+                  <Trash2 className="w-4 h-4 text-amber-300" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold leading-tight">
+                    Sampah / Riwayat Log yang Dihapus (30 Hari Terakhir)
+                  </h3>
+                  <p className="text-[11px] text-slate-300 mt-0.5">
+                    Klik &ldquo;Pulihkan&rdquo; untuk mengembalikan log yang tidak sengaja terhapus
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowTrashModal(false)}
+                className="w-7 h-7 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-4 overflow-y-auto space-y-2.5 flex-1">
+              {trashLogs.length === 0 ? (
+                <div className="p-8 text-center text-xs text-slate-500 space-y-1.5">
+                  <CheckCircle2 className="w-8 h-8 text-emerald-500 mx-auto" />
+                  <p className="font-bold text-slate-700">Kotak Sampah Kosong</p>
+                  <p className="text-[11px]">
+                    Tidak ada log perawatan AC yang dihapus dalam 30 hari terakhir.
+                  </p>
+                </div>
+              ) : (
+                trashLogs.map((item) => (
+                  <div
+                    key={item.log_id}
+                    className="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between gap-3"
+                  >
+                    <div className="min-w-0 space-y-0.5">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-xs font-extrabold text-slate-900">
+                          {item.unit_name}
+                        </span>
+                        <span className="px-2 py-0.5 bg-blue-100 text-blue-800 rounded text-[10px] font-bold">
+                          {item.user_name}
+                        </span>
+                      </div>
+                      <div className="text-[11px] text-slate-600">
+                        Tanggal Cuci: <strong>{formatDateTime(item.recorded_at)}</strong> • Suhu:{" "}
+                        {item.temp_before}°C → {item.temp_after}°C • Anemo: {item.anemo_before} →{" "}
+                        {item.anemo_after} m/s
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleRestoreTrashLog(item.log_id)}
+                      disabled={restoringId === item.log_id}
+                      className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shrink-0 cursor-pointer transition disabled:opacity-50"
+                    >
+                      {restoringId === item.log_id ? "Memulihkan..." : "Pulihkan"}
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <div className="px-5 py-3 bg-slate-50 border-t border-slate-200 flex items-center justify-end shrink-0">
+              <button
+                type="button"
+                onClick={() => setShowTrashModal(false)}
+                className="px-4 py-1.5 bg-slate-800 text-white rounded-xl text-xs font-bold cursor-pointer"
+              >
+                Tutup
+              </button>
             </div>
           </div>
         </div>

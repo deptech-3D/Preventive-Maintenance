@@ -49,11 +49,11 @@ export function ACSearchMode({ onOpenACLog }: ACSearchModeProps) {
   );
   const [loading, setLoading] = useState<boolean>(false);
 
-  // Search query & filters
+  // Search query & filters (null = belum diklik oleh user, daftar kamar baru muncul setelah diklik/dicari)
   const [query, setQuery] = useState<string>("");
-  const [selectedFloor, setSelectedFloor] = useState<RealFloor | "all">("all");
+  const [selectedFloor, setSelectedFloor] = useState<RealFloor | "all" | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<ACCategory | "all">("all");
-  const [statusFilter, setStatusFilter] = useState<"all" | "urgent" | "overdue" | "approaching" | "safe">("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | "urgent" | "overdue" | "approaching" | "safe" | null>(null);
 
   const searchInputRef = useRef<HTMLInputElement>(null);
 
@@ -86,6 +86,14 @@ export function ACSearchMode({ onOpenACLog }: ACSearchModeProps) {
     };
   }, []);
 
+  // Apakah user sudah mengetik pencarian atau mengklik salah satu tombol filter lantai / status / kategori?
+  const isListVisible = Boolean(
+    query.trim() !== "" ||
+      selectedFloor !== null ||
+      statusFilter !== null ||
+      selectedCategory !== "all"
+  );
+
   // Smart clickable suggestions ("Persamaan untuk diklik") across all units
   const smartSuggestions = useMemo(() => {
     if (!query.trim()) return [];
@@ -94,12 +102,14 @@ export function ACSearchMode({ onOpenACLog }: ACSearchModeProps) {
 
   // Filtered and smart-ranked data
   const filteredList = useMemo(() => {
+    if (!isListVisible) return [];
+
     const applyBaseFilters = (list: ACUnitScheduleStatus[]) =>
       list.filter((item) => {
         const unit = item.unit;
         const unitFloor = resolveFloorFromUnit(unit);
 
-        if (selectedFloor !== "all" && unitFloor !== selectedFloor) {
+        if (selectedFloor !== null && selectedFloor !== "all" && unitFloor !== selectedFloor) {
           return false;
         }
         if (selectedCategory !== "all" && normalizeACCategory(unit.category) !== selectedCategory) {
@@ -107,7 +117,7 @@ export function ACSearchMode({ onOpenACLog }: ACSearchModeProps) {
         }
         if (statusFilter === "urgent") {
           if (item.status !== "overdue" && item.status !== "approaching") return false;
-        } else if (statusFilter !== "all" && item.status !== statusFilter) {
+        } else if (statusFilter !== null && statusFilter !== "all" && item.status !== statusFilter) {
           return false;
         }
         return true;
@@ -124,13 +134,13 @@ export function ACSearchMode({ onOpenACLog }: ACSearchModeProps) {
       return smartFilterAndSortUnits(scheduleList, (item) => item.unit, query);
     }
     return smartMatched;
-  }, [scheduleList, query, selectedFloor, selectedCategory, statusFilter]);
+  }, [scheduleList, query, selectedFloor, selectedCategory, statusFilter, isListVisible]);
 
   const handleResetFilters = () => {
     setQuery("");
-    setSelectedFloor("all");
+    setSelectedFloor(null);
     setSelectedCategory("all");
-    setStatusFilter("all");
+    setStatusFilter(null);
     if (searchInputRef.current) {
       searchInputRef.current.focus();
     }
@@ -163,15 +173,6 @@ export function ACSearchMode({ onOpenACLog }: ACSearchModeProps) {
               </p>
             </div>
           </div>
-
-          <button
-            type="button"
-            onClick={() => onOpenACLog()}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-sm shadow-blue-500/20 flex items-center justify-center gap-1.5 transition min-h-[42px] shrink-0 cursor-pointer"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Catat Cuci AC</span>
-          </button>
         </div>
 
         {/* Search Input Bar (Prominent & Real-time) */}
@@ -258,10 +259,10 @@ export function ACSearchMode({ onOpenACLog }: ACSearchModeProps) {
             <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
               Filter Lantai:
             </span>
-            {selectedFloor !== "all" && (
+            {selectedFloor !== null && (
               <button
                 type="button"
-                onClick={() => setSelectedFloor("all")}
+                onClick={() => setSelectedFloor(null)}
                 className="text-[11px] font-bold text-blue-600 hover:text-blue-800 cursor-pointer"
               >
                 Reset Lantai
@@ -271,7 +272,7 @@ export function ACSearchMode({ onOpenACLog }: ACSearchModeProps) {
           <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none text-xs">
             <button
               type="button"
-              onClick={() => setSelectedFloor("all")}
+              onClick={() => setSelectedFloor((prev) => (prev === "all" ? null : "all"))}
               className={`px-3 py-1.5 rounded-xl font-bold shrink-0 transition border cursor-pointer ${
                 selectedFloor === "all"
                   ? "bg-slate-900 text-white border-slate-900 shadow-xs"
@@ -284,7 +285,7 @@ export function ACSearchMode({ onOpenACLog }: ACSearchModeProps) {
               <button
                 key={floor}
                 type="button"
-                onClick={() => setSelectedFloor(floor)}
+                onClick={() => setSelectedFloor((prev) => (prev === floor ? null : floor))}
                 className={`px-3 py-1.5 rounded-xl font-bold shrink-0 transition border cursor-pointer ${
                   selectedFloor === floor
                     ? "bg-blue-600 text-white border-blue-600 shadow-xs"
@@ -304,7 +305,7 @@ export function ACSearchMode({ onOpenACLog }: ACSearchModeProps) {
           </span>
           <button
             type="button"
-            onClick={() => setStatusFilter("all")}
+            onClick={() => setStatusFilter((prev) => (prev === "all" ? null : "all"))}
             className={`px-2.5 py-1 rounded-lg font-bold border transition cursor-pointer ${
               statusFilter === "all"
                 ? "bg-slate-800 text-white border-slate-800"
@@ -315,7 +316,7 @@ export function ACSearchMode({ onOpenACLog }: ACSearchModeProps) {
           </button>
           <button
             type="button"
-            onClick={() => setStatusFilter("overdue")}
+            onClick={() => setStatusFilter((prev) => (prev === "overdue" ? null : "overdue"))}
             className={`px-2.5 py-1 rounded-lg font-bold border transition cursor-pointer ${
               statusFilter === "overdue"
                 ? "bg-red-600 text-white border-red-600 shadow-xs"
@@ -326,7 +327,7 @@ export function ACSearchMode({ onOpenACLog }: ACSearchModeProps) {
           </button>
           <button
             type="button"
-            onClick={() => setStatusFilter("approaching")}
+            onClick={() => setStatusFilter((prev) => (prev === "approaching" ? null : "approaching"))}
             className={`px-2.5 py-1 rounded-lg font-bold border transition cursor-pointer ${
               statusFilter === "approaching"
                 ? "bg-amber-600 text-white border-amber-600 shadow-xs"
@@ -337,7 +338,7 @@ export function ACSearchMode({ onOpenACLog }: ACSearchModeProps) {
           </button>
           <button
             type="button"
-            onClick={() => setStatusFilter("safe")}
+            onClick={() => setStatusFilter((prev) => (prev === "safe" ? null : "safe"))}
             className={`px-2.5 py-1 rounded-lg font-bold border transition cursor-pointer ${
               statusFilter === "safe"
                 ? "bg-emerald-600 text-white border-emerald-600 shadow-xs"
@@ -367,38 +368,38 @@ export function ACSearchMode({ onOpenACLog }: ACSearchModeProps) {
         </div>
       </div>
 
-      {/* Results Header */}
-      <div className="flex items-center justify-between px-1 text-xs">
-        <div className="font-semibold text-slate-600">
-          Ditemukan <strong className="text-slate-900">{filteredList.length}</strong> unit kamar & area
-          {query.trim() && (
-            <span>
-              {" "}
-              untuk kata kunci &ldquo;<strong className="text-blue-600">{query}</strong>&rdquo;
-            </span>
-          )}
-          {selectedFloor !== "all" && (
-            <span>
-              {" "}
-              di <strong className="text-slate-900">{selectedFloor}</strong>
-            </span>
-          )}
-        </div>
+      {/* Results Header & List — Hanya muncul setelah tombol Lantai / Status / Kategori diklik atau kolom cari diisi */}
+      {isListVisible && (
+        <div className="flex items-center justify-between px-1 text-xs">
+          <div className="font-semibold text-slate-600">
+            Ditemukan <strong className="text-slate-900">{filteredList.length}</strong> unit kamar & area
+            {query.trim() && (
+              <span>
+                {" "}
+                untuk kata kunci &ldquo;<strong className="text-blue-600">{query}</strong>&rdquo;
+              </span>
+            )}
+            {selectedFloor && selectedFloor !== "all" && (
+              <span>
+                {" "}
+                di <strong className="text-slate-900">{selectedFloor}</strong>
+              </span>
+            )}
+          </div>
 
-        {(query.trim() || selectedFloor !== "all" || selectedCategory !== "all" || statusFilter !== "all") && (
           <button
             type="button"
             onClick={handleResetFilters}
             className="font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 cursor-pointer"
           >
             <RotateCcw className="w-3 h-3" />
-            <span>Reset Filter</span>
+            <span>Tutup / Reset Daftar</span>
           </button>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Results Grid / List */}
-      {loading ? (
+      {!isListVisible ? null : loading ? (
         <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center text-xs text-slate-500 space-y-2">
           <div className="w-7 h-7 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto" />
           <p className="font-semibold text-slate-700">Mencari data kamar & AC...</p>

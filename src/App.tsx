@@ -25,6 +25,7 @@ import { History } from "./components/History";
 import { Settings } from "./components/Settings";
 import { ACSearchMode } from "./components/ACSearchMode";
 import { ACLogEntryModal } from "./components/ACLogEntryModal";
+import { PWAInstallButton } from "./components/PWAInstallButton";
 import { ACMaintenanceLog } from "./types";
 import { useBackHandler } from "./utils/backNavigation";
 
@@ -115,8 +116,8 @@ export function App() {
         <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <img
-              src="/favicon.png"
-              alt="Preventive Maintenance Logo"
+              src="/app-icon.png?v=4"
+              alt="Engineering Logbook Logo"
               className="w-8 h-8 rounded-lg object-cover shadow-xs border border-slate-200/60"
             />
             <div>
@@ -209,6 +210,8 @@ export function App() {
                 <span>{t("settings")}</span>
               </button>
             </nav>
+
+            <PWAInstallButton compact />
 
             <div className="hidden sm:flex items-center gap-2 px-3 py-1 bg-slate-100 rounded-full text-xs font-semibold text-slate-700">
               <UserIcon className="w-3.5 h-3.5 text-slate-500" />

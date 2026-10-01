@@ -20,6 +20,7 @@ import {
   resetAdminPasswordWithCode,
   fetchAppSettings,
 } from "../supabaseService";
+import { PWAInstallButton } from "./PWAInstallButton";
 
 export function Login() {
   const { login } = useAuth();
@@ -229,14 +230,19 @@ export function Login() {
             className="w-full h-full object-cover opacity-85 transition-all duration-300"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/60 to-transparent" />
-          <div className="absolute bottom-4 left-6 right-6">
-            <div>
+          <div className="absolute bottom-4 left-6 right-6 flex items-center gap-3.5">
+            <img
+              src="/app-icon.png?v=4"
+              alt="Engineering Logbook Logo"
+              className="w-12 h-12 rounded-xl object-cover shadow-lg border border-white/25 shrink-0"
+            />
+            <div className="min-w-0">
               <div className="flex items-center gap-1.5 text-blue-300 text-xs font-semibold uppercase tracking-wider mb-0.5">
-                <Building2 className="w-3.5 h-3.5 text-blue-400" />
-                <span className="truncate max-w-[240px]">{hotelTitle || t("apps_title")}</span>
+                <Building2 className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+                <span className="truncate max-w-[220px]">{hotelTitle || t("apps_title")}</span>
               </div>
-              <h1 className="text-xl font-extrabold text-white">{t("login")}</h1>
-              <p className="text-xs text-slate-300">{t("tagline_sub")}</p>
+              <h1 className="text-xl font-extrabold text-white leading-tight">{t("login")}</h1>
+              <p className="text-xs text-slate-300 truncate">{t("tagline_sub")}</p>
             </div>
           </div>
         </div>
@@ -403,8 +409,9 @@ export function Login() {
             </p>
           </div>
 
-          {/* Language Toggle */}
-          <div className="flex flex-col items-center gap-2 pt-1">
+          {/* Language Toggle & Install Button */}
+          <div className="flex flex-col items-center gap-2.5 pt-1">
+            <PWAInstallButton />
             <div className="flex justify-center items-center gap-2">
               <Globe className="w-3.5 h-3.5 text-slate-400" />
               <button

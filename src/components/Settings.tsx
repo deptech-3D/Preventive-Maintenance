@@ -586,48 +586,50 @@ export function Settings() {
       {/* Admin Settings Navigation */}
       {user?.role === "admin" && (
         <>
-          <div className="bg-white p-2 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-1.5 overflow-x-auto scrollbar-none text-xs">
+          <div className="bg-white p-3 rounded-2xl border border-slate-200 shadow-xs grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 auto-rows-fr gap-2.5 text-xs">
             <button
               id="tab-admin-master-ac"
               type="button"
               onClick={() => setAdminSubmenu("master_ac")}
-              className={`px-3.5 py-2.5 rounded-xl font-bold transition flex items-center gap-2 shrink-0 border cursor-pointer ${
+              className={`w-full h-11 px-3.5 rounded-xl font-bold transition flex items-center gap-2.5 text-left border cursor-pointer ${
                 adminSubmenu === "master_ac"
                   ? "bg-blue-600 text-white border-blue-600 shadow-xs"
                   : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
               }`}
             >
-              <Building2 className="w-4 h-4" />
-              <span>A. Master Lokasi/Unit</span>
+              <Building2 className="w-4 h-4 shrink-0" />
+              <span className="truncate whitespace-nowrap">A. Master Lokasi/Unit</span>
             </button>
 
             <button
               id="tab-admin-cycle-ac"
               type="button"
               onClick={() => setAdminSubmenu("cycle_ac")}
-              className={`px-3.5 py-2.5 rounded-xl font-bold transition flex items-center gap-2 shrink-0 border cursor-pointer ${
+              className={`w-full h-11 px-3.5 rounded-xl font-bold transition flex items-center gap-2.5 text-left border cursor-pointer ${
                 adminSubmenu === "cycle_ac"
                   ? "bg-blue-600 text-white border-blue-600 shadow-xs"
                   : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
               }`}
             >
-              <CalendarClock className="w-4 h-4" />
-              <span>B. Durasi Siklus Perawatan</span>
+              <CalendarClock className="w-4 h-4 shrink-0" />
+              <span className="truncate whitespace-nowrap">B. Durasi Siklus Perawatan</span>
             </button>
 
             <button
               id="tab-admin-gdrive"
               type="button"
               onClick={() => setAdminSubmenu("gdrive_photo")}
-              className={`px-3.5 py-2.5 rounded-xl font-bold transition flex items-center gap-2 shrink-0 border cursor-pointer ${
+              className={`w-full h-11 px-3.5 rounded-xl font-bold transition flex items-center justify-between gap-2 text-left border cursor-pointer ${
                 adminSubmenu === "gdrive_photo"
                   ? "bg-emerald-600 text-white border-emerald-600 shadow-xs"
                   : "bg-emerald-50/70 text-emerald-900 border-emerald-200 hover:bg-emerald-100"
               }`}
             >
-              <HardDrive className="w-4 h-4" />
-              <span>C. Folder Foto Google Drive</span>
-              <span className="px-1.5 py-0.2 bg-emerald-500 text-white text-[9px] font-black rounded-full">
+              <span className="flex items-center gap-2.5 min-w-0">
+                <HardDrive className="w-4 h-4 shrink-0" />
+                <span className="truncate whitespace-nowrap">C. Folder Foto Google Drive</span>
+              </span>
+              <span className="px-1.5 py-0.5 bg-emerald-500 text-white text-[9px] font-black rounded-full shrink-0 whitespace-nowrap">
                 Hemat DB
               </span>
             </button>
@@ -636,42 +638,42 @@ export function Settings() {
               id="tab-admin-reports"
               type="button"
               onClick={() => setAdminSubmenu("reports")}
-              className={`px-3.5 py-2.5 rounded-xl font-bold transition flex items-center gap-2 shrink-0 border cursor-pointer ${
+              className={`w-full h-11 px-3.5 rounded-xl font-bold transition flex items-center gap-2.5 text-left border cursor-pointer ${
                 adminSubmenu === "reports"
                   ? "bg-blue-600 text-white border-blue-600 shadow-xs"
                   : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
               }`}
             >
-              <FileSpreadsheet className="w-4 h-4" />
-              <span>D. Laporan & Integrasi Sheets</span>
+              <FileSpreadsheet className="w-4 h-4 shrink-0" />
+              <span className="truncate whitespace-nowrap">D. Laporan & Integrasi Sheets</span>
             </button>
 
             <button
               id="tab-admin-users"
               type="button"
               onClick={() => setAdminSubmenu("users")}
-              className={`px-3.5 py-2.5 rounded-xl font-bold transition flex items-center gap-2 shrink-0 border cursor-pointer ${
+              className={`w-full h-11 px-3.5 rounded-xl font-bold transition flex items-center gap-2.5 text-left border cursor-pointer ${
                 adminSubmenu === "users"
                   ? "bg-blue-600 text-white border-blue-600 shadow-xs"
                   : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
               }`}
             >
-              <Users className="w-4 h-4" />
-              <span>E. Kelola Pengguna</span>
+              <Users className="w-4 h-4 shrink-0" />
+              <span className="truncate whitespace-nowrap">E. Kelola Pengguna</span>
             </button>
 
             <button
               id="tab-admin-general"
               type="button"
               onClick={() => setAdminSubmenu("general")}
-              className={`px-3.5 py-2.5 rounded-xl font-bold transition flex items-center gap-2 shrink-0 border cursor-pointer ${
+              className={`w-full h-11 px-3.5 rounded-xl font-bold transition flex items-center gap-2.5 text-left border cursor-pointer ${
                 adminSubmenu === "general"
                   ? "bg-blue-600 text-white border-blue-600 shadow-xs"
                   : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"
               }`}
             >
-              <SettingsIcon className="w-4 h-4" />
-              <span>F. Konfigurasi Property</span>
+              <SettingsIcon className="w-4 h-4 shrink-0" />
+              <span className="truncate whitespace-nowrap">F. Konfigurasi Property</span>
             </button>
           </div>
 

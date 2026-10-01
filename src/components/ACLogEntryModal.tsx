@@ -46,7 +46,10 @@ import {
   getRegisteredUserOptions,
   formatTechnicianNames,
 } from "../supabaseService";
-import { compressImageFile } from "../utils/imageCompressor";
+import {
+  compressAndVerifyACPhoto,
+  recordSubmittedPhotoFingerprints,
+} from "../utils/imageCompressor";
 import {
   getSmartUnitSuggestions,
   smartFilterAndSortUnits,
@@ -56,7 +59,61 @@ import {
   uploadPhotoToGoogleDriveIfConfigured,
   isGoogleDriveConfigureReady,
   getPhotoViewLink,
+  backupACLogsDatabaseToGoogleDrive,
 } from "../utils/googleDrivePhoto";
+
+const AC_CLEANING_DRAFTS_KEY = "ac_cleaning_drafts_v1";
+
+interface ACCleaningDraftItem {
+  unitId: string;
+  unitName: string;
+  savedAt: string;
+  selectedTech1: string;
+  selectedTech2: string;
+  tempBefore: string;
+  tempAfter: string;
+  anemoBefore: string;
+  anemoAfter: string;
+  notes: string;
+  photoTempBefore: string;
+  photoTempAfter: string;
+  photoAnemoBefore: string;
+  photoAnemoAfter: string;
+  photoFingerprints: Record<string, string>;
+  photoSources: Record<string, "camera" | "gallery">;
+}
+
+function getAllACCleaningDrafts(): Record<string, ACCleaningDraftItem> {
+  if (typeof localStorage === "undefined") return {};
+  try {
+    const raw = localStorage.getItem(AC_CLEANING_DRAFTS_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === "object") return parsed;
+    }
+  } catch {}
+  return {};
+}
+
+function saveACCleaningDraftForUnit(draft: ACCleaningDraftItem): void {
+  if (typeof localStorage === "undefined" || !draft.unitId) return;
+  try {
+    const all = getAllACCleaningDrafts();
+    all[draft.unitId] = draft;
+    localStorage.setItem(AC_CLEANING_DRAFTS_KEY, JSON.stringify(all));
+  } catch {}
+}
+
+function removeACCleaningDraftForUnit(unitId: string): void {
+  if (typeof localStorage === "undefined" || !unitId) return;
+  try {
+    const all = getAllACCleaningDrafts();
+    if (all[unitId]) {
+      delete all[unitId];
+      localStorage.setItem(AC_CLEANING_DRAFTS_KEY, JSON.stringify(all));
+    }
+  } catch {}
+}
 
 interface ACLogEntryModalProps {
   initialUnitId?: string | null;
@@ -96,9 +153,9 @@ export function ACLogEntryModal({
   const [category, setCategory] = useState<ACCategory>("Area Privat / Kamar Hotel");
   const [showAllUnitHistory, setShowAllUnitHistory] = useState<boolean>(false);
 
-  // Quick Search States
+  // Quick Search States (selectedFloorFilter = "" berarti belum diklik, list baru muncul setelah diklik/dicari)
   const [searchQuery, setSearchQuery] = useState<string>("");
-  const [selectedFloorFilter, setSelectedFloorFilter] = useState<string>("all");
+  const [selectedFloorFilter, setSelectedFloorFilter] = useState<string>("");
   const [isChangingUnit, setIsChangingUnit] = useState<boolean>(false);
 
   // 2. Tanggal & Jam (otomatis mendeteksi waktu saat ini)
@@ -131,20 +188,52 @@ export function ACLogEntryModal({
   const [photoTempAfter, setPhotoTempAfter] = useState<string>("");
   const [photoAnemoBefore, setPhotoAnemoBefore] = useState<string>("");
   const [photoAnemoAfter, setPhotoAnemoAfter] = useState<string>("");
+  const [photoFingerprints, setPhotoFingerprints] = useState<Record<string, string>>({});
+  const [photoSources, setPhotoSources] = useState<Record<string, "camera" | "gallery">>({});
   const [processingPhoto, setProcessingPhoto] = useState<Record<string, boolean>>({});
+  const [draftNoticeMsg, setDraftNoticeMsg] = useState<string | null>(null);
+  const [savedDraftsMap, setSavedDraftsMap] = useState<Record<string, ACCleaningDraftItem>>(() =>
+    getAllACCleaningDrafts()
+  );
+
+  const stageLabelMap: Record<string, string> = {
+    temp_before: "SUHU BEFORE",
+    temp_after: "SUHU AFTER",
+    anemo_before: "ANEMO BEFORE",
+    anemo_after: "ANEMO AFTER",
+  };
 
   const handlePhotoUpload = async (
     key: "temp_before" | "temp_after" | "anemo_before" | "anemo_after",
     setter: (val: string) => void,
+    sourceType: "camera" | "gallery",
     e: React.ChangeEvent<HTMLInputElement>
   ) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    setErrorMsg(null);
     try {
       setProcessingPhoto((prev) => ({ ...prev, [key]: true }));
-      const compressed = await compressImageFile(file, { maxDimension: 900, quality: 0.72 });
-      if (compressed) {
-        setter(compressed);
+      const unitObj = units.find((u) => u.id === selectedUnitId);
+      const verified = await compressAndVerifyACPhoto(file, {
+        stageLabel: stageLabelMap[key] || key,
+        unitName: unitObj?.name || "Unit AC",
+        technicianName: formatTechnicianNames(selectedTech1 || user?.name || "Teknisi AC", selectedTech2),
+        sourceType,
+        isAdmin,
+        existingFingerprints: photoFingerprints,
+        currentSlotKey: key,
+      });
+
+      if (!verified.ok) {
+        setErrorMsg(verified.error || "Foto tidak valid atau terdeteksi duplikat.");
+        return;
+      }
+
+      if (verified.dataUrl) {
+        setter(verified.dataUrl);
+        setPhotoFingerprints((prev) => ({ ...prev, [key]: verified.fingerprint }));
+        setPhotoSources((prev) => ({ ...prev, [key]: sourceType }));
       }
     } catch (err) {
       console.error(`Gagal kompres foto ${key}:`, err);
@@ -152,6 +241,23 @@ export function ACLogEntryModal({
       setProcessingPhoto((prev) => ({ ...prev, [key]: false }));
       e.target.value = "";
     }
+  };
+
+  const handleClearPhotoSlot = (
+    key: "temp_before" | "temp_after" | "anemo_before" | "anemo_after",
+    setter: (val: string) => void
+  ) => {
+    setter("");
+    setPhotoFingerprints((prev) => {
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+    setPhotoSources((prev) => {
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
   };
 
   const [loadingUnits, setLoadingUnits] = useState<boolean>(false);
@@ -257,6 +363,136 @@ export function ACLogEntryModal({
   const selectedUnit = useMemo(() => {
     return units.find((u) => u.id === selectedUnitId) || null;
   }, [units, selectedUnitId]);
+
+  // Pulihkan draft otomatis saat kamar/unit dipilih
+  useEffect(() => {
+    if (!selectedUnitId) return;
+    const allDrafts = getAllACCleaningDrafts();
+    const draft = allDrafts[selectedUnitId];
+    if (draft) {
+      setTempBefore(draft.tempBefore || "");
+      setTempAfter(draft.tempAfter || "");
+      setAnemoBefore(draft.anemoBefore || "");
+      setAnemoAfter(draft.anemoAfter || "");
+      setNotes(draft.notes || "");
+      setPhotoTempBefore(draft.photoTempBefore || "");
+      setPhotoTempAfter(draft.photoTempAfter || "");
+      setPhotoAnemoBefore(draft.photoAnemoBefore || "");
+      setPhotoAnemoAfter(draft.photoAnemoAfter || "");
+      setPhotoFingerprints(draft.photoFingerprints || {});
+      setPhotoSources(draft.photoSources || {});
+      if (draft.selectedTech1) setSelectedTech1(draft.selectedTech1);
+      if (draft.selectedTech2 !== undefined) setSelectedTech2(draft.selectedTech2);
+      setDraftNoticeMsg(
+        `Draft Tahap Before untuk "${draft.unitName}" berhasil dipulihkan! Silakan lanjutkan mengisi data After.`
+      );
+    } else {
+      setDraftNoticeMsg(null);
+    }
+  }, [selectedUnitId]);
+
+  // Auto-save draft ke localStorage setiap kali teknisi mengisi angka atau foto Before di kamar terpilih
+  useEffect(() => {
+    if (!selectedUnitId || !selectedUnit) return;
+    const hasAnyBeforeData = Boolean(
+      tempBefore.trim() ||
+        anemoBefore.trim() ||
+        photoTempBefore ||
+        photoAnemoBefore ||
+        tempAfter.trim() ||
+        anemoAfter.trim() ||
+        photoTempAfter ||
+        photoAnemoAfter ||
+        notes.trim()
+    );
+    if (!hasAnyBeforeData) return;
+
+    const draftObj: ACCleaningDraftItem = {
+      unitId: selectedUnit.id,
+      unitName: selectedUnit.name,
+      savedAt: new Date().toISOString(),
+      selectedTech1,
+      selectedTech2,
+      tempBefore,
+      tempAfter,
+      anemoBefore,
+      anemoAfter,
+      notes,
+      photoTempBefore,
+      photoTempAfter,
+      photoAnemoBefore,
+      photoAnemoAfter,
+      photoFingerprints,
+      photoSources,
+    };
+    saveACCleaningDraftForUnit(draftObj);
+    setSavedDraftsMap(getAllACCleaningDrafts());
+  }, [
+    selectedUnitId,
+    selectedUnit,
+    selectedTech1,
+    selectedTech2,
+    tempBefore,
+    tempAfter,
+    anemoBefore,
+    anemoAfter,
+    notes,
+    photoTempBefore,
+    photoTempAfter,
+    photoAnemoBefore,
+    photoAnemoAfter,
+    photoFingerprints,
+    photoSources,
+  ]);
+
+  const handleSaveBeforeDraftAndPause = () => {
+    if (!selectedUnit) {
+      setErrorMsg("Pilih kamar/unit AC terlebih dahulu sebelum menyimpan Draft Tahap Before!");
+      return;
+    }
+    const draftObj: ACCleaningDraftItem = {
+      unitId: selectedUnit.id,
+      unitName: selectedUnit.name,
+      savedAt: new Date().toISOString(),
+      selectedTech1,
+      selectedTech2,
+      tempBefore,
+      tempAfter,
+      anemoBefore,
+      anemoAfter,
+      notes,
+      photoTempBefore,
+      photoTempAfter,
+      photoAnemoBefore,
+      photoAnemoAfter,
+      photoFingerprints,
+      photoSources,
+    };
+    saveACCleaningDraftForUnit(draftObj);
+    setSavedDraftsMap(getAllACCleaningDrafts());
+    setDraftNoticeMsg(
+      `Data Tahap Before untuk "${selectedUnit.name}" sudah aman tersimpan di HP! Anda dapat menutup aplikasi/mematikan layar HP selama mencuci AC, lalu buka kembali untuk mengisi Tahap After.`
+    );
+  };
+
+  const handleDeleteDraft = (unitId: string) => {
+    removeACCleaningDraftForUnit(unitId);
+    setSavedDraftsMap(getAllACCleaningDrafts());
+    if (unitId === selectedUnitId) {
+      setTempBefore("");
+      setTempAfter("");
+      setAnemoBefore("");
+      setAnemoAfter("");
+      setNotes("");
+      setPhotoTempBefore("");
+      setPhotoTempAfter("");
+      setPhotoAnemoBefore("");
+      setPhotoAnemoAfter("");
+      setPhotoFingerprints({});
+      setPhotoSources({});
+      setDraftNoticeMsg(null);
+    }
+  };
 
   // Tombol Kembali (Back) di HP / Browser:
   // 1. Menutup modal Form Pencatatan AC
@@ -372,10 +608,15 @@ export function ACLogEntryModal({
     return getSmartUnitSuggestions(units, (u) => u, searchQuery, 8);
   }, [units, searchQuery]);
 
+  const isUnitSearchListVisible = Boolean(
+    searchQuery.trim() !== "" || selectedFloorFilter !== ""
+  );
+
   // Filter units dynamically based on Smart Search and Floor Filter
   const searchResults = useMemo(() => {
+    if (!isUnitSearchListVisible) return [];
     const floorFiltered =
-      selectedFloorFilter === "all"
+      !selectedFloorFilter || selectedFloorFilter === "all"
         ? units
         : units.filter((u) => resolveFloorFromUnit(u) === selectedFloorFilter);
 
@@ -386,7 +627,7 @@ export function ACLogEntryModal({
       return smartFilterAndSortUnits(units, (u) => u, searchQuery);
     }
     return matched;
-  }, [units, searchQuery, selectedFloorFilter]);
+  }, [units, searchQuery, selectedFloorFilter, isUnitSearchListVisible]);
 
   // Calculations for delta comparison
   const parseManualNumber = (val: string): number => {
@@ -420,6 +661,41 @@ export function ACLogEntryModal({
     !isNaN(parsedAnemoAfter);
 
   const isCanSubmit = Boolean(selectedUnitId && selectedUnit && isAllMeasurementsFilled);
+  const hasBeforeFilled = Boolean(
+    selectedUnit && (tempBefore.trim() || anemoBefore.trim() || photoTempBefore || photoAnemoBefore)
+  );
+
+  // Deteksi apakah kamar ini sudah pernah dicatat hari ini (Anti-Duplikat Kamar di Hari yang Sama)
+  const sameDayExistingLog = useMemo(() => {
+    if (!selectedUnitLastLog) return null;
+    const lastDate = new Date(selectedUnitLastLog.recorded_at);
+    const now = new Date();
+    const isSameDay =
+      lastDate.getFullYear() === now.getFullYear() &&
+      lastDate.getMonth() === now.getMonth() &&
+      lastDate.getDate() === now.getDate();
+    return isSameDay ? selectedUnitLastLog : null;
+  }, [selectedUnitLastLog]);
+
+  // Deteksi Logika Angka Terbalik (Suhu After lebih panas dari Before, atau Anemo After lebih lemah dari Before)
+  const measurementLogicWarnings = useMemo(() => {
+    const warnings: string[] = [];
+    if (!isNaN(parsedTempBefore) && !isNaN(parsedTempAfter) && tempBefore.trim() && tempAfter.trim()) {
+      if (parsedTempAfter > parsedTempBefore) {
+        warnings.push(
+          `Suhu After (${parsedTempAfter}°C) lebih tinggi/panas daripada Suhu Before (${parsedTempBefore}°C). Pastikan kolom Before & After tidak tertukar!`
+        );
+      }
+    }
+    if (!isNaN(parsedAnemoBefore) && !isNaN(parsedAnemoAfter) && anemoBefore.trim() && anemoAfter.trim()) {
+      if (parsedAnemoAfter < parsedAnemoBefore) {
+        warnings.push(
+          `Anemometer After (${parsedAnemoAfter} m/s) lebih kecil/lemah daripada Before (${parsedAnemoBefore} m/s). Pastikan angka tidak salah ketik!`
+        );
+      }
+    }
+    return warnings;
+  }, [parsedTempBefore, parsedTempAfter, parsedAnemoBefore, parsedAnemoAfter, tempBefore, tempAfter, anemoBefore, anemoAfter]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -506,6 +782,18 @@ export function ACLogEntryModal({
         photo_after: finalPhotoTempAfter,
       });
 
+      // Catat sidik jari foto agar tidak bisa di-upload ulang di kamar berikutnya
+      recordSubmittedPhotoFingerprints(selectedUnit.name, photoFingerprints);
+
+      // Hapus draft kamar ini karena sudah selesai disimpan
+      removeACCleaningDraftForUnit(selectedUnit.id);
+      setSavedDraftsMap(getAllACCleaningDrafts());
+
+      // Backup otomatis database JSON ke Google Drive secara background
+      if (isGoogleDriveConfigureReady()) {
+        backupACLogsDatabaseToGoogleDrive().catch(() => {});
+      }
+
       onSuccess(newLog);
     } catch (err: any) {
       console.error("Gagal menyimpan log perawatan AC:", err);
@@ -547,6 +835,100 @@ export function ACLogEntryModal({
             <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700 flex items-start gap-2">
               <AlertCircle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
               <span>{errorMsg}</span>
+            </div>
+          )}
+
+          {draftNoticeMsg && (
+            <div className="p-3 bg-emerald-50 border border-emerald-300 rounded-xl text-xs text-emerald-900 flex items-start justify-between gap-2">
+              <div className="flex items-start gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                <span className="font-semibold">{draftNoticeMsg}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setDraftNoticeMsg(null)}
+                className="text-emerald-700 hover:text-emerald-950 font-bold text-[11px] shrink-0"
+              >
+                Tutup
+              </button>
+            </div>
+          )}
+
+          {/* Daftar Draft Kamar yang Sedang Dikerjakan (Tahap Before Tersimpan di HP) */}
+          {Object.keys(savedDraftsMap).length > 0 && (
+            <div className="p-3 bg-amber-50/90 border border-amber-300 rounded-xl space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-extrabold text-amber-900 uppercase tracking-wider flex items-center gap-1.5">
+                  <Clock className="w-3.5 h-3.5 text-amber-600" />
+                  Kamar Sedang Dikerjakan (Draft Before Tersimpan di HP)
+                </span>
+                <span className="text-[10px] font-bold px-2 py-0.5 bg-amber-200/80 text-amber-900 rounded-full">
+                  {Object.keys(savedDraftsMap).length} Draft Aktif
+                </span>
+              </div>
+              <p className="text-[11px] text-amber-800">
+                Klik kamar di bawah untuk melanjutkan pengisian <strong>Tahap After</strong> setelah AC selesai dicuci:
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {Object.values(savedDraftsMap).map((d) => {
+                  const isCurrent = d.unitId === selectedUnitId;
+                  return (
+                    <div
+                      key={d.unitId}
+                      className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-bold transition ${
+                        isCurrent
+                          ? "bg-amber-600 text-white border-amber-700 shadow-xs"
+                          : "bg-white text-slate-800 border-amber-300 hover:bg-amber-100"
+                      }`}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedUnitId(d.unitId);
+                          setIsChangingUnit(false);
+                        }}
+                        className="cursor-pointer flex items-center gap-1.5 text-left"
+                      >
+                        <span>{d.unitName}</span>
+                        <span
+                          className={`text-[10px] px-1.5 py-0.2 rounded ${
+                            isCurrent ? "bg-amber-800 text-amber-100" : "bg-amber-100 text-amber-800"
+                          }`}
+                        >
+                          Before Tersimpan
+                        </span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteDraft(d.unitId)}
+                        title="Hapus Draft Ini"
+                        className={`ml-1 px-1 rounded hover:bg-red-500 hover:text-white transition ${
+                          isCurrent ? "text-amber-200" : "text-slate-400"
+                        }`}
+                      >
+                        ×
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Peringatan jika kamar yang dipilih sudah dicatat hari ini */}
+          {sameDayExistingLog && selectedUnit && (
+            <div className="p-3 bg-amber-50 border-2 border-amber-400 rounded-xl text-xs text-amber-950 flex items-start gap-2.5">
+              <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+              <div className="space-y-0.5">
+                <div className="font-extrabold text-amber-900">
+                  Perhatian: "{selectedUnit.name}" Sudah Dicatat Hari Ini!
+                </div>
+                <p className="text-[11px] text-amber-800 leading-relaxed">
+                  Kamar ini baru saja diinput pada <strong>{formatDateTimeFull(sameDayExistingLog.recorded_at)}</strong> oleh{" "}
+                  <strong>{sameDayExistingLog.user_name}</strong> (Suhu: {sameDayExistingLog.temp_before}°C →{" "}
+                  {sameDayExistingLog.temp_after}°C). Pastikan Anda tidak menginput ganda kamar yang sama.
+                </p>
+              </div>
             </div>
           )}
 
@@ -1144,7 +1526,9 @@ export function ACLogEntryModal({
                   <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-[11px] scrollbar-thin">
                     <button
                       type="button"
-                      onClick={() => setSelectedFloorFilter("all")}
+                      onClick={() =>
+                        setSelectedFloorFilter((prev) => (prev === "all" ? "" : "all"))
+                      }
                       className={`px-2.5 py-1 rounded-lg font-bold shrink-0 transition cursor-pointer ${
                         selectedFloorFilter === "all"
                           ? "bg-blue-600 text-white shadow-2xs"
@@ -1159,7 +1543,9 @@ export function ACLogEntryModal({
                         <button
                           key={floor}
                           type="button"
-                          onClick={() => setSelectedFloorFilter(floor)}
+                          onClick={() =>
+                            setSelectedFloorFilter((prev) => (prev === floor ? "" : floor))
+                          }
                           className={`px-2.5 py-1 rounded-lg font-bold shrink-0 transition cursor-pointer ${
                             selectedFloorFilter === floor
                               ? "bg-blue-600 text-white shadow-2xs"
@@ -1173,7 +1559,8 @@ export function ACLogEntryModal({
                   </div>
                 )}
 
-                {/* Search Results / Suggestion List */}
+                {/* Search Results / Suggestion List — Hanya muncul setelah lantai diklik atau nomor kamar diketik */}
+                {isUnitSearchListVisible && (
                 <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-2xs">
                   <div className="p-2 bg-slate-50 border-b border-slate-200 flex items-center justify-between text-[11px] font-bold text-slate-500">
                     <span>
@@ -1304,6 +1691,7 @@ export function ACLogEntryModal({
                     )}
                   </div>
                 </div>
+                )}
               </div>
             )}
           </div>
@@ -1451,17 +1839,37 @@ export function ACLogEntryModal({
                 </p>
               </div>
             </div>
+
+            {/* Peringatan Logika Angka jika After lebih buruk dari Before */}
+            {measurementLogicWarnings.length > 0 && (
+              <div className="p-3 bg-amber-50 border border-amber-300 rounded-xl space-y-1">
+                <div className="text-[11px] font-extrabold text-amber-900 flex items-center gap-1.5">
+                  <AlertCircle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                  <span>Peringatan Pemeriksaan Angka Before vs After:</span>
+                </div>
+                <ul className="list-disc list-inside text-[11px] text-amber-800 space-y-0.5">
+                  {measurementLogicWarnings.map((w, idx) => (
+                    <li key={idx}>{w}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </div>
 
-          {/* Section 3: Dokumentasi Foto (4 Foto Bersandingan) */}
+          {/* Section 3: Dokumentasi Foto (4 Foto Bersandingan + Kamera & Galeri Anti-Culas) */}
           <div className="space-y-3 bg-slate-50/90 p-3.5 rounded-xl border border-slate-200">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-800 flex items-center gap-1.5">
-                <Camera className="w-4 h-4 text-blue-600" />
-                3. Dokumentasi Foto (Before & After)
-              </h3>
+              <div>
+                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-800 flex items-center gap-1.5">
+                  <Camera className="w-4 h-4 text-blue-600" />
+                  3. Dokumentasi Foto (Before & After)
+                </h3>
+                <p className="text-[10px] text-slate-500 mt-0.5">
+                  Bisa langsung <strong>Kamera</strong> atau pilih <strong>Galeri</strong> (khusus foto pengerjaan hari ini — dilengkapi <strong>Deteksi Anti-Foto Kembar & Watermark Jam Asli</strong>).
+                </p>
+              </div>
               {isGoogleDriveConfigureReady() ? (
-                <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-full text-[10px] font-bold flex items-center gap-1">
+                <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-full text-[10px] font-bold flex items-center gap-1 self-start sm:self-auto shrink-0">
                   <CheckCircle2 className="w-3 h-3 text-emerald-600" />
                   <span>Auto-Upload ke Folder Google Drive Admin Aktif</span>
                 </span>
@@ -1481,16 +1889,21 @@ export function ACLogEntryModal({
 
               <div className="grid grid-cols-2 gap-2">
                 {/* Before Suhu */}
-                <div className="bg-white p-2 rounded-lg border border-amber-200 space-y-1">
+                <div className="bg-white p-2 rounded-lg border border-amber-200 space-y-1.5">
                   <div className="flex items-center justify-between text-[10px] font-bold text-amber-800">
                     <span className="flex items-center gap-1 truncate">
                       <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
                       Before Suhu
+                      {photoSources["temp_before"] && (
+                        <span className="text-[9px] px-1 py-0.2 rounded bg-amber-100 text-amber-800">
+                          {photoSources["temp_before"] === "gallery" ? "Galeri" : "Kamera"}
+                        </span>
+                      )}
                     </span>
                     {photoTempBefore && (
                       <button
                         type="button"
-                        onClick={() => setPhotoTempBefore("")}
+                        onClick={() => handleClearPhotoSlot("temp_before", setPhotoTempBefore)}
                         className="text-[10px] text-red-600 hover:text-red-800 font-semibold cursor-pointer"
                       >
                         Hapus
@@ -1498,59 +1911,71 @@ export function ACLogEntryModal({
                     )}
                   </div>
                   {photoTempBefore ? (
-                    <div className="relative rounded-md overflow-hidden border border-slate-200 group bg-slate-900 h-20 flex items-center justify-center">
+                    <div className="relative rounded-md overflow-hidden border border-slate-200 group bg-slate-900 h-24 flex items-center justify-center">
                       <img
                         src={photoTempBefore}
                         alt="Before Suhu"
                         className="w-full h-full object-cover"
                       />
-                      <label className="absolute inset-0 bg-black/45 opacity-0 group-hover:opacity-100 transition flex items-center justify-center cursor-pointer">
-                        <span className="px-2 py-0.5 bg-white text-slate-800 text-[10px] font-bold rounded-md shadow-xs">
-                          Ganti
-                        </span>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          capture="environment"
-                          onChange={(e) => handlePhotoUpload("temp_before", setPhotoTempBefore, e)}
-                          className="hidden"
-                        />
-                      </label>
                     </div>
                   ) : (
-                    <label className="border border-dashed border-amber-300 hover:border-amber-500 rounded-md h-20 px-2 flex flex-col items-center justify-center gap-1 cursor-pointer hover:bg-amber-50/40 transition text-center">
+                    <div className="border border-dashed border-amber-300 rounded-md h-24 px-2 flex flex-col items-center justify-center gap-1.5 bg-amber-50/20">
                       {processingPhoto["temp_before"] ? (
-                        <div className="w-3.5 h-3.5 border-2 border-amber-600 border-t-transparent rounded-full animate-spin" />
+                        <div className="w-4 h-4 border-2 border-amber-600 border-t-transparent rounded-full animate-spin" />
                       ) : (
                         <>
-                          <Camera className="w-4 h-4 text-amber-600" />
-                          <span className="text-[10px] font-bold text-slate-700 leading-tight">
-                            Foto Before Suhu
+                          <span className="text-[10px] font-bold text-slate-600">
+                            Pilih Sumber Foto Before Suhu:
                           </span>
+                          <div className="grid grid-cols-2 gap-1.5 w-full">
+                            <label className="px-2 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-md text-[10px] font-bold flex items-center justify-center gap-1 cursor-pointer transition shadow-2xs">
+                              <Camera className="w-3 h-3 shrink-0" />
+                              <span>Kamera</span>
+                              <input
+                                type="file"
+                                accept="image/*"
+                                capture="environment"
+                                onChange={(e) =>
+                                  handlePhotoUpload("temp_before", setPhotoTempBefore, "camera", e)
+                                }
+                                className="hidden"
+                              />
+                            </label>
+                            <label className="px-2 py-1.5 bg-white hover:bg-amber-50 text-amber-900 border border-amber-300 rounded-md text-[10px] font-bold flex items-center justify-center gap-1 cursor-pointer transition">
+                              <ImageIcon className="w-3 h-3 shrink-0 text-amber-600" />
+                              <span>Galeri</span>
+                              <input
+                                type="file"
+                                accept="image/*"
+                                onChange={(e) =>
+                                  handlePhotoUpload("temp_before", setPhotoTempBefore, "gallery", e)
+                                }
+                                className="hidden"
+                              />
+                            </label>
+                          </div>
                         </>
                       )}
-                      <input
-                        type="file"
-                        accept="image/*"
-                        capture="environment"
-                        onChange={(e) => handlePhotoUpload("temp_before", setPhotoTempBefore, e)}
-                        className="hidden"
-                      />
-                    </label>
+                    </div>
                   )}
                 </div>
 
                 {/* After Suhu */}
-                <div className="bg-white p-2 rounded-lg border border-emerald-200 space-y-1">
+                <div className="bg-white p-2 rounded-lg border border-emerald-200 space-y-1.5">
                   <div className="flex items-center justify-between text-[10px] font-bold text-emerald-800">
                     <span className="flex items-center gap-1 truncate">
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
                       After Suhu
+                      {photoSources["temp_after"] && (
+                        <span className="text-[9px] px-1 py-0.2 rounded bg-emerald-100 text-emerald-800">
+                          {photoSources["temp_after"] === "gallery" ? "Galeri" : "Kamera"}
+                        </span>
+                      )}
                     </span>
                     {photoTempAfter && (
                       <button
                         type="button"
-                        onClick={() => setPhotoTempAfter("")}
+                        onClick={() => handleClearPhotoSlot("temp_after", setPhotoTempAfter)}
                         className="text-[10px] text-red-600 hover:text-red-800 font-semibold cursor-pointer"
                       >
                         Hapus
@@ -1558,45 +1983,52 @@ export function ACLogEntryModal({
                     )}
                   </div>
                   {photoTempAfter ? (
-                    <div className="relative rounded-md overflow-hidden border border-slate-200 group bg-slate-900 h-20 flex items-center justify-center">
+                    <div className="relative rounded-md overflow-hidden border border-slate-200 group bg-slate-900 h-24 flex items-center justify-center">
                       <img
                         src={photoTempAfter}
                         alt="After Suhu"
                         className="w-full h-full object-cover"
                       />
-                      <label className="absolute inset-0 bg-black/45 opacity-0 group-hover:opacity-100 transition flex items-center justify-center cursor-pointer">
-                        <span className="px-2 py-0.5 bg-white text-slate-800 text-[10px] font-bold rounded-md shadow-xs">
-                          Ganti
-                        </span>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          capture="environment"
-                          onChange={(e) => handlePhotoUpload("temp_after", setPhotoTempAfter, e)}
-                          className="hidden"
-                        />
-                      </label>
                     </div>
                   ) : (
-                    <label className="border border-dashed border-emerald-300 hover:border-emerald-500 rounded-md h-20 px-2 flex flex-col items-center justify-center gap-1 cursor-pointer hover:bg-emerald-50/40 transition text-center">
+                    <div className="border border-dashed border-emerald-300 rounded-md h-24 px-2 flex flex-col items-center justify-center gap-1.5 bg-emerald-50/20">
                       {processingPhoto["temp_after"] ? (
-                        <div className="w-3.5 h-3.5 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin" />
+                        <div className="w-4 h-4 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin" />
                       ) : (
                         <>
-                          <Camera className="w-4 h-4 text-emerald-600" />
-                          <span className="text-[10px] font-bold text-slate-700 leading-tight">
-                            Foto After Suhu
+                          <span className="text-[10px] font-bold text-slate-600">
+                            Pilih Sumber Foto After Suhu:
                           </span>
+                          <div className="grid grid-cols-2 gap-1.5 w-full">
+                            <label className="px-2 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md text-[10px] font-bold flex items-center justify-center gap-1 cursor-pointer transition shadow-2xs">
+                              <Camera className="w-3 h-3 shrink-0" />
+                              <span>Kamera</span>
+                              <input
+                                type="file"
+                                accept="image/*"
+                                capture="environment"
+                                onChange={(e) =>
+                                  handlePhotoUpload("temp_after", setPhotoTempAfter, "camera", e)
+                                }
+                                className="hidden"
+                              />
+                            </label>
+                            <label className="px-2 py-1.5 bg-white hover:bg-emerald-50 text-emerald-900 border border-emerald-300 rounded-md text-[10px] font-bold flex items-center justify-center gap-1 cursor-pointer transition">
+                              <ImageIcon className="w-3 h-3 shrink-0 text-emerald-600" />
+                              <span>Galeri</span>
+                              <input
+                                type="file"
+                                accept="image/*"
+                                onChange={(e) =>
+                                  handlePhotoUpload("temp_after", setPhotoTempAfter, "gallery", e)
+                                }
+                                className="hidden"
+                              />
+                            </label>
+                          </div>
                         </>
                       )}
-                      <input
-                        type="file"
-                        accept="image/*"
-                        capture="environment"
-                        onChange={(e) => handlePhotoUpload("temp_after", setPhotoTempAfter, e)}
-                        className="hidden"
-                      />
-                    </label>
+                    </div>
                   )}
                 </div>
               </div>
@@ -1611,16 +2043,21 @@ export function ACLogEntryModal({
 
               <div className="grid grid-cols-2 gap-2">
                 {/* Before Anemo */}
-                <div className="bg-white p-2 rounded-lg border border-cyan-200 space-y-1">
+                <div className="bg-white p-2 rounded-lg border border-cyan-200 space-y-1.5">
                   <div className="flex items-center justify-between text-[10px] font-bold text-cyan-800">
                     <span className="flex items-center gap-1 truncate">
                       <span className="w-1.5 h-1.5 rounded-full bg-cyan-500 shrink-0" />
                       Before Anemo
+                      {photoSources["anemo_before"] && (
+                        <span className="text-[9px] px-1 py-0.2 rounded bg-cyan-100 text-cyan-800">
+                          {photoSources["anemo_before"] === "gallery" ? "Galeri" : "Kamera"}
+                        </span>
+                      )}
                     </span>
                     {photoAnemoBefore && (
                       <button
                         type="button"
-                        onClick={() => setPhotoAnemoBefore("")}
+                        onClick={() => handleClearPhotoSlot("anemo_before", setPhotoAnemoBefore)}
                         className="text-[10px] text-red-600 hover:text-red-800 font-semibold cursor-pointer"
                       >
                         Hapus
@@ -1628,59 +2065,71 @@ export function ACLogEntryModal({
                     )}
                   </div>
                   {photoAnemoBefore ? (
-                    <div className="relative rounded-md overflow-hidden border border-slate-200 group bg-slate-900 h-20 flex items-center justify-center">
+                    <div className="relative rounded-md overflow-hidden border border-slate-200 group bg-slate-900 h-24 flex items-center justify-center">
                       <img
                         src={photoAnemoBefore}
                         alt="Before Anemometer"
                         className="w-full h-full object-cover"
                       />
-                      <label className="absolute inset-0 bg-black/45 opacity-0 group-hover:opacity-100 transition flex items-center justify-center cursor-pointer">
-                        <span className="px-2 py-0.5 bg-white text-slate-800 text-[10px] font-bold rounded-md shadow-xs">
-                          Ganti
-                        </span>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          capture="environment"
-                          onChange={(e) => handlePhotoUpload("anemo_before", setPhotoAnemoBefore, e)}
-                          className="hidden"
-                        />
-                      </label>
                     </div>
                   ) : (
-                    <label className="border border-dashed border-cyan-300 hover:border-cyan-500 rounded-md h-20 px-2 flex flex-col items-center justify-center gap-1 cursor-pointer hover:bg-cyan-50/40 transition text-center">
+                    <div className="border border-dashed border-cyan-300 rounded-md h-24 px-2 flex flex-col items-center justify-center gap-1.5 bg-cyan-50/20">
                       {processingPhoto["anemo_before"] ? (
-                        <div className="w-3.5 h-3.5 border-2 border-cyan-600 border-t-transparent rounded-full animate-spin" />
+                        <div className="w-4 h-4 border-2 border-cyan-600 border-t-transparent rounded-full animate-spin" />
                       ) : (
                         <>
-                          <Camera className="w-4 h-4 text-cyan-600" />
-                          <span className="text-[10px] font-bold text-slate-700 leading-tight">
-                            Foto Before Anemo
+                          <span className="text-[10px] font-bold text-slate-600">
+                            Pilih Sumber Foto Before Anemo:
                           </span>
+                          <div className="grid grid-cols-2 gap-1.5 w-full">
+                            <label className="px-2 py-1.5 bg-cyan-600 hover:bg-cyan-700 text-white rounded-md text-[10px] font-bold flex items-center justify-center gap-1 cursor-pointer transition shadow-2xs">
+                              <Camera className="w-3 h-3 shrink-0" />
+                              <span>Kamera</span>
+                              <input
+                                type="file"
+                                accept="image/*"
+                                capture="environment"
+                                onChange={(e) =>
+                                  handlePhotoUpload("anemo_before", setPhotoAnemoBefore, "camera", e)
+                                }
+                                className="hidden"
+                              />
+                            </label>
+                            <label className="px-2 py-1.5 bg-white hover:bg-cyan-50 text-cyan-900 border border-cyan-300 rounded-md text-[10px] font-bold flex items-center justify-center gap-1 cursor-pointer transition">
+                              <ImageIcon className="w-3 h-3 shrink-0 text-cyan-600" />
+                              <span>Galeri</span>
+                              <input
+                                type="file"
+                                accept="image/*"
+                                onChange={(e) =>
+                                  handlePhotoUpload("anemo_before", setPhotoAnemoBefore, "gallery", e)
+                                }
+                                className="hidden"
+                              />
+                            </label>
+                          </div>
                         </>
                       )}
-                      <input
-                        type="file"
-                        accept="image/*"
-                        capture="environment"
-                        onChange={(e) => handlePhotoUpload("anemo_before", setPhotoAnemoBefore, e)}
-                        className="hidden"
-                      />
-                    </label>
+                    </div>
                   )}
                 </div>
 
                 {/* After Anemo */}
-                <div className="bg-white p-2 rounded-lg border border-emerald-200 space-y-1">
+                <div className="bg-white p-2 rounded-lg border border-emerald-200 space-y-1.5">
                   <div className="flex items-center justify-between text-[10px] font-bold text-emerald-800">
                     <span className="flex items-center gap-1 truncate">
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
                       After Anemo
+                      {photoSources["anemo_after"] && (
+                        <span className="text-[9px] px-1 py-0.2 rounded bg-emerald-100 text-emerald-800">
+                          {photoSources["anemo_after"] === "gallery" ? "Galeri" : "Kamera"}
+                        </span>
+                      )}
                     </span>
                     {photoAnemoAfter && (
                       <button
                         type="button"
-                        onClick={() => setPhotoAnemoAfter("")}
+                        onClick={() => handleClearPhotoSlot("anemo_after", setPhotoAnemoAfter)}
                         className="text-[10px] text-red-600 hover:text-red-800 font-semibold cursor-pointer"
                       >
                         Hapus
@@ -1688,45 +2137,52 @@ export function ACLogEntryModal({
                     )}
                   </div>
                   {photoAnemoAfter ? (
-                    <div className="relative rounded-md overflow-hidden border border-slate-200 group bg-slate-900 h-20 flex items-center justify-center">
+                    <div className="relative rounded-md overflow-hidden border border-slate-200 group bg-slate-900 h-24 flex items-center justify-center">
                       <img
                         src={photoAnemoAfter}
                         alt="After Anemometer"
                         className="w-full h-full object-cover"
                       />
-                      <label className="absolute inset-0 bg-black/45 opacity-0 group-hover:opacity-100 transition flex items-center justify-center cursor-pointer">
-                        <span className="px-2 py-0.5 bg-white text-slate-800 text-[10px] font-bold rounded-md shadow-xs">
-                          Ganti
-                        </span>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          capture="environment"
-                          onChange={(e) => handlePhotoUpload("anemo_after", setPhotoAnemoAfter, e)}
-                          className="hidden"
-                        />
-                      </label>
                     </div>
                   ) : (
-                    <label className="border border-dashed border-emerald-300 hover:border-emerald-500 rounded-md h-20 px-2 flex flex-col items-center justify-center gap-1 cursor-pointer hover:bg-emerald-50/40 transition text-center">
+                    <div className="border border-dashed border-emerald-300 rounded-md h-24 px-2 flex flex-col items-center justify-center gap-1.5 bg-emerald-50/20">
                       {processingPhoto["anemo_after"] ? (
-                        <div className="w-3.5 h-3.5 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin" />
+                        <div className="w-4 h-4 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin" />
                       ) : (
                         <>
-                          <Camera className="w-4 h-4 text-emerald-600" />
-                          <span className="text-[10px] font-bold text-slate-700 leading-tight">
-                            Foto After Anemo
+                          <span className="text-[10px] font-bold text-slate-600">
+                            Pilih Sumber Foto After Anemo:
                           </span>
+                          <div className="grid grid-cols-2 gap-1.5 w-full">
+                            <label className="px-2 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md text-[10px] font-bold flex items-center justify-center gap-1 cursor-pointer transition shadow-2xs">
+                              <Camera className="w-3 h-3 shrink-0" />
+                              <span>Kamera</span>
+                              <input
+                                type="file"
+                                accept="image/*"
+                                capture="environment"
+                                onChange={(e) =>
+                                  handlePhotoUpload("anemo_after", setPhotoAnemoAfter, "camera", e)
+                                }
+                                className="hidden"
+                              />
+                            </label>
+                            <label className="px-2 py-1.5 bg-white hover:bg-emerald-50 text-emerald-900 border border-emerald-300 rounded-md text-[10px] font-bold flex items-center justify-center gap-1 cursor-pointer transition">
+                              <ImageIcon className="w-3 h-3 shrink-0 text-emerald-600" />
+                              <span>Galeri</span>
+                              <input
+                                type="file"
+                                accept="image/*"
+                                onChange={(e) =>
+                                  handlePhotoUpload("anemo_after", setPhotoAnemoAfter, "gallery", e)
+                                }
+                                className="hidden"
+                              />
+                            </label>
+                          </div>
                         </>
                       )}
-                      <input
-                        type="file"
-                        accept="image/*"
-                        capture="environment"
-                        onChange={(e) => handlePhotoUpload("anemo_after", setPhotoAnemoAfter, e)}
-                        className="hidden"
-                      />
-                    </label>
+                    </div>
                   )}
                 </div>
               </div>
@@ -1756,7 +2212,7 @@ export function ACLogEntryModal({
                 <span>
                   {!selectedUnit
                     ? "Pilih kamar/unit AC dan isi seluruh angka Before & After untuk menyimpan."
-                    : "Isi lengkap ke-4 angka Suhu & Anemo (Before & After) terlebih dahulu."}
+                    : "Data Before otomatis tersimpan sebagai Draft di HP selama proses pencucian AC."}
                 </span>
               </p>
             ) : (
@@ -1765,14 +2221,24 @@ export function ACLogEntryModal({
                 <span>Seluruh data pengukuran lengkap & siap disimpan.</span>
               </span>
             )}
-            <div className="flex items-center justify-end gap-3">
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              {hasBeforeFilled && !isCanSubmit && (
+                <button
+                  type="button"
+                  onClick={handleSaveBeforeDraftAndPause}
+                  className="px-3.5 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-bold shadow-xs flex items-center gap-1.5 transition cursor-pointer"
+                >
+                  <Clock className="w-3.5 h-3.5" />
+                  <span>Simpan Tahap Before (Lanjut Cuci AC)</span>
+                </button>
+              )}
               <button
                 type="button"
                 onClick={onClose}
                 disabled={submitting}
                 className="px-4 py-2 text-xs font-bold text-slate-600 hover:text-slate-900 transition cursor-pointer"
               >
-                Batal
+                Tutup / Lanjut Nanti
               </button>
               <button
                 type="submit"

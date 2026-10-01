@@ -242,7 +242,7 @@ export function ACIntegrationReportPanel({ propertyName = "Engineering Hotel" }:
 
   const getACFormulaUrl = () => {
     const origin = typeof window !== "undefined" ? window.location.origin : "";
-    let url = `${origin}/api/export/csv?type=ac_maintenance&order=asc`;
+    let url = `${origin}/api/export/csv?type=ac_maintenance&order=asc&v=2`;
     if (acCategoryFilter !== "all") {
       url += `&category=${encodeURIComponent(acCategoryFilter)}`;
     }

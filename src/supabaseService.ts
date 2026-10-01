@@ -3883,6 +3883,104 @@ export async function swapACUnitInFloor(
 const DELETED_AC_LOGS_KEY = "ac_pm_deleted_log_ids";
 const AC_LOGS_INITIALIZED_KEY = "ac_pm_logs_initialized";
 
+export const DELETED_AC_LOGS_TRASH_KEY = "ac_pm_deleted_logs_trash_v1";
+export const UNSYNCED_AC_LOG_IDS_KEY = "ac_pm_unsynced_log_ids_v1";
+
+export function getUnsyncedACLogIds(): string[] {
+  if (typeof localStorage === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(UNSYNCED_AC_LOG_IDS_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed;
+    }
+  } catch {}
+  return [];
+}
+
+export function markACLogUnsynced(log_id: string): void {
+  if (typeof localStorage === "undefined" || !log_id) return;
+  try {
+    const list = getUnsyncedACLogIds();
+    if (!list.includes(log_id)) {
+      list.push(log_id);
+      localStorage.setItem(UNSYNCED_AC_LOG_IDS_KEY, JSON.stringify(list));
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("ac-sync-status-changed"));
+      }
+    }
+  } catch {}
+}
+
+export function markACLogSynced(log_id: string): void {
+  if (typeof localStorage === "undefined" || !log_id) return;
+  try {
+    const list = getUnsyncedACLogIds().filter((id) => id !== log_id);
+    localStorage.setItem(UNSYNCED_AC_LOG_IDS_KEY, JSON.stringify(list));
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("ac-sync-status-changed"));
+    }
+  } catch {}
+}
+
+export async function syncPendingACLogsNow(): Promise<{ synced: number; remaining: number }> {
+  const unsyncedIds = getUnsyncedACLogIds();
+  if (unsyncedIds.length === 0) {
+    return { synced: 0, remaining: 0 };
+  }
+  const localLogs = getLocalACLogs();
+  let synced = 0;
+  for (const id of unsyncedIds) {
+    const log = localLogs.find((l) => l.log_id === id);
+    if (!log) {
+      markACLogSynced(id);
+      continue;
+    }
+    try {
+      const res = await fetch(apiUrl("/api/ac-logs"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(log),
+      });
+      if (res.ok) {
+        markACLogSynced(id);
+        synced++;
+      }
+    } catch {}
+  }
+  return { synced, remaining: getUnsyncedACLogIds().length };
+}
+
+export function getDeletedACLogsTrash(): Array<ACMaintenanceLog & { deleted_at?: string }> {
+  if (typeof localStorage === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(DELETED_AC_LOGS_TRASH_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed;
+    }
+  } catch {}
+  return [];
+}
+
+export function saveDeletedACLogsTrash(
+  items: Array<ACMaintenanceLog & { deleted_at?: string }>
+): void {
+  if (typeof localStorage === "undefined") return;
+  try {
+    // Pertahankan hingga 100 item terbaru selama 30 hari
+    const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
+    const cleaned = items
+      .filter((it) => {
+        if (!it || !it.log_id) return false;
+        const delTime = it.deleted_at ? new Date(it.deleted_at).getTime() : Date.now();
+        return isNaN(delTime) || delTime >= thirtyDaysAgo;
+      })
+      .slice(0, 100);
+    localStorage.setItem(DELETED_AC_LOGS_TRASH_KEY, JSON.stringify(cleaned));
+  } catch {}
+}
+
 export function getDeletedACLogIds(): string[] {
   if (typeof localStorage === "undefined") return [];
   try {
@@ -4079,9 +4177,23 @@ export async function fetchACMaintenanceLogs(): Promise<ACMaintenanceLog[]> {
         if (Array.isArray(json.deleted_log_ids) && json.deleted_log_ids.length > 0) {
           addDeletedACLogIds(json.deleted_log_ids);
         }
+        if (Array.isArray(json.deleted_logs_trash) && json.deleted_logs_trash.length > 0) {
+          const localTrash = getDeletedACLogsTrash();
+          const trashMap = new Map<string, ACMaintenanceLog & { deleted_at?: string }>();
+          for (const t of localTrash) {
+            if (t?.log_id) trashMap.set(t.log_id, t);
+          }
+          for (const t of json.deleted_logs_trash) {
+            if (t?.log_id && !trashMap.has(t.log_id)) {
+              trashMap.set(t.log_id, t);
+            }
+          }
+          saveDeletedACLogsTrash(Array.from(trashMap.values()));
+        }
         const deletedIds = new Set(getDeletedACLogIds());
         const localLogs = getLocalACLogs();
         const mergedMap = new Map<string, ACMaintenanceLog>();
+        const serverMap = new Map<string, ACMaintenanceLog>();
 
         for (const l of localLogs) {
           if (l && l.log_id && !deletedIds.has(l.log_id)) {
@@ -4091,6 +4203,7 @@ export async function fetchACMaintenanceLogs(): Promise<ACMaintenanceLog[]> {
 
         for (const l of json.logs) {
           if (l && l.log_id && !deletedIds.has(l.log_id)) {
+            serverMap.set(l.log_id, l);
             const existing = mergedMap.get(l.log_id);
             if (!existing) {
               mergedMap.set(l.log_id, l);
@@ -4101,6 +4214,29 @@ export async function fetchACMaintenanceLogs(): Promise<ACMaintenanceLog[]> {
                 mergedMap.set(l.log_id, l);
               }
             }
+          }
+        }
+
+        // Otomatis kirim ulang (auto-heal) log yang ada di HP/browser petugas tapi belum ada di server
+        for (const [id, locLog] of mergedMap.entries()) {
+          if (id.startsWith("aclog_sample_")) continue;
+          const srvLog = serverMap.get(id);
+          const locTime = new Date(locLog.updated_at || locLog.created_at || 0).getTime();
+          const srvTime = srvLog ? new Date(srvLog.updated_at || srvLog.created_at || 0).getTime() : -1;
+          if (!srvLog || locTime > srvTime) {
+            fetch(apiUrl("/api/ac-logs"), {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(locLog),
+            })
+              .then((r) => {
+                if (r.ok) markACLogSynced(id);
+              })
+              .catch(() => {
+                markACLogUnsynced(id);
+              });
+          } else {
+            markACLogSynced(id);
           }
         }
 
@@ -4158,12 +4294,19 @@ export async function createACMaintenanceLog(
 
   // Kirim ke Server Backend API
   try {
-    await fetch(apiUrl("/api/ac-logs"), {
+    const res = await fetch(apiUrl("/api/ac-logs"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(record),
     });
-  } catch {}
+    if (res.ok) {
+      markACLogSynced(record.log_id);
+    } else {
+      markACLogUnsynced(record.log_id);
+    }
+  } catch {
+    markACLogUnsynced(record.log_id);
+  }
 
   try {
     const { error } = await supabase.from("ac_maintenance_logs").insert({
@@ -4313,8 +4456,30 @@ export async function syncWithRemoteLiveApp(targetUrl: string = "https://prevent
     usersCount = pkgData.users?.length || 0;
     if (Array.isArray(pkgData.ac_logs) && pkgData.ac_logs.length > 0) {
       const delLogSet = new Set(getDeletedACLogIds());
-      const mergedLogs = stripOlderUnitPhotos(pkgData.ac_logs.filter((l: any) => l && l.log_id && !delLogSet.has(l.log_id)));
+      const localLogs = getLocalACLogs();
+      const logMap = new Map<string, ACMaintenanceLog>();
+      for (const l of localLogs) {
+        if (l && l.log_id && !delLogSet.has(l.log_id)) {
+          logMap.set(l.log_id, l);
+        }
+      }
+      for (const l of pkgData.ac_logs) {
+        if (l && l.log_id && !delLogSet.has(l.log_id)) {
+          const existing = logMap.get(l.log_id);
+          if (!existing) {
+            logMap.set(l.log_id, l);
+          } else {
+            const existTime = new Date(existing.updated_at || existing.created_at || 0).getTime();
+            const remTime = new Date(l.updated_at || l.created_at || 0).getTime();
+            if (remTime >= existTime) {
+              logMap.set(l.log_id, l);
+            }
+          }
+        }
+      }
+      const mergedLogs = stripOlderUnitPhotos(Array.from(logMap.values()));
       saveLocalACLogs(mergedLogs);
+      pkgData.ac_logs = mergedLogs;
     }
     try {
       await fetch(apiUrl("/api/sync-all"), {
@@ -4397,19 +4562,31 @@ export async function updateACMaintenanceLog(
   saveLocalACLogs(current);
 
   try {
-    await fetch(apiUrl(`/api/ac-logs/${encodeURIComponent(log_id)}`), {
+    const res = await fetch(apiUrl(`/api/ac-logs/${encodeURIComponent(log_id)}`), {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(updatedItem),
     });
+    if (res.ok) {
+      markACLogSynced(log_id);
+    } else {
+      markACLogUnsynced(log_id);
+    }
   } catch {
     try {
-      await fetch(apiUrl("/api/ac-logs"), {
+      const res2 = await fetch(apiUrl("/api/ac-logs"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(updatedItem),
       });
-    } catch {}
+      if (res2.ok) {
+        markACLogSynced(log_id);
+      } else {
+        markACLogUnsynced(log_id);
+      }
+    } catch {
+      markACLogUnsynced(log_id);
+    }
   }
 
   try {
@@ -4424,11 +4601,22 @@ export async function updateACMaintenanceLog(
 }
 
 export async function deleteACMaintenanceLog(log_id: string): Promise<void> {
+  // 0. Save to soft-delete Trash before removing so Admin can restore within 30 days
+  const current = getLocalACLogs();
+  const target = current.find((l) => l.log_id === log_id);
+  if (target) {
+    const trash = getDeletedACLogsTrash();
+    saveDeletedACLogsTrash([
+      { ...target, deleted_at: new Date().toISOString() },
+      ...trash.filter((t) => t.log_id !== log_id),
+    ]);
+  }
+
   // 1. Permanently blacklist this ID in deleted set
   addDeletedACLogId(log_id);
+  markACLogSynced(log_id);
 
   // 2. Remove from local cache immediately
-  const current = getLocalACLogs();
   const filtered = current.filter((l) => l.log_id !== log_id);
   saveLocalACLogs(filtered);
 
@@ -4446,12 +4634,69 @@ export async function deleteACMaintenanceLog(log_id: string): Promise<void> {
   Promise.resolve(supabase.from("ac_maintenance_logs").delete().eq("log_id", log_id)).catch(() => {});
 }
 
+export async function restoreDeletedACLog(log_id: string): Promise<ACMaintenanceLog | null> {
+  const trash = getDeletedACLogsTrash();
+  const target = trash.find((t) => t.log_id === log_id);
+
+  // 1. Hapus dari daftar blokir deleted_log_ids lokal
+  if (typeof localStorage !== "undefined") {
+    try {
+      const delIds = getDeletedACLogIds().filter((id) => id !== log_id);
+      localStorage.setItem(DELETED_AC_LOGS_KEY, JSON.stringify(delIds));
+    } catch {}
+  }
+
+  // 2. Hapus dari trash lokal
+  saveDeletedACLogsTrash(trash.filter((t) => t.log_id !== log_id));
+
+  let restoredLog: ACMaintenanceLog | null = null;
+  if (target) {
+    const clean: any = { ...target, updated_at: new Date().toISOString() };
+    delete clean.deleted_at;
+    restoredLog = clean as ACMaintenanceLog;
+    const current = getLocalACLogs();
+    const updated = [restoredLog, ...current.filter((l) => l.log_id !== log_id)].sort(
+      (a, b) => new Date(b.recorded_at || 0).getTime() - new Date(a.recorded_at || 0).getTime()
+    );
+    saveLocalACLogs(updated);
+  }
+
+  // 3. Panggil endpoint restore di server
+  try {
+    const res = await fetch(apiUrl("/api/ac-logs/restore"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ log_id, log: restoredLog }),
+    });
+    if (res.ok) {
+      const json = await res.json();
+      if (!restoredLog && json.log) {
+        restoredLog = json.log;
+        const current = getLocalACLogs();
+        saveLocalACLogs([json.log, ...current.filter((l) => l.log_id !== log_id)]);
+      }
+    }
+  } catch {}
+
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("ac-data-synced"));
+  }
+  return restoredLog;
+}
+
 export async function deleteBulkACMaintenanceLogs(log_ids: string[]): Promise<void> {
   if (!log_ids || log_ids.length === 0) return;
   const idSet = new Set(log_ids);
+  const current = getLocalACLogs();
+  const removed = current
+    .filter((l) => idSet.has(l.log_id))
+    .map((l) => ({ ...l, deleted_at: new Date().toISOString() }));
+  if (removed.length > 0) {
+    const trash = getDeletedACLogsTrash();
+    saveDeletedACLogsTrash([...removed, ...trash.filter((t) => !idSet.has(t.log_id))]);
+  }
   addDeletedACLogIds(log_ids);
 
-  const current = getLocalACLogs();
   const filtered = current.filter((l) => !idSet.has(l.log_id));
   saveLocalACLogs(filtered);
 
@@ -4695,10 +4940,16 @@ export async function copyACLogsToClipboardAsTsv(logs: ACMaintenanceLog[]): Prom
       .join("")}</tr>`
   );
 
-  logs.forEach((l, index) => {
+  const sortedLogs = [...logs].sort(
+    (a, b) => new Date(a.recorded_at || 0).getTime() - new Date(b.recorded_at || 0).getTime()
+  );
+
+  sortedLogs.forEach((l, index) => {
     const d = new Date(l.recorded_at);
-    const dateStr = d.toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" });
-    const timeStr = d.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
+    const valid = isNaN(d.getTime()) ? new Date() : d;
+    const pad = (n: number) => String(n).padStart(2, "0");
+    const dateStr = `\u200B${pad(valid.getDate())}\u200B/\u200B${pad(valid.getMonth() + 1)}\u200B/\u200B${valid.getFullYear()}`;
+    const timeStr = `\u200B${pad(valid.getHours())}\u200B:\u200B${pad(valid.getMinutes())}`;
     const tempDiff = (l.temp_before - l.temp_after).toFixed(1);
     const anemoDiff = (l.anemo_after - l.anemo_before).toFixed(2);
 
@@ -4796,17 +5047,16 @@ export async function copyACScheduleToClipboardAsTsv(
     const category = normalizeACCategory(unit.category);
     const cycleLabel = formatUnitCycleLabel(unit, cycleDefault);
 
-    let lastCleanDate = "-";
-    if (item.last_cleaned_date) {
-      const d = new Date(item.last_cleaned_date);
-      lastCleanDate = d.toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" });
-    }
+    const formatSafeDate = (iso?: string | null) => {
+      if (!iso) return "-";
+      const d = new Date(iso);
+      if (isNaN(d.getTime())) return "-";
+      const pad = (n: number) => String(n).padStart(2, "0");
+      return `\u200B${pad(d.getDate())}\u200B/\u200B${pad(d.getMonth() + 1)}\u200B/\u200B${d.getFullYear()}`;
+    };
 
-    let nextDueDate = "-";
-    if (item.next_due_date) {
-      const d = new Date(item.next_due_date);
-      nextDueDate = d.toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" });
-    }
+    const lastCleanDate = formatSafeDate(item.last_cleaned_date);
+    const nextDueDate = formatSafeDate(item.next_due_date);
 
     const techName = item.last_log?.user_name || "-";
 
@@ -4976,10 +5226,16 @@ export function downloadACLogsAsCsv(logs: ACMaintenanceLog[], filename = "Lapora
 
   const csvRows = [headers.map((h) => `"${h}"`).join(",")];
 
-  logs.forEach((l, index) => {
+  const sortedLogs = [...logs].sort(
+    (a, b) => new Date(a.recorded_at || 0).getTime() - new Date(b.recorded_at || 0).getTime()
+  );
+
+  sortedLogs.forEach((l, index) => {
     const d = new Date(l.recorded_at);
-    const dateStr = d.toLocaleDateString("id-ID", { day: "2-digit", month: "2-digit", year: "numeric" });
-    const timeStr = d.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
+    const valid = isNaN(d.getTime()) ? new Date() : d;
+    const pad = (n: number) => String(n).padStart(2, "0");
+    const dateStr = `\u200B${pad(valid.getDate())}\u200B/\u200B${pad(valid.getMonth() + 1)}\u200B/\u200B${valid.getFullYear()}`;
+    const timeStr = `\u200B${pad(valid.getHours())}\u200B:\u200B${pad(valid.getMinutes())}`;
     const tempDiff = (l.temp_before - l.temp_after).toFixed(1);
     const anemoDiff = (l.anemo_after - l.anemo_before).toFixed(2);
 
@@ -5044,17 +5300,16 @@ export function downloadACScheduleAsCsv(
     const category = normalizeACCategory(unit.category);
     const cycleLabel = formatUnitCycleLabel(unit, cycleDefault);
 
-    let lastCleanStr = "-";
-    if (s.last_cleaned_date) {
-      const d = new Date(s.last_cleaned_date);
-      lastCleanStr = d.toLocaleDateString("id-ID", { day: "2-digit", month: "2-digit", year: "numeric" });
-    }
+    const formatSafeDate = (iso?: string | null) => {
+      if (!iso) return "-";
+      const d = new Date(iso);
+      if (isNaN(d.getTime())) return "-";
+      const pad = (n: number) => String(n).padStart(2, "0");
+      return `\u200B${pad(d.getDate())}\u200B/\u200B${pad(d.getMonth() + 1)}\u200B/\u200B${d.getFullYear()}`;
+    };
 
-    let nextDueStr = "-";
-    if (s.next_due_date) {
-      const d = new Date(s.next_due_date);
-      nextDueStr = d.toLocaleDateString("id-ID", { day: "2-digit", month: "2-digit", year: "numeric" });
-    }
+    const lastCleanStr = formatSafeDate(s.last_cleaned_date);
+    const nextDueStr = formatSafeDate(s.next_due_date);
 
     const techName = s.last_log?.user_name || "-";
 

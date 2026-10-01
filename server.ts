@@ -54,6 +54,7 @@ interface ServerState {
   deleted_user_ids: string[];
   deleted_ac_unit_ids?: string[];
   deleted_ac_log_ids?: string[];
+  deleted_ac_logs_trash?: any[];
   settings: Record<string, any>;
   ac_units?: any[];
   ac_logs?: any[];
@@ -145,8 +146,42 @@ function readState(): ServerState {
     const filteredUnits = Array.isArray(units)
       ? units.filter((u: any) => u && u.id && !deletedUnitSet.has(u.id))
       : [];
-    const filteredLogs = Array.isArray(parsed.ac_logs)
-      ? parsed.ac_logs.filter((l: any) => l && l.log_id && !deletedLogSet.has(l.log_id))
+
+    let rawLogs = Array.isArray(parsed.ac_logs) ? parsed.ac_logs : [];
+    const defaultLogsFile = path.join(process.cwd(), "data", "default_ac_logs.json");
+    if (fs.existsSync(defaultLogsFile)) {
+      try {
+        const defaultLogs = JSON.parse(fs.readFileSync(defaultLogsFile, "utf-8"));
+        if (Array.isArray(defaultLogs) && defaultLogs.length > 0) {
+          const logMap = new Map<string, any>();
+          for (const l of defaultLogs) {
+            if (l && l.log_id && !deletedLogSet.has(l.log_id)) {
+              logMap.set(l.log_id, l);
+            }
+          }
+          for (const l of rawLogs) {
+            if (l && l.log_id && !deletedLogSet.has(l.log_id)) {
+              const prev = logMap.get(l.log_id);
+              if (!prev) {
+                logMap.set(l.log_id, l);
+              } else {
+                const prevTime = new Date(prev.updated_at || prev.created_at || 0).getTime();
+                const curTime = new Date(l.updated_at || l.created_at || 0).getTime();
+                if (curTime >= prevTime) {
+                  logMap.set(l.log_id, l);
+                }
+              }
+            }
+          }
+          rawLogs = Array.from(logMap.values()).sort(
+            (a: any, b: any) => new Date(b.recorded_at || 0).getTime() - new Date(a.recorded_at || 0).getTime()
+          );
+        }
+      } catch {}
+    }
+
+    const filteredLogs = Array.isArray(rawLogs)
+      ? rawLogs.filter((l: any) => l && l.log_id && !deletedLogSet.has(l.log_id))
       : [];
 
     return {
@@ -156,6 +191,7 @@ function readState(): ServerState {
       settings: { ...DEFAULT_SERVER_STATE.settings, ...(parsed.settings || {}) },
       deleted_ac_unit_ids: Array.from(deletedUnitSet),
       deleted_ac_log_ids: Array.from(deletedLogSet),
+      deleted_ac_logs_trash: Array.isArray(parsed.deleted_ac_logs_trash) ? parsed.deleted_ac_logs_trash : [],
       ac_units: filteredUnits,
       ac_logs: filteredLogs,
     };
@@ -166,9 +202,23 @@ function readState(): ServerState {
 }
 
 const LIVE_REMOTE_URL = "https://preventive-maint-eng.ai.studio";
+const DEV_REMOTE_URL = "https://ais-dev-lz5cixvdbujknocsx4qwa7-865179435131.asia-southeast1.run.app";
+const REMOTE_SYNC_URLS = [LIVE_REMOTE_URL, DEV_REMOTE_URL];
 let lastRemotePullTime = 0;
 let lastLocalWriteTime = 0;
 let isPullingRemote = false;
+
+function forwardToRemotePeers(apiPath: string, init: RequestInit): void {
+  for (const baseUrl of REMOTE_SYNC_URLS) {
+    fetch(`${baseUrl}${apiPath}`, {
+      ...init,
+      headers: {
+        ...(init.headers || {}),
+        "x-sync-forwarded": "1",
+      },
+    }).catch(() => {});
+  }
+}
 
 function mergeUnitPreservingCycle(existing: any, incoming: any): any {
   if (!existing) {
@@ -241,6 +291,14 @@ function writeState(state: ServerState, pushToLive = false): void {
       } catch {}
     }
 
+    // Persist ac_logs permanently into data/default_ac_logs.json
+    if (Array.isArray(state.ac_logs)) {
+      try {
+        const defaultLogsFile = path.join(process.cwd(), "data", "default_ac_logs.json");
+        fs.writeFileSync(defaultLogsFile, JSON.stringify(state.ac_logs, null, 2), "utf-8");
+      } catch {}
+    }
+
     if (pushToLive) {
       lastLocalWriteTime = Date.now();
       pushStateToLiveRemote(state).catch(() => {});
@@ -274,23 +332,27 @@ async function pushStateToLiveRemote(state: ServerState): Promise<void> {
       ac_logs: state.ac_logs || [],
     };
 
-    await Promise.allSettled([
-      fetch(`${LIVE_REMOTE_URL}/api/settings`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json", "x-sync-forwarded": "1" },
-        body: JSON.stringify(state.settings),
-      }),
-      fetch(`${LIVE_REMOTE_URL}/api/ac-units/bulk`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json", "x-sync-forwarded": "1" },
-        body: JSON.stringify({ units: state.ac_units || [] }),
-      }),
-      fetch(`${LIVE_REMOTE_URL}/api/sync-all`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "x-sync-forwarded": "1" },
-        body: JSON.stringify(pkg),
-      }),
-    ]);
+    const requests: Promise<any>[] = [];
+    for (const baseUrl of REMOTE_SYNC_URLS) {
+      requests.push(
+        fetch(`${baseUrl}/api/settings`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json", "x-sync-forwarded": "1" },
+          body: JSON.stringify(state.settings),
+        }),
+        fetch(`${baseUrl}/api/ac-units/bulk`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json", "x-sync-forwarded": "1" },
+          body: JSON.stringify({ units: state.ac_units || [] }),
+        }),
+        fetch(`${baseUrl}/api/sync-all`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "x-sync-forwarded": "1" },
+          body: JSON.stringify(pkg),
+        })
+      );
+    }
+    await Promise.allSettled(requests);
   } catch {}
 }
 
@@ -306,12 +368,16 @@ async function pullFromLiveRemoteIfNeeded(force = false): Promise<void> {
   try {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 2500);
-    const [pkgRes, logsRes, settingsRes] = await Promise.allSettled([
+    const [pkgRes, logsRes, devLogsRes, settingsRes] = await Promise.allSettled([
       fetch(`${LIVE_REMOTE_URL}/api/export-package`, {
         signal: controller.signal,
         headers: { "x-sync-forwarded": "1" },
       }),
       fetch(`${LIVE_REMOTE_URL}/api/ac-logs`, {
+        signal: controller.signal,
+        headers: { "x-sync-forwarded": "1" },
+      }),
+      fetch(`${DEV_REMOTE_URL}/api/ac-logs`, {
         signal: controller.signal,
         headers: { "x-sync-forwarded": "1" },
       }),
@@ -329,6 +395,17 @@ async function pullFromLiveRemoteIfNeeded(force = false): Promise<void> {
     let remoteLogsPayload: any = null;
     if (logsRes.status === "fulfilled" && logsRes.value.ok) {
       remoteLogsPayload = await logsRes.value.json().catch(() => null);
+    }
+    let devLogsPayload: any = null;
+    if (devLogsRes.status === "fulfilled" && devLogsRes.value.ok) {
+      devLogsPayload = await devLogsRes.value.json().catch(() => null);
+    }
+    if (devLogsPayload && Array.isArray(devLogsPayload.logs)) {
+      if (!remoteLogsPayload || !Array.isArray(remoteLogsPayload.logs)) {
+        remoteLogsPayload = devLogsPayload;
+      } else {
+        remoteLogsPayload.logs = [...remoteLogsPayload.logs, ...devLogsPayload.logs];
+      }
     }
     let remoteSettingsPayload: any = null;
     if (settingsRes.status === "fulfilled" && settingsRes.value.ok) {
@@ -470,11 +547,13 @@ async function pullFromLiveRemoteIfNeeded(force = false): Promise<void> {
     if (remoteLogs !== null) {
       const delLogSet = new Set([...(state.deleted_ac_log_ids || []), ...remoteDeletedLogIds]);
       const logMap = new Map<string, any>();
+      const remoteLogMap = new Map<string, any>();
       (state.ac_logs || []).forEach((l: any) => {
         if (l && l.log_id && !delLogSet.has(l.log_id)) logMap.set(l.log_id, l);
       });
       remoteLogs.forEach((l: any) => {
         if (l && l.log_id && !delLogSet.has(l.log_id)) {
+          remoteLogMap.set(l.log_id, l);
           const existing = logMap.get(l.log_id);
           if (!existing) {
             logMap.set(l.log_id, l);
@@ -485,15 +564,25 @@ async function pullFromLiveRemoteIfNeeded(force = false): Promise<void> {
               logMap.set(l.log_id, l);
             } else if (existTime > remTime) {
               // Push newer local edit to remote so remote stays in sync
-              fetch(`${LIVE_REMOTE_URL}/api/ac-logs`, {
+              forwardToRemotePeers("/api/ac-logs", {
                 method: "POST",
-                headers: { "Content-Type": "application/json", "x-sync-forwarded": "1" },
+                headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(existing),
-              }).catch(() => {});
+              });
             }
           }
         }
       });
+      // Push any local log that is missing on remote (e.g. after remote Cloud Run container restart)
+      for (const [id, localLog] of logMap.entries()) {
+        if (!remoteLogMap.has(id) && !delLogSet.has(id)) {
+          forwardToRemotePeers("/api/ac-logs", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(localLog),
+          });
+        }
+      }
       const mergedLogs = Array.from(logMap.values()).sort(
         (a: any, b: any) => new Date(b.recorded_at || 0).getTime() - new Date(a.recorded_at || 0).getTime()
       );
@@ -1133,6 +1222,7 @@ app.get("/api/ac-logs", async (req: Request, res: Response) => {
     ok: true,
     logs: state.ac_logs || [],
     deleted_log_ids: state.deleted_ac_log_ids || [],
+    deleted_logs_trash: state.deleted_ac_logs_trash || [],
   });
 });
 
@@ -1188,11 +1278,11 @@ app.post("/api/ac-logs", (req: Request, res: Response) => {
   lastLocalWriteTime = Date.now();
   writeState(state, false);
   if (shouldForward) {
-    fetch(`${LIVE_REMOTE_URL}/api/ac-logs`, {
+    forwardToRemotePeers("/api/ac-logs", {
       method: "POST",
-      headers: { "Content-Type": "application/json", "x-sync-forwarded": "1" },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(record),
-    }).catch(() => {});
+    });
   }
   res.json({ ok: true, log: record });
 });
@@ -1237,11 +1327,11 @@ app.put("/api/ac-logs/:id", (req: Request, res: Response) => {
   lastLocalWriteTime = Date.now();
   writeState(state, false);
   if (shouldForward) {
-    fetch(`${LIVE_REMOTE_URL}/api/ac-logs`, {
+    forwardToRemotePeers("/api/ac-logs", {
       method: "POST",
-      headers: { "Content-Type": "application/json", "x-sync-forwarded": "1" },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(updatedRecord),
-    }).catch(() => {});
+    });
   }
   res.json({ ok: true, log: updatedRecord });
 });
@@ -1321,14 +1411,53 @@ app.post("/api/gdrive/upload", async (req: Request, res: Response) => {
   }
 });
 
+// Helper to format date & time in WITA (Asia/Makassar) with Zero-Width Space (\u200B)
+// so Google Sheets =IMPORTDATA() never converts DD/MM/YYYY (days 01-12) into US serial numbers (e.g. 46090, 46151, 46182)
+function formatCsvDateAndTimeWita(isoOrDate?: string | number | Date): { dateStr: string; timeStr: string } {
+  const d = new Date(isoOrDate || Date.now());
+  const valid = isNaN(d.getTime()) ? new Date() : d;
+
+  const dateParts = new Intl.DateTimeFormat("id-ID", {
+    timeZone: "Asia/Makassar",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  }).formatToParts(valid);
+
+  const day = dateParts.find((p) => p.type === "day")?.value || "01";
+  const month = dateParts.find((p) => p.type === "month")?.value || "01";
+  const year = dateParts.find((p) => p.type === "year")?.value || "2026";
+
+  const timeParts = new Intl.DateTimeFormat("id-ID", {
+    timeZone: "Asia/Makassar",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(valid);
+
+  const hour = (timeParts.find((p) => p.type === "hour")?.value || "00").padStart(2, "0");
+  const minute = (timeParts.find((p) => p.type === "minute")?.value || "00").padStart(2, "0");
+
+  // Sisipkan \u200B (Zero-Width Space) yang tidak terlihat agar Google Sheets =IMPORTDATA()
+  // tidak mengubah tanggal 01 s/d 12 menjadi angka serial seperti 46090 / 46151 / 46182
+  return {
+    dateStr: `\u200B${day}\u200B/\u200B${month}\u200B/\u200B${year}`,
+    timeStr: `\u200B${hour}\u200B:\u200B${minute}`,
+  };
+}
+
 // GET CSV Export for Google Sheets =IMPORTDATA() formula
 app.get("/api/export/csv", async (req: Request, res: Response) => {
   await pullFromLiveRemoteIfNeeded();
   const state = readState();
-  const type = String(req.query.type || "").toLowerCase();
+  const type = String(req.query.type || "ac_maintenance").toLowerCase();
   const category = String(req.query.category || "");
 
-  if (type === "ac_maintenance") {
+  res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+  res.setHeader("Pragma", "no-cache");
+  res.setHeader("Expires", "0");
+
+  if (type === "ac_maintenance" || !req.query.system) {
     let logs = Array.isArray(state.ac_logs) ? [...state.ac_logs] : [];
     if (category && category !== "all") {
       logs = logs.filter((l: any) => l.category === category);
@@ -1363,9 +1492,7 @@ app.get("/api/export/csv", async (req: Request, res: Response) => {
 
     const csvRows = [headers.map((h) => `"${h}"`).join(",")];
     logs.forEach((l: any, idx: number) => {
-      const d = new Date(l.recorded_at || Date.now());
-      const dateStr = d.toLocaleDateString("id-ID", { day: "2-digit", month: "2-digit", year: "numeric" });
-      const timeStr = d.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
+      const { dateStr, timeStr } = formatCsvDateAndTimeWita(l.recorded_at || l.created_at);
       const tempDiff = ((Number(l.temp_before) || 0) - (Number(l.temp_after) || 0)).toFixed(1);
       const anemoDiff = ((Number(l.anemo_after) || 0) - (Number(l.anemo_before) || 0)).toFixed(2);
 
@@ -1399,12 +1526,22 @@ app.get("/api/export/csv", async (req: Request, res: Response) => {
   res.send('"Status"\r\n"OK"');
 });
 
-// DELETE AC maintenance log
+// DELETE AC maintenance log (moves to trash for 30 days so Admin can restore if needed)
 app.delete("/api/ac-logs/:id", (req: Request, res: Response) => {
   const { id } = req.params;
   const state = readState();
   if (!state.ac_logs) state.ac_logs = [];
   if (!state.deleted_ac_log_ids) state.deleted_ac_log_ids = [];
+  if (!state.deleted_ac_logs_trash) state.deleted_ac_logs_trash = [];
+
+  const targetLog = state.ac_logs.find((l) => l.log_id === id);
+  if (targetLog) {
+    state.deleted_ac_logs_trash = [
+      { ...targetLog, deleted_at: new Date().toISOString() },
+      ...state.deleted_ac_logs_trash.filter((t) => t.log_id !== id),
+    ].slice(0, 100);
+  }
+
   if (id && !state.deleted_ac_log_ids.includes(id)) {
     state.deleted_ac_log_ids.push(id);
   }
@@ -1412,12 +1549,56 @@ app.delete("/api/ac-logs/:id", (req: Request, res: Response) => {
   const shouldForward = req.headers["x-sync-forwarded"] !== "1";
   writeState(state, shouldForward);
   if (shouldForward) {
-    fetch(`${LIVE_REMOTE_URL}/api/ac-logs/${encodeURIComponent(id)}`, {
+    forwardToRemotePeers(`/api/ac-logs/${encodeURIComponent(id)}`, {
       method: "DELETE",
-      headers: { "x-sync-forwarded": "1" },
-    }).catch(() => {});
+    });
   }
   res.json({ ok: true, deleted: id });
+});
+
+// POST restore deleted AC maintenance log from Trash
+app.post("/api/ac-logs/restore", (req: Request, res: Response) => {
+  const { log_id, log } = req.body || {};
+  const targetId = log_id || log?.log_id;
+  if (!targetId) {
+    return res.status(400).json({ ok: false, error: "log_id wajib diisi" });
+  }
+  const state = readState();
+  if (!state.ac_logs) state.ac_logs = [];
+  if (!state.deleted_ac_log_ids) state.deleted_ac_log_ids = [];
+  if (!state.deleted_ac_logs_trash) state.deleted_ac_logs_trash = [];
+
+  state.deleted_ac_log_ids = state.deleted_ac_log_ids.filter((id) => id !== targetId);
+  const fromTrash = state.deleted_ac_logs_trash.find((t) => t.log_id === targetId);
+  state.deleted_ac_logs_trash = state.deleted_ac_logs_trash.filter((t) => t.log_id !== targetId);
+
+  const restoredLog = log || fromTrash;
+  if (restoredLog && restoredLog.log_id) {
+    const cleanLog = { ...restoredLog, updated_at: new Date().toISOString() };
+    delete cleanLog.deleted_at;
+    const existIdx = state.ac_logs.findIndex((l) => l.log_id === targetId);
+    if (existIdx >= 0) {
+      state.ac_logs[existIdx] = cleanLog;
+    } else {
+      state.ac_logs.unshift(cleanLog);
+    }
+    state.ac_logs.sort(
+      (a: any, b: any) =>
+        new Date(b.recorded_at || 0).getTime() - new Date(a.recorded_at || 0).getTime()
+    );
+  }
+
+  const shouldForward = req.headers["x-sync-forwarded"] !== "1";
+  lastLocalWriteTime = Date.now();
+  writeState(state, false);
+  if (shouldForward) {
+    forwardToRemotePeers("/api/ac-logs/restore", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ log_id: targetId, log: restoredLog }),
+    });
+  }
+  res.json({ ok: true, restored: targetId, log: restoredLog });
 });
 
 // POST bulk delete AC maintenance logs
@@ -1426,8 +1607,18 @@ app.post("/api/ac-logs/bulk-delete", (req: Request, res: Response) => {
   const state = readState();
   if (!state.ac_logs) state.ac_logs = [];
   if (!state.deleted_ac_log_ids) state.deleted_ac_log_ids = [];
+  if (!state.deleted_ac_logs_trash) state.deleted_ac_logs_trash = [];
   if (Array.isArray(log_ids)) {
     const idSet = new Set<string>(log_ids);
+    const removedLogs = state.ac_logs
+      .filter((l) => idSet.has(l.log_id))
+      .map((l) => ({ ...l, deleted_at: new Date().toISOString() }));
+    if (removedLogs.length > 0) {
+      state.deleted_ac_logs_trash = [
+        ...removedLogs,
+        ...state.deleted_ac_logs_trash.filter((t) => !idSet.has(t.log_id)),
+      ].slice(0, 100);
+    }
     for (const id of log_ids) {
       if (id && !state.deleted_ac_log_ids.includes(id)) {
         state.deleted_ac_log_ids.push(id);
@@ -1437,11 +1628,11 @@ app.post("/api/ac-logs/bulk-delete", (req: Request, res: Response) => {
     const shouldForward = req.headers["x-sync-forwarded"] !== "1";
     writeState(state, shouldForward);
     if (shouldForward) {
-      fetch(`${LIVE_REMOTE_URL}/api/ac-logs/bulk-delete`, {
+      forwardToRemotePeers("/api/ac-logs/bulk-delete", {
         method: "POST",
-        headers: { "Content-Type": "application/json", "x-sync-forwarded": "1" },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ log_ids }),
-      }).catch(() => {});
+      });
     }
   }
   res.json({ ok: true, remaining: state.ac_logs.length });
@@ -1510,7 +1701,34 @@ app.post("/api/sync-from-remote", async (req: Request, res: Response) => {
       state.ac_units = mergeUnitsListPreservingCycles(state.ac_units || [], pkg.ac_units, delUnitSet);
     }
     if (Array.isArray(pkg.ac_logs) && pkg.ac_logs.length > 0) {
-      state.ac_logs = pkg.ac_logs;
+      const delLogSet = new Set<string>([
+        ...(state.deleted_ac_log_ids || []),
+        ...(Array.isArray(pkg.deleted_ac_log_ids) ? pkg.deleted_ac_log_ids : []),
+      ]);
+      state.deleted_ac_log_ids = Array.from(delLogSet);
+      const logMap = new Map<string, any>();
+      for (const l of state.ac_logs || []) {
+        if (l && l.log_id && !delLogSet.has(l.log_id)) {
+          logMap.set(l.log_id, l);
+        }
+      }
+      for (const l of pkg.ac_logs) {
+        if (l && l.log_id && !delLogSet.has(l.log_id)) {
+          const existing = logMap.get(l.log_id);
+          if (!existing) {
+            logMap.set(l.log_id, l);
+          } else {
+            const existTime = new Date(existing.updated_at || existing.created_at || 0).getTime();
+            const remTime = new Date(l.updated_at || l.created_at || 0).getTime();
+            if (remTime >= existTime) {
+              logMap.set(l.log_id, l);
+            }
+          }
+        }
+      }
+      state.ac_logs = Array.from(logMap.values()).sort(
+        (a: any, b: any) => new Date(b.recorded_at || 0).getTime() - new Date(a.recorded_at || 0).getTime()
+      );
     }
 
     writeState(state);

@@ -8,6 +8,7 @@ import { AppSettings } from "../types";
 import { useAuth } from "../auth";
 import { useI18n } from "../i18n";
 import { ACScheduleNotificationPanel } from "./ACScheduleNotificationPanel";
+import { RoomCleaningDashboardCard } from "./RoomCleaningDashboardCard";
 import { fetchAppSettings, getLocalAppSettings } from "../supabaseService";
 
 interface DashboardProps {
@@ -96,7 +97,10 @@ export function Dashboard({ onOpenACLog }: DashboardProps) {
         </div>
       </div>
 
-      {/* PANEL UTAMA: NOTIFIKASI & MONITORING JADWAL CLEANING AC & VRV */}
+      {/* 1. MONITORING PROGRES CLEANING AREA KAMAR HOTEL (175 KAMAR RIIL) */}
+      <RoomCleaningDashboardCard key={`rooms_${refreshTrigger}`} onOpenACLog={onOpenACLog} />
+
+      {/* 2. PANEL UTAMA: NOTIFIKASI & MONITORING JADWAL CLEANING AC & VRV */}
       <ACScheduleNotificationPanel key={refreshTrigger} onOpenACLog={onOpenACLog} />
     </div>
   );

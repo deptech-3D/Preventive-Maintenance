@@ -479,7 +479,7 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "order": 40,
     "id": "unit_1789964790418_gvm0t",
     "created_at": "2026-09-21T04:26:30.418Z",
-    "cycle_months": null,
+    "cycle_months": 3,
     "cycle_days": null
   },
   {
@@ -491,7 +491,7 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "order": 41,
     "id": "unit_1789964850673_n2luh",
     "created_at": "2026-09-21T04:27:30.673Z",
-    "cycle_months": null,
+    "cycle_months": 3,
     "cycle_days": null
   },
   {
@@ -503,7 +503,7 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "order": 42,
     "id": "unit_1789964880001_44o8a",
     "created_at": "2026-09-21T04:28:00.001Z",
-    "cycle_months": null,
+    "cycle_months": 3,
     "cycle_days": null
   },
   {
@@ -515,7 +515,7 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "order": 43,
     "id": "unit_1789964940345_uj6yq",
     "created_at": "2026-09-21T04:29:00.345Z",
-    "cycle_months": null,
+    "cycle_months": 3,
     "cycle_days": null
   },
   {
@@ -527,7 +527,7 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "order": 44,
     "id": "unit_1789964969265_krini",
     "created_at": "2026-09-21T04:29:29.265Z",
-    "cycle_months": null,
+    "cycle_months": 3,
     "cycle_days": null
   },
   {
@@ -539,7 +539,7 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "order": 45,
     "id": "unit_1789965012034_wdti4",
     "created_at": "2026-09-21T04:30:12.034Z",
-    "cycle_months": null,
+    "cycle_months": 3,
     "cycle_days": null
   },
   {
@@ -743,7 +743,7 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "order": 62,
     "id": "unit_1789971463332_my1lc",
     "created_at": "2026-09-21T06:17:43.332Z",
-    "cycle_months": null,
+    "cycle_months": 6,
     "cycle_days": null
   },
   {
@@ -755,7 +755,7 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "order": 63,
     "id": "unit_1789971504108_1pan7",
     "created_at": "2026-09-21T06:18:24.108Z",
-    "cycle_months": null,
+    "cycle_months": 6,
     "cycle_days": null
   },
   {
@@ -767,7 +767,7 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "order": 64,
     "id": "unit_1789971562981_tqouv",
     "created_at": "2026-09-21T06:19:22.981Z",
-    "cycle_months": null,
+    "cycle_months": 6,
     "cycle_days": null
   },
   {
@@ -2602,7 +2602,7 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "order": 218,
     "id": "unit_1790056288886_yob78",
     "created_at": "2026-09-22T05:51:28.886Z",
-    "cycle_months": null,
+    "cycle_months": 6,
     "cycle_days": null
   },
   {
@@ -2614,7 +2614,7 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "order": 219,
     "id": "unit_1790056372109_pis4q",
     "created_at": "2026-09-22T05:52:52.109Z",
-    "cycle_months": null,
+    "cycle_months": 12,
     "cycle_days": null
   },
   {
@@ -3139,5 +3139,16 @@ export const OFFICIAL_AC_UNITS: ACUnitLocation[] = [
     "created_at": "2026-09-28T00:15:08.431Z",
     "notes": "Cuci Semua Outdoor/Condensor",
     "cycle_days": null
+  },
+  {
+    "category": "Area Publik & Komersial",
+    "floor": "Lantai 2",
+    "name": "Musala / Mushola",
+    "code": "MSL-01",
+    "notes": "AC Split non VRV",
+    "cycle_months": 6,
+    "order": 28,
+    "id": "unit_1790736040561_bvug7",
+    "created_at": "2026-09-30T02:40:40.561Z"
   }
 ];

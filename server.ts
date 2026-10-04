@@ -81,16 +81,6 @@ const DEFAULT_SERVER_STATE: ServerState = {
       deleted: false,
       created_at: "2026-01-01T00:00:00.000Z",
     },
-    {
-      user_id: "usr_technician_1",
-      name: "Teknisi Engineering",
-      email: "teknisi@midtown.local",
-      password_hash: "123456",
-      role: "user",
-      property_name: "Midtown Hotel Samarinda",
-      deleted: false,
-      created_at: "2026-01-01T00:00:00.000Z",
-    },
   ],
   deleted_user_ids: [],
   deleted_ac_unit_ids: [],
@@ -876,19 +866,22 @@ app.post("/api/auth/login", async (req: Request, res: Response) => {
   const cleanPass = String(password).trim();
   const state = readState();
 
-  // 1. Check Admin
+  if (cleanEmail === "admin" && cleanPass.toLowerCase() === "admin") {
+    return res.status(401).json({
+      ok: false,
+      error: "Akun 'admin' tidak terdaftar di daftar pengguna.",
+    });
+  }
+
+  // 1. Check Admin Account (Configured in server state)
   const adminEmailMatch =
-    cleanEmail === state.admin.email.toLowerCase() ||
-    cleanEmail === "admin" ||
-    cleanEmail === "admin@meter.local" ||
-    cleanEmail === "engmidtownhotelsmd@gmail.com";
+    state.admin?.email &&
+    cleanEmail === state.admin.email.toLowerCase();
 
   const adminPassMatch =
-    cleanPass === state.admin.password_hash ||
-    cleanPass === "123engsmd" ||
-    cleanPass === "admin" ||
-    cleanPass === "123456" ||
-    cleanPass === "midtown";
+    state.admin?.password_hash &&
+    (cleanPass === state.admin.password_hash ||
+      cleanPass.toLowerCase() === state.admin.password_hash.toLowerCase());
 
   if (adminEmailMatch && adminPassMatch) {
     return res.json({
@@ -904,7 +897,7 @@ app.post("/api/auth/login", async (req: Request, res: Response) => {
     });
   }
 
-  // 2. Check Users
+  // 2. Check Registered Users (Only users in user list can log in)
   const user = state.users.find(
     (u) =>
       !u.deleted &&
@@ -914,8 +907,7 @@ app.post("/api/auth/login", async (req: Request, res: Response) => {
   if (user) {
     const isUserPassMatch =
       user.password_hash === cleanPass ||
-      cleanPass === "123456" ||
-      (user.role === "admin" && adminPassMatch);
+      user.password_hash?.toLowerCase() === cleanPass.toLowerCase();
 
     if (isUserPassMatch) {
       return res.json({
@@ -927,7 +919,7 @@ app.post("/api/auth/login", async (req: Request, res: Response) => {
           role: user.role,
           property_name: user.property_name || state.property_name,
         },
-        token: `user_token_${Date.now()}`,
+        token: `${user.role}_token_${Date.now()}`,
       });
     }
   }
@@ -936,6 +928,62 @@ app.post("/api/auth/login", async (req: Request, res: Response) => {
     ok: false,
     error: "Email atau Password salah. Silakan periksa kembali.",
   });
+});
+
+// POST token-for-user
+app.post("/api/auth/token-for-user", (req: Request, res: Response) => {
+  const user = req.body;
+  if (!user || (!user.email && !user.user_id)) {
+    return res.status(400).json({ ok: false, error: "Data pengguna tidak lengkap" });
+  }
+  const prefix = user.role === "admin" ? "admin" : "user";
+  const token = `${prefix}_token_${Date.now()}`;
+  res.json({ ok: true, token, user });
+});
+
+// GET /api/auth/me
+app.get("/api/auth/me", (req: Request, res: Response) => {
+  const authHeader = req.headers.authorization || "";
+  const token = authHeader.replace(/^Bearer\s+/i, "").trim();
+  const state = readState();
+
+  if (!token) {
+    return res.status(401).json({ ok: false, error: "Tidak ada token otorisasi" });
+  }
+
+  if (token.startsWith("admin_token_")) {
+    return res.json({
+      ok: true,
+      user: {
+        user_id: state.admin.user_id,
+        name: state.admin.name,
+        email: state.admin.email,
+        role: "admin",
+        property_name: state.property_name,
+      },
+    });
+  }
+
+  const activeUser = state.users.find((u) => !u.deleted && u.role !== "admin") || state.users.find((u) => !u.deleted);
+  if (activeUser) {
+    return res.json({
+      ok: true,
+      user: {
+        user_id: activeUser.user_id,
+        name: activeUser.name,
+        email: activeUser.email,
+        role: activeUser.role,
+        property_name: activeUser.property_name || state.property_name,
+      },
+    });
+  }
+
+  return res.status(401).json({ ok: false, error: "Sesi tidak valid" });
+});
+
+// POST /api/auth/logout
+app.post("/api/auth/logout", (_req: Request, res: Response) => {
+  res.json({ ok: true, message: "Berhasil keluar" });
 });
 
 // GET / PUT App Settings
@@ -1746,10 +1794,11 @@ app.post("/api/sync-from-remote", async (req: Request, res: Response) => {
 // ----------------- STATIC / DEV MIDDLEWARE -----------------
 
 async function startServer() {
+  const isProduction = process.env.NODE_ENV === "production";
   const hasDist = fs.existsSync(distPath) && fs.existsSync(path.join(distPath, "index.html"));
 
-  // If built dist exists, ALWAYS serve static production assets
-  if (hasDist && process.env.VITE_DEV_MODE !== "true") {
+  // If running in production with built dist, serve static production assets
+  if (isProduction && hasDist) {
     console.log(`Serving static production build from ${distPath}`);
     app.use(express.static(distPath));
     app.use((_req: Request, res: Response) => {
@@ -1781,7 +1830,7 @@ async function startServer() {
   }
 
   app.listen(Number(PORT), "0.0.0.0", () => {
-    console.log(`Server listening on port ${PORT} (hasDist=${hasDist})`);
+    console.log(`Server listening on port ${PORT} (isProduction=${isProduction}, hasDist=${hasDist})`);
   });
 }
 

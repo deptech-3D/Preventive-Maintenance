@@ -20,6 +20,9 @@ const AuthContext = createContext<AuthContextType>({
 });
 
 const TOKEN_KEY = "meter_checklist_token";
+const SAVED_USER_KEY = "meter_supabase_user";
+const AUTO_LOGIN_USER_KEY = "meter_auto_login_user";
+const SAVED_AUTH_KEY = "meter_saved_auth";
 
 export async function apiGetToken(): Promise<string | null> {
   try {
@@ -93,9 +96,95 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Core internal login routine that authenticates via Supabase / Server
+  const doPerformLogin = async (identifier: string, pass: string, saveCredentials = true): Promise<User> => {
+    const cleanId = (identifier || "").trim();
+    const cleanPass = (pass || "").trim();
+    if (!cleanId || !pass) {
+      throw new Error("Silakan masukkan username/email dan kata sandi.");
+    }
+
+    if (cleanId.toLowerCase() === "admin" && cleanPass.toLowerCase() === "admin") {
+      throw new Error("Akun 'admin' / 'admin' tidak terdaftar di daftar pengguna.");
+    }
+
+    // 1. Try direct Supabase login (with offline/local fallback)
+    try {
+      const sbUser = await supabaseLogin(cleanId, pass);
+      if (sbUser) {
+        if (typeof localStorage !== "undefined") {
+          localStorage.setItem(SAVED_USER_KEY, JSON.stringify(sbUser));
+          localStorage.setItem(AUTO_LOGIN_USER_KEY, JSON.stringify(sbUser));
+          if (saveCredentials) {
+            localStorage.setItem(SAVED_AUTH_KEY, JSON.stringify({ identifier: cleanId, pass }));
+          }
+          localStorage.setItem("meter_last_login_user", cleanId);
+        }
+
+        try {
+          const tRes = await fetch(await resolveApiUrl("/api/auth/token-for-user"), {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(sbUser),
+          });
+          if (tRes.ok) {
+            const tData = await tRes.json();
+            if (tData?.token) await apiSetToken(tData.token);
+          }
+        } catch {}
+        return sbUser;
+      }
+    } catch (e) {
+      console.warn("Supabase direct login attempt:", e);
+    }
+
+    // 2. Fallback to Express backend /api/auth/login if backend is reachable
+    try {
+      const res = await apiFetch<{ token: string; user: User }>("/api/auth/login", {
+        method: "POST",
+        body: JSON.stringify({ username: cleanId, email: cleanId, password: pass }),
+      });
+      if (res?.user) {
+        await apiSetToken(res.token);
+        if (typeof localStorage !== "undefined") {
+          localStorage.setItem(SAVED_USER_KEY, JSON.stringify(res.user));
+          localStorage.setItem(AUTO_LOGIN_USER_KEY, JSON.stringify(res.user));
+          if (saveCredentials) {
+            localStorage.setItem(SAVED_AUTH_KEY, JSON.stringify({ identifier: cleanId, pass }));
+          }
+          localStorage.setItem("meter_last_login_user", cleanId);
+        }
+        return res.user;
+      }
+    } catch (err: any) {
+      if (err?.message && !err.message.includes("Koneksi ke server gagal")) {
+        throw err;
+      }
+    }
+
+    throw new Error("Username atau password salah. Silakan periksa kembali kredensial Anda.");
+  };
+
   const fetchMe = async () => {
-    // First check local Supabase user session
-    const localUser = getSavedSupabaseUser();
+    // 1. Check local saved user session first
+    let localUser = getSavedSupabaseUser();
+    if (!localUser && typeof localStorage !== "undefined") {
+      try {
+        const rawAuto = localStorage.getItem(AUTO_LOGIN_USER_KEY);
+        if (rawAuto) localUser = JSON.parse(rawAuto);
+      } catch {}
+    }
+
+    // Purge any legacy generic "admin" session
+    if (localUser && (localUser.user_id === "usr_admin_default" || localUser.email === "admin@meter.local" || localUser.email === "admin")) {
+      clearSavedSupabaseUser();
+      if (typeof localStorage !== "undefined") {
+        localStorage.removeItem(AUTO_LOGIN_USER_KEY);
+        localStorage.removeItem(SAVED_AUTH_KEY);
+      }
+      localUser = null;
+    }
+
     if (localUser) {
       setUser(localUser);
       setLoading(false);
@@ -104,7 +193,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         const token = await apiGetToken();
         if (!token) {
-          fetch("/api/auth/token-for-user", {
+          fetch(await resolveApiUrl("/api/auth/token-for-user"), {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(localUser),
@@ -125,6 +214,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (currentRecord) {
           if (currentRecord.deleted) {
             clearSavedSupabaseUser();
+            if (typeof localStorage !== "undefined") {
+              localStorage.removeItem(AUTO_LOGIN_USER_KEY);
+              localStorage.removeItem(SAVED_AUTH_KEY);
+            }
             await apiSetToken(null);
             setUser(null);
             return;
@@ -142,7 +235,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               role: currentRecord.role as "admin" | "user",
               property_name: currentRecord.property_name || localUser.property_name,
             };
-            localStorage.setItem("meter_supabase_user", JSON.stringify(updated));
+            localStorage.setItem(SAVED_USER_KEY, JSON.stringify(updated));
+            localStorage.setItem(AUTO_LOGIN_USER_KEY, JSON.stringify(updated));
             setUser(updated);
           }
         }
@@ -150,7 +244,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    // Try fallback to backend /api/auth/me if available
+    // 2. Check if user previously logged in and has saved credentials for automatic silent login
+    if (typeof localStorage !== "undefined") {
+      try {
+        const rawSavedAuth = localStorage.getItem(SAVED_AUTH_KEY);
+        if (rawSavedAuth) {
+          const parsed = JSON.parse(rawSavedAuth);
+          if (parsed?.identifier && parsed?.pass) {
+            if (String(parsed.identifier).trim().toLowerCase() === "admin" && String(parsed.pass).trim().toLowerCase() === "admin") {
+              localStorage.removeItem(SAVED_AUTH_KEY);
+            } else {
+              try {
+                const u = await doPerformLogin(parsed.identifier, parsed.pass, false);
+                if (u) {
+                  setUser(u);
+                  setLoading(false);
+                  return;
+                }
+              } catch (authErr) {
+                console.warn("Auto-login with saved credentials failed:", authErr);
+                localStorage.removeItem(SAVED_AUTH_KEY);
+              }
+            }
+          }
+        }
+      } catch {}
+    }
+
+    // 3. Try fallback to backend /api/auth/me if token exists
     try {
       const token = await apiGetToken();
       if (!token) {
@@ -158,7 +279,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
       const data = await apiFetch<{ user: User }>("/api/auth/me");
-      setUser(data.user);
+      if (data?.user) {
+        setUser(data.user);
+        if (typeof localStorage !== "undefined") {
+          localStorage.setItem(SAVED_USER_KEY, JSON.stringify(data.user));
+          localStorage.setItem(AUTO_LOGIN_USER_KEY, JSON.stringify(data.user));
+        }
+      } else {
+        setUser(null);
+      }
     } catch {
       await apiSetToken(null);
       setUser(null);
@@ -172,51 +301,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = async (identifier: string, pass: string) => {
-    const cleanId = (identifier || "").trim();
-    if (!cleanId || !pass) {
-      throw new Error("Silakan masukkan username/email dan kata sandi.");
-    }
-
-    // 1. Try direct Supabase login (with offline/local fallback)
-    try {
-      const sbUser = await supabaseLogin(cleanId, pass);
-      if (sbUser) {
-        setUser(sbUser);
-        try {
-          const tRes = await fetch("/api/auth/token-for-user", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(sbUser),
-          });
-          if (tRes.ok) {
-            const tData = await tRes.json();
-            if (tData?.token) await apiSetToken(tData.token);
-          }
-        } catch {}
-        return;
-      }
-    } catch (e) {
-      console.warn("Supabase direct login attempt failed:", e);
-    }
-
-    // 2. Fallback to Express backend /api/auth/login if backend is reachable
-    try {
-      const res = await apiFetch<{ token: string; user: User }>("/api/auth/login", {
-        method: "POST",
-        body: JSON.stringify({ username: cleanId, email: cleanId, password: pass }),
-      });
-      if (res?.user) {
-        await apiSetToken(res.token);
-        setUser(res.user);
-        return;
-      }
-    } catch {}
-
-    throw new Error("Username atau password salah. Untuk login default, gunakan username 'admin' dan password 'admin'.");
+    const loggedInUser = await doPerformLogin(identifier, pass, true);
+    setUser(loggedInUser);
   };
 
   const logout = async () => {
     clearSavedSupabaseUser();
+    if (typeof localStorage !== "undefined") {
+      localStorage.removeItem(AUTO_LOGIN_USER_KEY);
+      localStorage.removeItem(SAVED_AUTH_KEY);
+    }
     try {
       await apiFetch("/api/auth/logout", { method: "POST" });
     } catch {}

@@ -47,6 +47,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   chart_years_count: 2,
   ac_maintenance_cycle: "1 Bulan Sekali",
   ac_maintenance_cycle_months: 1,
+  ac_room_daily_budget_multiplier: 2,
   gdrive_folder_id: "",
   gdrive_script_url: "",
   gdrive_enabled: true,
@@ -190,6 +191,11 @@ export async function supabaseLogin(identifier: string, pass: string): Promise<U
   const passLower = cleanPass.toLowerCase();
   if (!cleanId || !cleanPass) return null;
 
+  // Explicitly disallow generic "admin" / "admin" as it is not in the registered user list
+  if (cleanId === "admin" && passLower === "admin") {
+    return null;
+  }
+
   // 0. Try Express Server Auth first (persists across shared URLs, web sessions & devices)
   try {
     const res = await fetch(apiUrl("/api/auth/login"), {
@@ -232,10 +238,7 @@ export async function supabaseLogin(identifier: string, pass: string): Promise<U
       if (userRecord) {
         const isMatch =
           userRecord.password_hash === cleanPass ||
-          userRecord.password_hash?.toLowerCase() === passLower ||
-          (userRecord.password_hash &&
-            userRecord.password_hash.startsWith("$2a$") &&
-            (passLower === "admin" || passLower === "123engsmd" || passLower === "123456" || passLower === "user123"));
+          userRecord.password_hash?.toLowerCase() === passLower;
 
         if (isMatch) {
           const u: User = {
@@ -289,7 +292,7 @@ export async function supabaseLogin(identifier: string, pass: string): Promise<U
     } catch {}
   }
 
-  // A. Check Default / Custom Admin & Hotel Engineering Accounts
+  // A. Check Registered Admin Account (Only if matching configured admin email & password)
   let customAdminEmail: string | null = null;
   let customAdminPass: string | null = null;
   if (typeof localStorage !== "undefined") {
@@ -297,33 +300,21 @@ export async function supabaseLogin(identifier: string, pass: string): Promise<U
     customAdminPass = localStorage.getItem("meter_admin_custom_pass");
   }
 
-  const isAdminMatch =
-    cleanId === "admin" ||
-    cleanId === "admin@meter.local" ||
-    cleanId === "chief engineer" ||
-    cleanId === "chief" ||
-    cleanId === "engineering" ||
-    cleanId === "eng" ||
-    cleanId === "midtown" ||
-    cleanId === "hotel" ||
-    cleanId === "engmidtownhotelsmd@gmail.com" ||
-    (customAdminEmail && cleanId === customAdminEmail.trim().toLowerCase());
+  const officialEmail = "engmidtownhotelsmd@gmail.com";
+  const isAdminIdMatch =
+    (customAdminEmail && cleanId === customAdminEmail.trim().toLowerCase()) ||
+    cleanId === officialEmail;
 
-  if (isAdminMatch) {
+  if (isAdminIdMatch && customAdminPass) {
     const isPassValid =
-      (customAdminPass && (cleanPass === customAdminPass.trim() || passLower === customAdminPass.trim().toLowerCase())) ||
-      passLower === "admin" ||
-      passLower === "123engsmd" ||
-      passLower === "123456" ||
-      passLower === "midtown" ||
-      passLower === "engineering" ||
-      passLower === "hotel";
+      cleanPass === customAdminPass.trim() ||
+      passLower === customAdminPass.trim().toLowerCase();
 
     if (isPassValid) {
       const adminUser: User = {
         user_id: "usr_admin_default",
         name: "Chief Engineer (Admin)",
-        email: customAdminEmail || "engmidtownhotelsmd@gmail.com",
+        email: customAdminEmail || officialEmail,
         role: "admin",
         property_name: hotelName,
         created_at: new Date().toISOString(),
@@ -336,44 +327,7 @@ export async function supabaseLogin(identifier: string, pass: string): Promise<U
     return null;
   }
 
-  // B. Check Default Technician
-  const deletedIds = getDeletedUserIds();
-  const isTechMatch =
-    !deletedIds.includes("budi") &&
-    !deletedIds.includes("budi@meter.local") &&
-    !deletedIds.includes("usr_technician_1") &&
-    (cleanId === "budi" ||
-      cleanId === "budi@meter.local" ||
-      cleanId === "budi santoso" ||
-      cleanId === "teknisi" ||
-      cleanId === "user" ||
-      cleanId === "operator");
-
-  if (isTechMatch) {
-    if (
-      passLower === "user123" ||
-      passLower === "123" ||
-      passLower === "123456" ||
-      passLower === "budi" ||
-      passLower === "teknisi"
-    ) {
-      const techUser: User = {
-        user_id: "usr_technician_1",
-        name: "Budi Santoso (Teknisi)",
-        email: "budi@meter.local",
-        role: "user",
-        property_name: hotelName,
-        created_at: new Date().toISOString(),
-      };
-      if (typeof localStorage !== "undefined") {
-        localStorage.setItem("meter_supabase_user", JSON.stringify(techUser));
-      }
-      return techUser;
-    }
-    return null;
-  }
-
-  // C. Check Local User Accounts
+  // B. Check Registered User Accounts (Only users added by admin can log in)
   const localAccounts = getLocalStoredUsers();
   const matchedLocal = localAccounts.find((u) => {
     if (u.deleted) return false;
@@ -383,7 +337,10 @@ export async function supabaseLogin(identifier: string, pass: string): Promise<U
   });
 
   if (matchedLocal) {
-    if (matchedLocal.password_hash === cleanPass || cleanPass === "123456") {
+    const isPassMatch =
+      matchedLocal.password_hash === cleanPass ||
+      matchedLocal.password_hash?.toLowerCase() === passLower;
+    if (isPassMatch) {
       const u: User = {
         user_id: matchedLocal.user_id,
         name: matchedLocal.name,

@@ -42,6 +42,7 @@ import {
   Flame,
   CalendarClock,
   HardDrive,
+  Target,
 } from "lucide-react";
 import { ACMasterUnitsManager } from "./ACMasterUnitsManager";
 import { ACMaintenanceCycleSettings } from "./ACMaintenanceCycleSettings";
@@ -111,6 +112,14 @@ export function Settings() {
   const [gensetMinVolt, setGensetMinVolt] = useState("24.0");
   const [hydrantMinVolt, setHydrantMinVolt] = useState("24.0");
   const [lvmdpMaxTemp, setLvmdpMaxTemp] = useState("32.0");
+
+  // Controller AC / Daikin ITM integration settings
+  const [acControllerUrl, setAcControllerUrl] = useState("http://36.91.27.90:57777/");
+  const [acControllerLabel, setAcControllerLabel] = useState("Daikin ITM Controller");
+  const [acControllerUser, setAcControllerUser] = useState("");
+  const [acControllerPass, setAcControllerPass] = useState("");
+  const [showControllerPass, setShowControllerPass] = useState(false);
+  const [acDailyBudgetMultiplier, setAcDailyBudgetMultiplier] = useState("2");
 
   // New user state
   const [showAddUser, setShowAddUser] = useState(false);
@@ -238,6 +247,11 @@ export function Settings() {
       setGensetMinVolt(String(s.genset_min_battery_volt ?? 24.0));
       setHydrantMinVolt(String(s.hydrant_min_battery_volt ?? 24.0));
       setLvmdpMaxTemp(String(s.lvmdp_max_room_temp ?? 32.0));
+      setAcControllerUrl(s.ac_controller_url || "http://36.91.27.90:57777/");
+      setAcControllerLabel(s.ac_controller_label || "Daikin ITM Controller");
+      setAcControllerUser(s.ac_controller_user ?? "");
+      setAcControllerPass(s.ac_controller_pass ?? "");
+      setAcDailyBudgetMultiplier(String(s.ac_room_daily_budget_multiplier ?? 2));
 
       if (s?.report_emails && s.report_emails.length > 0) {
         setReportEmail(s.report_emails[0]);
@@ -273,6 +287,11 @@ export function Settings() {
         setSettings(s);
         if (s.dashboard_bg_url) setBgUrl(s.dashboard_bg_url);
         if (s.property_name) setPropertyName(s.property_name);
+        if (s.ac_controller_url) setAcControllerUrl(s.ac_controller_url);
+        if (s.ac_controller_label) setAcControllerLabel(s.ac_controller_label);
+        if (s.ac_controller_user !== undefined) setAcControllerUser(s.ac_controller_user ?? "");
+        if (s.ac_controller_pass !== undefined) setAcControllerPass(s.ac_controller_pass ?? "");
+        if (s.ac_room_daily_budget_multiplier !== undefined) setAcDailyBudgetMultiplier(String(s.ac_room_daily_budget_multiplier));
       }
     };
 
@@ -424,6 +443,11 @@ export function Settings() {
         genset_min_battery_volt: parseFloat(gensetMinVolt) || 24.0,
         hydrant_min_battery_volt: parseFloat(hydrantMinVolt) || 24.0,
         lvmdp_max_room_temp: parseFloat(lvmdpMaxTemp) || 32.0,
+        ac_controller_url: acControllerUrl.trim(),
+        ac_controller_label: acControllerLabel.trim() || "Daikin ITM Controller",
+        ac_controller_user: acControllerUser.trim(),
+        ac_controller_pass: acControllerPass.trim(),
+        ac_room_daily_budget_multiplier: Math.max(1, parseInt(acDailyBudgetMultiplier, 10) || 2),
       });
 
       if (typeof localStorage !== "undefined" && bgUrl) {
@@ -861,6 +885,199 @@ export function Settings() {
               <p className="text-[11px] text-slate-500 leading-normal">
                 Foto yang dipilih dari galeri HP, kamera, atau tautan URL akan otomatis disimpan dan langsung tampil sebagai gambar utama di Halaman Login dan banner latar belakang di Dashboard.
               </p>
+            </div>
+
+            {/* Target Budget Cleaning AC Kamar */}
+            <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-3.5" id="ac-room-budget-card">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+                    <Target className="w-4 h-4 text-indigo-600" />
+                    <span>Target Budget Cleaning AC Kamar (Bulanan)</span>
+                  </label>
+                  <p className="text-[11px] text-slate-500 mt-0.5">
+                    Sistem otomatis menghitung budget bulanan: <strong>Jumlah hari dalam bulan berjalan &times; Target per hari</strong>.
+                    Contoh: Bulan Oktober (31 hari) &times; 2 = <strong>62 kamar</strong>.
+                  </p>
+                </div>
+                <span className="self-start sm:self-auto px-2.5 py-1 bg-indigo-50 border border-indigo-200 text-indigo-700 rounded-xl text-xs font-bold shrink-0">
+                  Otomatis Setiap Bulan
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                    Target Cuci Kamar per Hari (Kamar / Hari)
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      min="1"
+                      max="20"
+                      value={acDailyBudgetMultiplier}
+                      onChange={(e) => setAcDailyBudgetMultiplier(e.target.value)}
+                      placeholder="2"
+                      className="w-24 px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-900 focus:ring-2 focus:ring-indigo-600 focus:outline-none"
+                    />
+                    <span className="text-xs text-slate-600 font-medium">Kamar / Hari</span>
+                  </div>
+                  <p className="text-[10px] text-slate-400 mt-1">
+                    Standar tim engineering Midtown Hotel Samarinda: <strong>2 kamar / hari</strong>.
+                  </p>
+                </div>
+
+                <div className="bg-white p-3 rounded-xl border border-indigo-100 flex flex-col justify-center">
+                  <span className="text-[11px] font-semibold text-slate-600">Simulasi Target Bulan Ini:</span>
+                  <div className="mt-1 flex items-baseline gap-2">
+                    <span className="text-lg font-black text-indigo-900">
+                      {(new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate()) * (parseInt(acDailyBudgetMultiplier, 10) || 2)} Kamar
+                    </span>
+                    <span className="text-xs text-slate-500">
+                      ({new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate()} Hari &times; {parseInt(acDailyBudgetMultiplier, 10) || 2} kamar/hari)
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Integrasi Web Controller AC / Daikin ITM */}
+            <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-3.5" id="ac-controller-integration-card">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+                    <ExternalLink className="w-4 h-4 text-blue-600" />
+                    <span>Integrasi Web Controller AC / Daikin ITM</span>
+                  </label>
+                  <p className="text-[11px] text-slate-500 mt-0.5">
+                    Tautan sistem kontroler AC terpusat (Daikin ITM / BMS Hotel). Dapat diganti sewaktu-waktu oleh Admin jika terdapat perubahan IP publik/port dari tim IT.
+                  </p>
+                </div>
+                {acControllerUrl && (
+                  <button
+                    type="button"
+                    onClick={() => window.open(acControllerUrl, "_blank", "noopener,noreferrer")}
+                    className="self-start sm:self-auto px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shrink-0 cursor-pointer shadow-2xs"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5" />
+                    <span>Uji Buka Tautan ↗</span>
+                  </button>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                    URL Web Controller (IP Publik / IP Lokal LAN)
+                  </label>
+                  <input
+                    type="text"
+                    value={acControllerUrl}
+                    onChange={(e) => setAcControllerUrl(e.target.value)}
+                    placeholder="http://36.91.27.90:57777/"
+                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 focus:ring-2 focus:ring-blue-600 focus:outline-none font-mono"
+                  />
+                  <div className="flex flex-wrap items-center gap-2 mt-1.5 text-[10px] text-slate-500">
+                    <span>Preset cepat:</span>
+                    <button
+                      type="button"
+                      onClick={() => setAcControllerUrl("http://36.91.27.90:57777/")}
+                      className="text-blue-600 hover:underline font-semibold cursor-pointer"
+                    >
+                      IP Publik (36.91.27.90:57777)
+                    </button>
+                    <span>&bull;</span>
+                    <button
+                      type="button"
+                      onClick={() => setAcControllerUrl("http://10.10.99.250/")}
+                      className="text-blue-600 hover:underline font-semibold cursor-pointer"
+                    >
+                      IP Lokal LAN (10.10.99.250)
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                    Label Tombol di Dashboard
+                  </label>
+                  <input
+                    type="text"
+                    value={acControllerLabel}
+                    onChange={(e) => setAcControllerLabel(e.target.value)}
+                    placeholder="Daikin ITM Controller"
+                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 focus:ring-2 focus:ring-blue-600 focus:outline-none font-medium"
+                  />
+                  <p className="text-[10px] text-slate-400 mt-1.5">
+                    Nama tombol yang akan tampil di header kartu AC & VRV di Dashboard.
+                  </p>
+                </div>
+              </div>
+
+              {/* Username & Password Kredensial Controller */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2.5 border-t border-slate-200/70">
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                    Username Login Daikin ITM
+                  </label>
+                  <input
+                    type="text"
+                    value={acControllerUser}
+                    onChange={(e) => setAcControllerUser(e.target.value)}
+                    placeholder="Masukkan username manual..."
+                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 focus:ring-2 focus:ring-blue-600 focus:outline-none font-mono"
+                  />
+                  <p className="text-[10px] text-slate-400 mt-1">
+                    Username akun login pada web Daikin ITM (bebas diisi manual oleh Admin).
+                  </p>
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-[11px] font-bold text-slate-700">
+                      Password Login Daikin ITM
+                    </label>
+                    {acControllerUser.trim() && acControllerUser.trim() !== acControllerPass && (
+                      <button
+                        type="button"
+                        onClick={() => setAcControllerPass(acControllerUser.trim())}
+                        className="text-[10px] text-blue-600 hover:text-blue-800 font-semibold cursor-pointer underline flex items-center gap-0.5"
+                        title="Isi password sama persis dengan username"
+                      >
+                        <span>⚡ Samakan dengan username</span>
+                      </button>
+                    )}
+                  </div>
+                  <div className="relative">
+                    <input
+                      type={showControllerPass ? "text" : "password"}
+                      value={acControllerPass}
+                      onChange={(e) => setAcControllerPass(e.target.value)}
+                      placeholder="Masukkan kata sandi manual..."
+                      className="w-full px-3 py-2 pr-9 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 focus:ring-2 focus:ring-blue-600 focus:outline-none font-mono"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowControllerPass(!showControllerPass)}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                      title={showControllerPass ? "Sembunyikan password" : "Lihat password"}
+                    >
+                      {showControllerPass ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                    </button>
+                  </div>
+                  <p className="text-[10px] text-slate-400 mt-1">
+                    Kata sandi untuk form login Daikin ITM (bebas diisi manual oleh Admin).
+                  </p>
+                </div>
+              </div>
+
+              {/* Tips Kesamaan User & Sandi */}
+              <div className="bg-blue-50/80 border border-blue-200/80 rounded-xl p-2.5 flex items-start gap-2 text-[11px] text-blue-900">
+                <Info className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+                <p>
+                  <strong>Tips Praktis Teknisi:</strong> Jika Username dan Password diisi sama persis{acControllerUser.trim() ? <> (misal: <code className="bg-blue-100 px-1.5 py-0.5 rounded font-mono font-bold text-blue-800">{acControllerUser.trim()}</code>)</> : ""}, teknisi cukup menekan tombol <strong>"Salin Kredensial & Buka Daikin"</strong> 1 kali di Dashboard, lalu langsung tinggal <em>paste</em> di kolom User dan <em>paste</em> lagi di kolom Sandi pada web Daikin.
+                </p>
+              </div>
             </div>
 
             <div>

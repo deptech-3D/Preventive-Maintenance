@@ -97,7 +97,9 @@ export function useBackHandler(
   priority: number = 20
 ) {
   const onBackRef = useRef(onBack);
-  onBackRef.current = onBack;
+  useEffect(() => {
+    onBackRef.current = onBack;
+  });
 
   useEffect(() => {
     if (!isOpen || typeof window === "undefined") return;

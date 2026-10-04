@@ -14,6 +14,13 @@ import {
   Thermometer,
   Wind,
   Layers,
+  ExternalLink,
+  Copy,
+  Check,
+  Key,
+  Eye,
+  EyeOff,
+  Server,
 } from "lucide-react";
 import {
   ACUnitScheduleStatus,
@@ -47,6 +54,21 @@ export function ACScheduleNotificationPanel({
   const [defaultCycleMonths, setDefaultCycleMonths] = useState<number>(
     () => getLocalAppSettings().ac_maintenance_cycle_months || 1
   );
+  const [controllerUrl, setControllerUrl] = useState<string>(
+    () => getLocalAppSettings().ac_controller_url || "http://36.91.27.90:57777/"
+  );
+  const [controllerLabel, setControllerLabel] = useState<string>(
+    () => getLocalAppSettings().ac_controller_label || "Daikin ITM Controller"
+  );
+  const [controllerUser, setControllerUser] = useState<string>(
+    () => getLocalAppSettings().ac_controller_user ?? ""
+  );
+  const [controllerPass, setControllerPass] = useState<string>(
+    () => getLocalAppSettings().ac_controller_pass ?? ""
+  );
+  const [showControllerModal, setShowControllerModal] = useState<boolean>(false);
+  const [copiedField, setCopiedField] = useState<"credential" | "user" | "pass" | null>(null);
+  const [showModalPass, setShowModalPass] = useState<boolean>(false);
 
   // Active clicked column ("overdue" | "approaching" | "safe" | "all" | null)
   const [selectedColumn, setSelectedColumn] = useState<ColumnKey | null>(null);
@@ -56,14 +78,20 @@ export function ACScheduleNotificationPanel({
   >("all");
   const [searchQuery, setSearchQuery] = useState<string>("");
 
-  // Tombol Kembali (Back) untuk menutup daftar kolom jadwal yang sedang terbuka
+  // Tombol Kembali (Back) untuk menutup modal dan daftar kolom jadwal
+  useBackHandler(showControllerModal, () => setShowControllerModal(false), 20);
   useBackHandler(selectedColumn !== null, () => setSelectedColumn(null), 15);
 
   const loadData = useCallback(async () => {
     try {
       const statuses = await getACScheduleOverview();
       setScheduleList(statuses);
-      setDefaultCycleMonths(getLocalAppSettings().ac_maintenance_cycle_months || 1);
+      const curSettings = getLocalAppSettings();
+      setDefaultCycleMonths(curSettings.ac_maintenance_cycle_months || 1);
+      setControllerUrl(curSettings.ac_controller_url || "http://36.91.27.90:57777/");
+      setControllerLabel(curSettings.ac_controller_label || "Daikin ITM Controller");
+      setControllerUser(curSettings.ac_controller_user ?? "");
+      setControllerPass(curSettings.ac_controller_pass ?? "");
     } catch (err) {
       console.error("Gagal memuat status jadwal AC:", err);
     }
@@ -74,7 +102,12 @@ export function ACScheduleNotificationPanel({
 
     const handleSynced = () => {
       setScheduleList(getLocalACScheduleOverview());
-      setDefaultCycleMonths(getLocalAppSettings().ac_maintenance_cycle_months || 1);
+      const curSettings = getLocalAppSettings();
+      setDefaultCycleMonths(curSettings.ac_maintenance_cycle_months || 1);
+      setControllerUrl(curSettings.ac_controller_url || "http://36.91.27.90:57777/");
+      setControllerLabel(curSettings.ac_controller_label || "Daikin ITM Controller");
+      setControllerUser(curSettings.ac_controller_user ?? "");
+      setControllerPass(curSettings.ac_controller_pass ?? "");
     };
 
     window.addEventListener("ac-data-synced", handleSynced);
@@ -273,13 +306,39 @@ export function ACScheduleNotificationPanel({
             </div>
           </div>
 
-          <div className="hidden sm:flex items-center gap-1.5 text-[11px] font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-xl border border-blue-200/80 transition shrink-0">
-            <span>{selectedColumn ? "Tutup Daftar" : "Lihat Data"}</span>
-            {selectedColumn ? (
-              <ChevronUp className="w-3.5 h-3.5" />
-            ) : (
-              <ChevronDown className="w-3.5 h-3.5" />
+          <div className="flex items-center gap-2">
+            {/* Tombol Pintas Opsi A: Buka Modal Akses Daikin ITM Controller */}
+            {controllerUrl && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowControllerModal(true);
+                  // Otomatis salin kredensial saat pop-up dibuka (karena user & sandi dibuat sama)
+                  const credentialToCopy = controllerUser.trim();
+                  if (credentialToCopy && typeof navigator !== "undefined" && navigator.clipboard) {
+                    navigator.clipboard.writeText(credentialToCopy).then(() => {
+                      setCopiedField("credential");
+                      setTimeout(() => setCopiedField(null), 3000);
+                    }).catch(() => {});
+                  }
+                }}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200/90 transition shadow-2xs hover:shadow-xs shrink-0 cursor-pointer"
+                title={`Buka ${controllerLabel} (${controllerUrl})`}
+              >
+                <Server className="w-3.5 h-3.5 text-blue-600" />
+                <span>Buka {controllerLabel}</span>
+              </button>
             )}
+
+            <div className="hidden sm:flex items-center gap-1.5 text-[11px] font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-xl border border-slate-200/80 transition shrink-0">
+              <span>{selectedColumn ? "Tutup Daftar" : "Lihat Data"}</span>
+              {selectedColumn ? (
+                <ChevronUp className="w-3.5 h-3.5" />
+              ) : (
+                <ChevronDown className="w-3.5 h-3.5" />
+              )}
+            </div>
           </div>
         </div>
 
@@ -780,6 +839,247 @@ export function ACScheduleNotificationPanel({
           </div>
         )}
       </div>
+
+      {/* Modal Akses Daikin ITM Controller (Opsi A) */}
+      {showControllerModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in"
+          onClick={() => setShowControllerModal(false)}
+        >
+          <div
+            className="bg-white rounded-2xl max-w-md w-full shadow-2xl border border-slate-200 overflow-hidden space-y-4 animate-in zoom-in-95 duration-150"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="bg-slate-900 text-white p-4 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white shrink-0 shadow-sm">
+                  <Server className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-white flex items-center gap-1.5">
+                    <span>Akses {controllerLabel}</span>
+                  </h3>
+                  <p className="text-[11px] text-slate-300 mt-0.5">
+                    Sistem Kontroler Sentral AC & VRV Hotel
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowControllerModal(false)}
+                className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition cursor-pointer"
+                title="Tutup (Esc)"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-4 sm:p-5 space-y-4 text-xs">
+              {/* Target URL Info */}
+              <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 flex items-center justify-between gap-2">
+                <div className="min-w-0">
+                  <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">
+                    Alamat Server Controller
+                  </span>
+                  <span className="font-mono font-semibold text-slate-800 text-[11px] truncate block mt-0.5">
+                    {controllerUrl}
+                  </span>
+                </div>
+                <a
+                  href={controllerUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-2.5 py-1 text-[11px] font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg shrink-0 inline-flex items-center gap-1 transition cursor-pointer"
+                >
+                  <ExternalLink className="w-3 h-3" />
+                  <span>Buka</span>
+                </a>
+              </div>
+
+              {/* Status Banner Notifikasi Salin Otomatis */}
+              <div
+                className={`p-3 rounded-xl border transition-all flex items-start gap-2.5 ${
+                  copiedField
+                    ? "bg-emerald-50 border-emerald-300 text-emerald-900"
+                    : "bg-blue-50/70 border-blue-200 text-blue-900"
+                }`}
+              >
+                {copiedField ? (
+                  <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                ) : (
+                  <Key className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+                )}
+                <div>
+                  <p className="font-bold text-[11px]">
+                    {copiedField
+                      ? "Kredensial berhasil disalin ke Clipboard!"
+                      : controllerUser.trim()
+                      ? "User & Password otomatis siap disalin"
+                      : "Kredensial login belum disetel oleh Admin"}
+                  </p>
+                  <p className="text-[10px] opacity-90 mt-0.5 leading-relaxed">
+                    {controllerUser.trim() && controllerUser.trim() === controllerPass.trim()
+                      ? "Karena Username dan Password disetel sama persis, cukup tekan tombol Salin dan langsung paste di kotak User maupun Sandi pada web Daikin."
+                      : controllerUser.trim()
+                      ? "Salin Username atau Sandi di bawah ini untuk ditempelkan pada form login Daikin."
+                      : "Admin belum mengisi username/password di Pengaturan. Anda tetap dapat membuka web Daikin dan mengetik langsung."}
+                  </p>
+                </div>
+              </div>
+
+              {/* Credential Box */}
+              <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-bold text-slate-700 uppercase tracking-wide">
+                    Kredensial Login
+                  </span>
+                  {controllerUser.trim() && controllerUser.trim() === controllerPass.trim() && (
+                    <span className="text-[10px] bg-indigo-50 text-indigo-700 font-bold px-2 py-0.5 rounded-full border border-indigo-200/80">
+                      User & Sandi Sama
+                    </span>
+                  )}
+                </div>
+
+                {!controllerUser.trim() && !controllerPass.trim() ? (
+                  <div className="bg-white p-3 rounded-xl border border-slate-200 text-center text-slate-500">
+                    <p className="text-xs">Belum ada kredensial yang disimpan.</p>
+                    <p className="text-[10px] text-slate-400 mt-0.5">
+                      Admin dapat mengisinya melalui menu <strong>Pengaturan</strong>.
+                    </p>
+                  </div>
+                ) : controllerUser.trim() === controllerPass.trim() ? (
+                  /* Single Unified Credential Card (User & Pass are identical) */
+                  <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-2xs space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] text-slate-500 font-semibold">
+                        Teks Kredensial (User & Sandi):
+                      </span>
+                      <span className="font-mono font-bold text-slate-900 bg-slate-100 px-2 py-0.5 rounded text-xs">
+                        {controllerUser}
+                      </span>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const val = controllerUser.trim();
+                        if (val && typeof navigator !== "undefined" && navigator.clipboard) {
+                          navigator.clipboard.writeText(val).then(() => {
+                            setCopiedField("credential");
+                            setTimeout(() => setCopiedField(null), 3000);
+                          });
+                        }
+                      }}
+                      className="w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-xs cursor-pointer"
+                    >
+                      {copiedField === "credential" ? (
+                        <>
+                          <Check className="w-4 h-4 text-emerald-300" />
+                          <span>Tersalin ke Clipboard!</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-4 h-4" />
+                          <span>Salin Kredensial ({controllerUser})</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                ) : (
+                  /* Dual Credential Display (if user and pass ever differ) */
+                  <div className="space-y-2">
+                    {/* Username row */}
+                    {controllerUser.trim() && (
+                      <div className="bg-white p-2.5 rounded-xl border border-slate-200 flex items-center justify-between">
+                        <div>
+                          <span className="text-[10px] text-slate-400 block font-semibold">Username:</span>
+                          <span className="font-mono font-bold text-slate-800 text-xs">
+                            {controllerUser}
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard?.writeText(controllerUser);
+                            setCopiedField("user");
+                            setTimeout(() => setCopiedField(null), 3000);
+                          }}
+                          className="px-2.5 py-1 text-[11px] font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-lg flex items-center gap-1 transition"
+                        >
+                          {copiedField === "user" ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                          <span>{copiedField === "user" ? "Tersalin" : "Salin"}</span>
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Password row */}
+                    {controllerPass.trim() && (
+                      <div className="bg-white p-2.5 rounded-xl border border-slate-200 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div>
+                            <span className="text-[10px] text-slate-400 block font-semibold">Password:</span>
+                            <span className="font-mono font-bold text-slate-800 text-xs">
+                              {showModalPass ? controllerPass : "••••••••"}
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setShowModalPass(!showModalPass)}
+                            className="text-slate-400 hover:text-slate-600 ml-1"
+                          >
+                            {showModalPass ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                          </button>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard?.writeText(controllerPass);
+                            setCopiedField("pass");
+                            setTimeout(() => setCopiedField(null), 3000);
+                          }}
+                          className="px-2.5 py-1 text-[11px] font-bold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-lg flex items-center gap-1 transition"
+                        >
+                          {copiedField === "pass" ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                          <span>{copiedField === "pass" ? "Tersalin" : "Salin"}</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Action Buttons */}
+              <div className="pt-2 flex flex-col sm:flex-row items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const val = controllerUser.trim();
+                    if (val && typeof navigator !== "undefined" && navigator.clipboard) {
+                      navigator.clipboard.writeText(val);
+                    }
+                    window.open(controllerUrl, "_blank", "noopener,noreferrer");
+                    setShowControllerModal(false);
+                  }}
+                  className="w-full sm:flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 shadow-md shadow-blue-500/20 cursor-pointer"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                  <span>{controllerUser.trim() ? "Salin & Buka Web Daikin ITM ↗" : "Buka Web Daikin ITM ↗"}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setShowControllerModal(false)}
+                  className="w-full sm:w-auto px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition cursor-pointer"
+                >
+                  Tutup
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

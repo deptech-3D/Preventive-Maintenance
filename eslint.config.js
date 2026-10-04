@@ -6,7 +6,7 @@ import tseslint from 'typescript-eslint'
 import { defineConfig, globalIgnores } from 'eslint/config'
 
 export default defineConfig([
-  globalIgnores(['dist']),
+  globalIgnores(['dist', 'android']),
   {
     files: ['**/*.{ts,tsx}'],
     extends: [
@@ -24,6 +24,8 @@ export default defineConfig([
       'no-empty': 'off',
       'react-refresh/only-export-components': 'off',
       'react-hooks/set-state-in-effect': 'off',
+      'react-hooks/purity': 'off',
+      'react-hooks/preserve-manual-memoization': 'off',
       'preserve-caught-error': 'off',
     },
   },

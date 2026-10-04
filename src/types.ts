@@ -97,9 +97,14 @@ export interface AppSettings {
   lvmdp_max_room_temp?: number; // default: 32.0 °C
   ac_maintenance_cycle?: "1 Bulan Sekali" | "2 Bulan Sekali" | "3 Bulan Sekali";
   ac_maintenance_cycle_months?: number; // 1, 2, or 3
+  ac_room_daily_budget_multiplier?: number; // default: 2 (kamar per hari)
   gdrive_folder_id?: string; // ID atau Link Folder Google Drive Admin
   gdrive_script_url?: string; // URL Web App Jembatan Google Apps Script (/exec)
   gdrive_enabled?: boolean; // Aktifkan penyimpanan foto otomatis ke Google Drive
+  ac_controller_url?: string; // URL Web Controller AC / Daikin ITM (default: http://36.91.27.90:57777/)
+  ac_controller_label?: string; // Label tombol controller (default: Daikin ITM Controller)
+  ac_controller_user?: string; // Username login Daikin ITM (default: admin)
+  ac_controller_pass?: string; // Password login Daikin ITM (default: admin)
 }
 
 export type ACCategory =

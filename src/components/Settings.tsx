@@ -72,7 +72,16 @@ import {
   copyUsersAndAdminToClipboard,
   importUsersAndAdminPackage,
   syncAllUsersAndAdminToServer,
+  fetchACMaintenanceLogs,
+  fetchReadings,
+  fetchPlantLogs,
+  fetchACUnits,
+  exportACLogsToExcel,
+  exportACMasterReportToExcel,
+  exportPlantLogsToExcel,
+  getACScheduleOverview,
 } from "../supabaseService";
+import { exportReadingsToExcel } from "../excelExport";
 
 export function Settings() {
   const { user, logout, refresh: refreshUser } = useAuth();
@@ -156,6 +165,81 @@ export function Settings() {
   const [showUserImportModal, setShowUserImportModal] = useState(false);
   const [userImportText, setUserImportText] = useState("");
   const [copiedUserCode, setCopiedUserCode] = useState(false);
+
+  // User List Accordion & Search State (Collapsed by default so view isn't overwhelmed)
+  const [showUserList, setShowUserList] = useState(false);
+  const [userListSearch, setUserListSearch] = useState("");
+
+  // Excel Download State
+  const [downloadingExcel, setDownloadingExcel] = useState<string | null>(null);
+
+  const handleDownloadACLogsExcel = async () => {
+    try {
+      setDownloadingExcel("ac_logs");
+      const logs = await fetchACMaintenanceLogs();
+      if (!logs || logs.length === 0) {
+        setMsg({ text: "Belum ada data riwayat cuci AC untuk diekspor ke Excel.", kind: "err" });
+        return;
+      }
+      exportACLogsToExcel(logs, propertyName || "Midtown Hotel Samarinda");
+      setMsg({ text: `File Excel Riwayat Cuci AC (${logs.length} data) berhasil diunduh!`, kind: "ok" });
+    } catch (err: any) {
+      setMsg({ text: "Gagal mengunduh Excel Riwayat AC: " + err.message, kind: "err" });
+    } finally {
+      setDownloadingExcel(null);
+    }
+  };
+
+  const handleDownloadACMasterExcel = async () => {
+    try {
+      setDownloadingExcel("ac_master");
+      const cycleDefault = parseInt(settings?.ac_maintenance_cycle_months as any, 10) || 1;
+      const [logs, scheduleList] = await Promise.all([
+        fetchACMaintenanceLogs(),
+        getACScheduleOverview(),
+      ]);
+      exportACMasterReportToExcel(logs, scheduleList, propertyName || "Midtown Hotel Samarinda", cycleDefault);
+      setMsg({ text: "Buku Master Perawatan AC (2 Sheet) berhasil diunduh!", kind: "ok" });
+    } catch (err: any) {
+      setMsg({ text: "Gagal mengunduh Buku Master AC: " + err.message, kind: "err" });
+    } finally {
+      setDownloadingExcel(null);
+    }
+  };
+
+  const handleDownloadReadingsExcel = async () => {
+    try {
+      setDownloadingExcel("readings");
+      const readings = await fetchReadings();
+      if (!readings || readings.length === 0) {
+        setMsg({ text: "Belum ada data logsheet meteran untuk diekspor ke Excel.", kind: "err" });
+        return;
+      }
+      exportReadingsToExcel(readings, propertyName || "Midtown Hotel Samarinda");
+      setMsg({ text: `File Excel Logsheet Meteran (${readings.length} data) berhasil diunduh!`, kind: "ok" });
+    } catch (err: any) {
+      setMsg({ text: "Gagal mengunduh Excel Logsheet: " + err.message, kind: "err" });
+    } finally {
+      setDownloadingExcel(null);
+    }
+  };
+
+  const handleDownloadPlantExcel = async () => {
+    try {
+      setDownloadingExcel("plant");
+      const plantLogs = await fetchPlantLogs();
+      if (!plantLogs || plantLogs.length === 0) {
+        setMsg({ text: "Belum ada data checklist ruang mesin untuk diekspor ke Excel.", kind: "err" });
+        return;
+      }
+      exportPlantLogsToExcel(plantLogs, propertyName || "Midtown Hotel Samarinda");
+      setMsg({ text: `File Excel Ruang Mesin (${plantLogs.length} data) berhasil diunduh!`, kind: "ok" });
+    } catch (err: any) {
+      setMsg({ text: "Gagal mengunduh Excel Ruang Mesin: " + err.message, kind: "err" });
+    } finally {
+      setDownloadingExcel(null);
+    }
+  };
 
   // Tombol Kembali (Back) untuk menutup modal di Pengaturan
   useBackHandler(showAddUser, () => setShowAddUser(false), 20);
@@ -670,10 +754,10 @@ export function Settings() {
             >
               <span className="flex items-center gap-2.5 min-w-0">
                 <HardDrive className="w-4 h-4 shrink-0" />
-                <span className="truncate whitespace-nowrap">C. Folder, Cadangan & Backup</span>
+                <span className="truncate whitespace-nowrap">C. Folder, Cadangan & File Excel</span>
               </span>
               <span className="px-1.5 py-0.5 bg-emerald-500 text-white text-[9px] font-black rounded-full shrink-0 whitespace-nowrap">
-                Hemat DB
+                Excel & Drive
               </span>
             </button>
 
@@ -937,7 +1021,103 @@ export function Settings() {
                 }}
               />
 
-              {/* 2. Cadangan & Sinkronisasi Data AC Perlantai (Unduh File Excel & JSON) */}
+              {/* 2. Pusat Unduh File Excel Resmi (.xlsx) & Backup Data */}
+              <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+                      <FileSpreadsheet className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-bold text-slate-900">
+                        Pusat Unduh File Excel & Cadangan Data
+                      </h3>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        Unduh data dalam format Microsoft Excel (.xlsx) resmi untuk arsip, backup data offline, dan pelaporan manajemen.
+                      </p>
+                    </div>
+                  </div>
+                  <span className="text-[11px] font-semibold px-2.5 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full w-fit">
+                    Format Resmi .xlsx
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                  {/* 1. Excel Riwayat Cuci AC */}
+                  <button
+                    type="button"
+                    disabled={downloadingExcel !== null}
+                    onClick={handleDownloadACLogsExcel}
+                    className="p-3.5 bg-slate-50 hover:bg-emerald-50/70 border border-slate-200 hover:border-emerald-300 rounded-xl text-left transition space-y-2 cursor-pointer group disabled:opacity-50"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-slate-800 group-hover:text-emerald-700">
+                        {downloadingExcel === "ac_logs" ? "Mengunduh..." : "1. Excel Riwayat Cuci AC"}
+                      </span>
+                      <Download className={`w-4 h-4 ${downloadingExcel === "ac_logs" ? "animate-bounce text-emerald-600" : "text-slate-400 group-hover:text-emerald-600"}`} />
+                    </div>
+                    <p className="text-[11px] text-slate-500 leading-normal">
+                      Logsheet cuci AC kamar & VRV lengkap dengan tanggal, teknisi, suhu, & anemometer.
+                    </p>
+                  </button>
+
+                  {/* 2. Excel Master Jadwal & Status AC */}
+                  <button
+                    type="button"
+                    disabled={downloadingExcel !== null}
+                    onClick={handleDownloadACMasterExcel}
+                    className="p-3.5 bg-slate-50 hover:bg-emerald-50/70 border border-slate-200 hover:border-emerald-300 rounded-xl text-left transition space-y-2 cursor-pointer group disabled:opacity-50"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-slate-800 group-hover:text-emerald-700">
+                        {downloadingExcel === "ac_master" ? "Mengunduh..." : "2. Buku Master AC (2 Sheet)"}
+                      </span>
+                      <Download className={`w-4 h-4 ${downloadingExcel === "ac_master" ? "animate-bounce text-emerald-600" : "text-slate-400 group-hover:text-emerald-600"}`} />
+                    </div>
+                    <p className="text-[11px] text-slate-500 leading-normal">
+                      Buku master seluruh unit AC hotel, jadwal jatuh tempo, status, serta riwayat lengkap.
+                    </p>
+                  </button>
+
+                  {/* 3. Excel Logsheet Meteran */}
+                  <button
+                    type="button"
+                    disabled={downloadingExcel !== null}
+                    onClick={handleDownloadReadingsExcel}
+                    className="p-3.5 bg-slate-50 hover:bg-blue-50/70 border border-slate-200 hover:border-blue-300 rounded-xl text-left transition space-y-2 cursor-pointer group disabled:opacity-50"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-slate-800 group-hover:text-blue-700">
+                        {downloadingExcel === "readings" ? "Mengunduh..." : "3. Excel Logsheet Meteran"}
+                      </span>
+                      <Download className={`w-4 h-4 ${downloadingExcel === "readings" ? "animate-bounce text-blue-600" : "text-slate-400 group-hover:text-blue-600"}`} />
+                    </div>
+                    <p className="text-[11px] text-slate-500 leading-normal">
+                      Data pencatatan meteran listrik PLN, air PDAM, deep well, solar genset, & STP per shift.
+                    </p>
+                  </button>
+
+                  {/* 4. Excel Ruang Mesin */}
+                  <button
+                    type="button"
+                    disabled={downloadingExcel !== null}
+                    onClick={handleDownloadPlantExcel}
+                    className="p-3.5 bg-slate-50 hover:bg-amber-50/70 border border-slate-200 hover:border-amber-300 rounded-xl text-left transition space-y-2 cursor-pointer group disabled:opacity-50"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-slate-800 group-hover:text-amber-700">
+                        {downloadingExcel === "plant" ? "Mengunduh..." : "4. Excel Ruang Mesin"}
+                      </span>
+                      <Download className={`w-4 h-4 ${downloadingExcel === "plant" ? "animate-bounce text-amber-600" : "text-slate-400 group-hover:text-amber-600"}`} />
+                    </div>
+                    <p className="text-[11px] text-slate-500 leading-normal">
+                      Pemeriksaan harian ruang mesin (hydrant, genset, chiller, boiler, panel LVMDP).
+                    </p>
+                  </button>
+                </div>
+              </div>
+
+              {/* 3. Cadangan & Sinkronisasi Data AC Perlantai (Unduh File Excel & JSON) */}
               <ACDataBackupSyncCard />
 
               {/* 3. Sinkronisasi & Pemindahan Data Antar Perangkat (PC <-> HP) */}
@@ -983,13 +1163,13 @@ export function Settings() {
                   {/* Salin JSON */}
                   <button
                     type="button"
-                    onClick={async () => {
-                      try {
-                        await copyFullSystemBackupToClipboard();
-                        setCopiedFullData(true);
+                    onClick={() => {
+                      const ok = copySystemDataToClipboard();
+                      if (ok) {
+                        setCopiedSyncCode(true);
                         setMsg({ text: "Seluruh data sistem berhasil disalin ke Clipboard!", kind: "ok" });
-                        setTimeout(() => setCopiedFullData(false), 3000);
-                      } catch {
+                        setTimeout(() => setCopiedSyncCode(false), 3000);
+                      } else {
                         setMsg({ text: "Gagal menyalin teks data.", kind: "err" });
                       }
                     }}
@@ -997,9 +1177,9 @@ export function Settings() {
                   >
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-bold text-slate-800 group-hover:text-emerald-700">
-                        {copiedFullData ? "✓ Teks Berhasil Disalin!" : "2. Salin Seluruh Data"}
+                        {copiedSyncCode ? "✓ Teks Berhasil Disalin!" : "2. Salin Seluruh Data"}
                       </span>
-                      <Copy className={`w-4 h-4 ${copiedFullData ? "text-emerald-600" : "text-slate-400 group-hover:text-emerald-600"}`} />
+                      <Copy className={`w-4 h-4 ${copiedSyncCode ? "text-emerald-600" : "text-slate-400 group-hover:text-emerald-600"}`} />
                     </div>
                     <p className="text-[11px] text-slate-500 leading-normal">
                       Salin seluruh kode data untuk langsung di-paste ke HP lewat chat/catatan.
@@ -1010,7 +1190,7 @@ export function Settings() {
                   <button
                     type="button"
                     onClick={() => {
-                      setPasteFullDataText("");
+                      setPasteSyncCode("");
                       setShowPasteModal(true);
                     }}
                     className="p-3.5 bg-slate-50 hover:bg-purple-50 border border-slate-200 hover:border-purple-300 rounded-xl text-left transition space-y-1.5 cursor-pointer group sm:col-span-2 lg:col-span-1"
@@ -1192,217 +1372,6 @@ export function Settings() {
               <p className="text-[11px] text-slate-500 leading-normal">
                 Foto yang dipilih dari galeri HP, kamera, atau tautan URL akan otomatis disimpan dan langsung tampil sebagai gambar utama di Halaman Login dan banner latar belakang di Dashboard.
               </p>
-            </div>
-
-            {/* Target Budget Cleaning AC Kamar */}
-            <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-3.5" id="ac-room-budget-card">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
-                    <Target className="w-4 h-4 text-indigo-600" />
-                    <span>Target Budget Cleaning AC Kamar (Bulanan)</span>
-                  </label>
-                  <p className="text-[11px] text-slate-500 mt-0.5">
-                    Sistem otomatis menghitung budget bulanan: <strong>Jumlah hari dalam bulan berjalan &times; Target per hari</strong>.
-                    Contoh: Bulan Oktober (31 hari) &times; 2 = <strong>62 kamar</strong>.
-                  </p>
-                </div>
-                <span className="self-start sm:self-auto px-2.5 py-1 bg-indigo-50 border border-indigo-200 text-indigo-700 rounded-xl text-xs font-bold shrink-0">
-                  Otomatis Setiap Bulan
-                </span>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                    Target Cuci Kamar per Hari (Kamar / Hari)
-                  </label>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="number"
-                      min="1"
-                      max="20"
-                      value={acDailyBudgetMultiplier}
-                      onChange={(e) => setAcDailyBudgetMultiplier(e.target.value)}
-                      placeholder="2"
-                      className="w-24 px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-900 focus:ring-2 focus:ring-indigo-600 focus:outline-none"
-                    />
-                    <span className="text-xs text-slate-600 font-medium">Kamar / Hari</span>
-                  </div>
-                  <p className="text-[10px] text-slate-400 mt-1">
-                    Standar tim engineering Midtown Hotel Samarinda: <strong>2 kamar / hari</strong>.
-                  </p>
-                </div>
-
-                <div className="bg-white p-3 rounded-xl border border-indigo-100 flex flex-col justify-center">
-                  <span className="text-[11px] font-semibold text-slate-600">Simulasi Target Bulan Ini:</span>
-                  <div className="mt-1 flex items-baseline gap-2">
-                    <span className="text-lg font-black text-indigo-900">
-                      {(new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate()) * (parseInt(acDailyBudgetMultiplier, 10) || 2)} Kamar
-                    </span>
-                    <span className="text-xs text-slate-500">
-                      ({new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate()} Hari &times; {parseInt(acDailyBudgetMultiplier, 10) || 2} kamar/hari)
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Integrasi Web Controller AC / Daikin ITM */}
-            <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-3.5" id="ac-controller-integration-card">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
-                    <ExternalLink className="w-4 h-4 text-blue-600" />
-                    <span>Integrasi Web Controller AC / Daikin ITM</span>
-                  </label>
-                  <p className="text-[11px] text-slate-500 mt-0.5">
-                    Tautan sistem kontroler AC terpusat (Daikin ITM / BMS Hotel). Dapat diganti sewaktu-waktu oleh Admin jika terdapat perubahan IP publik/port dari tim IT.
-                  </p>
-                </div>
-                {acControllerUrl && (
-                  <button
-                    type="button"
-                    onClick={() => window.open(acControllerUrl, "_blank", "noopener,noreferrer")}
-                    className="self-start sm:self-auto px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shrink-0 cursor-pointer shadow-2xs"
-                  >
-                    <ExternalLink className="w-3.5 h-3.5" />
-                    <span>Uji Buka Tautan ↗</span>
-                  </button>
-                )}
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                    URL Web Controller (IP Publik / IP Lokal LAN)
-                  </label>
-                  <input
-                    type="text"
-                    value={acControllerUrl}
-                    onChange={(e) => setAcControllerUrl(e.target.value)}
-                    placeholder="http://36.91.27.90:57777/"
-                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 focus:ring-2 focus:ring-blue-600 focus:outline-none font-mono"
-                  />
-                  <div className="flex flex-wrap items-center gap-2 mt-1.5 text-[10px] text-slate-500">
-                    <span>Preset cepat:</span>
-                    <button
-                      type="button"
-                      onClick={() => setAcControllerUrl("http://36.91.27.90:57777/")}
-                      className="text-blue-600 hover:underline font-semibold cursor-pointer"
-                    >
-                      IP Publik (36.91.27.90:57777)
-                    </button>
-                    <span>&bull;</span>
-                    <button
-                      type="button"
-                      onClick={() => setAcControllerUrl("http://10.10.99.250/")}
-                      className="text-blue-600 hover:underline font-semibold cursor-pointer"
-                    >
-                      IP Lokal LAN (10.10.99.250)
-                    </button>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                    Label Tombol di Dashboard
-                  </label>
-                  <input
-                    type="text"
-                    value={acControllerLabel}
-                    onChange={(e) => setAcControllerLabel(e.target.value)}
-                    placeholder="Daikin ITM Controller"
-                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 focus:ring-2 focus:ring-blue-600 focus:outline-none font-medium"
-                  />
-                  <p className="text-[10px] text-slate-400 mt-1.5">
-                    Nama tombol yang akan tampil di header kartu AC & VRV di Dashboard.
-                  </p>
-                </div>
-              </div>
-
-              {/* Username & Password Kredensial Controller */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2.5 border-t border-slate-200/70">
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                    Username Login Daikin ITM
-                  </label>
-                  <input
-                    type="text"
-                    value={acControllerUser}
-                    onChange={(e) => setAcControllerUser(e.target.value)}
-                    placeholder="Masukkan username manual..."
-                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 focus:ring-2 focus:ring-blue-600 focus:outline-none font-mono"
-                  />
-                  <p className="text-[10px] text-slate-400 mt-1">
-                    Username akun login pada web Daikin ITM (bebas diisi manual oleh Admin).
-                  </p>
-                </div>
-
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="block text-[11px] font-bold text-slate-700">
-                      Password Login Daikin ITM
-                    </label>
-                    {acControllerUser.trim() && acControllerUser.trim() !== acControllerPass && (
-                      <button
-                        type="button"
-                        onClick={() => setAcControllerPass(acControllerUser.trim())}
-                        className="text-[10px] text-blue-600 hover:text-blue-800 font-semibold cursor-pointer underline flex items-center gap-0.5"
-                        title="Isi password sama persis dengan username"
-                      >
-                        <span>⚡ Samakan dengan username</span>
-                      </button>
-                    )}
-                  </div>
-                  <div className="relative">
-                    <input
-                      type={showControllerPass ? "text" : "password"}
-                      value={acControllerPass}
-                      onChange={(e) => setAcControllerPass(e.target.value)}
-                      placeholder="Masukkan kata sandi manual..."
-                      className="w-full px-3 py-2 pr-9 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 focus:ring-2 focus:ring-blue-600 focus:outline-none font-mono"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowControllerPass(!showControllerPass)}
-                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
-                      title={showControllerPass ? "Sembunyikan password" : "Lihat password"}
-                    >
-                      {showControllerPass ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                    </button>
-                  </div>
-                  <p className="text-[10px] text-slate-400 mt-1">
-                    Kata sandi untuk form login Daikin ITM (bebas diisi manual oleh Admin).
-                  </p>
-                </div>
-              </div>
-
-              {/* Tips Kesamaan User & Sandi */}
-              <div className="bg-blue-50/80 border border-blue-200/80 rounded-xl p-2.5 flex items-start gap-2 text-[11px] text-blue-900">
-                <Info className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
-                <p>
-                  <strong>Tips Praktis Teknisi:</strong> Jika Username dan Password diisi sama persis{acControllerUser.trim() ? <> (misal: <code className="bg-blue-100 px-1.5 py-0.5 rounded font-mono font-bold text-blue-800">{acControllerUser.trim()}</code>)</> : ""}, teknisi cukup menekan tombol <strong>"Salin Kredensial & Buka Daikin"</strong> 1 kali di Dashboard, lalu langsung tinggal <em>paste</em> di kolom User dan <em>paste</em> lagi di kolom Sandi pada web Daikin.
-                </p>
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">
-                {t("threshold_percent")} (Surge Alarm)
-              </label>
-              <div className="flex items-center gap-2">
-                <input
-                  type="number"
-                  value={threshold}
-                  onChange={(e) => setThreshold(e.target.value)}
-                  placeholder="30"
-                  className="w-32 px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-900"
-                />
-                <span className="text-xs text-slate-500">
-                  % di atas rata-rata 7 pencatatan terakhir memicu alarm
-                </span>
-              </div>
             </div>
 
             {/* Shift start times */}
@@ -1709,51 +1678,100 @@ export function Settings() {
               </form>
             )}
 
-            <div className="divide-y divide-slate-100">
-              {usersList.map((u) => (
-                <div key={u.user_id} className="py-2.5 flex items-center justify-between">
-                  <div>
-                    <span className="text-xs font-bold text-slate-900 block">{u.name}</span>
-                    <span className="text-[11px] text-slate-500 font-mono">{u.email}</span>
+            {/* User List Accordion Toggle: only show list if clicked! */}
+            <div className="border border-slate-200 rounded-xl overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setShowUserList(!showUserList)}
+                className="w-full p-3.5 bg-slate-50 hover:bg-slate-100 flex items-center justify-between text-left transition cursor-pointer select-none group"
+              >
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center shrink-0">
+                    <Users className="w-4 h-4" />
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span
-                      className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
-                        u.role === "admin"
-                          ? "bg-purple-100 text-purple-700"
-                          : "bg-slate-100 text-slate-600"
-                      }`}
-                    >
-                      {u.role}
+                  <div>
+                    <span className="text-xs font-bold text-slate-800 group-hover:text-blue-700 block">
+                      {showUserList ? "Tutup Daftar Akun Pengguna" : "Lihat Daftar Akun Pengguna Terdaftar"}
                     </span>
-
-                    {/* Edit Password Button */}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setEditPassUser(u);
-                        setEditPassValue("");
-                        setShowEditPass(false);
-                      }}
-                      className="p-1.5 text-slate-400 hover:text-amber-600 rounded-lg hover:bg-amber-50 transition"
-                      title="Ganti Password Pengguna"
-                    >
-                      <Key className="w-3.5 h-3.5" />
-                    </button>
-
-                    {u.user_id !== user?.user_id && (
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteUser(u.user_id, u.name)}
-                        className="p-1.5 text-slate-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition"
-                        title="Hapus user"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    )}
+                    <span className="text-[11px] text-slate-500 block">
+                      Total {usersList.length} pengguna ({usersList.filter(u => u.role === "admin").length} Admin, {usersList.filter(u => u.role === "user").length} Teknisi)
+                    </span>
                   </div>
                 </div>
-              ))}
+                <div className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-700 group-hover:border-blue-300 group-hover:text-blue-700 shadow-2xs">
+                  <span>{showUserList ? "Tutup List" : "Klik Tampilkan List"}</span>
+                  {showUserList ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                </div>
+              </button>
+
+              {showUserList && (
+                <div className="p-3 border-t border-slate-200 space-y-2 bg-white animate-in fade-in duration-150">
+                  {usersList.length > 5 && (
+                    <div className="relative mb-2">
+                      <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5 pointer-events-none" />
+                      <input
+                        type="text"
+                        value={userListSearch}
+                        onChange={(e) => setUserListSearch(e.target.value)}
+                        placeholder="Cari nama atau username..."
+                        className="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium"
+                      />
+                    </div>
+                  )}
+                  <div className="divide-y divide-slate-100 max-h-[360px] overflow-y-auto">
+                    {usersList
+                      .filter((u) => {
+                        if (!userListSearch.trim()) return true;
+                        const q = userListSearch.toLowerCase();
+                        return u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q);
+                      })
+                      .map((u) => (
+                        <div key={u.user_id} className="py-2.5 flex items-center justify-between">
+                          <div>
+                            <span className="text-xs font-bold text-slate-900 block">{u.name}</span>
+                            <span className="text-[11px] text-slate-500 font-mono">{u.email}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span
+                              className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
+                                u.role === "admin"
+                                  ? "bg-purple-100 text-purple-700"
+                                  : "bg-slate-100 text-slate-600"
+                              }`}
+                            >
+                              {u.role}
+                            </span>
+
+                            {/* Edit Password Button */}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEditPassUser(u);
+                                setEditPassValue("");
+                                setShowEditPass(false);
+                              }}
+                              className="p-1.5 text-slate-400 hover:text-amber-600 rounded-lg hover:bg-amber-50 transition cursor-pointer"
+                              title="Ganti Password Pengguna"
+                            >
+                              <Key className="w-3.5 h-3.5" />
+                            </button>
+
+                            {u.user_id !== user?.user_id && (
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteUser(u.user_id, u.name)}
+                                className="p-1.5 text-slate-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition cursor-pointer"
+                                title="Hapus user"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -1877,15 +1895,8 @@ export function Settings() {
           </>
           )}
 
-          {/* Submenu E (Part 2): Integrasi Laporan & Sheets */}
-          {adminSubmenu === "general" && (
-            <ACIntegrationReportPanel propertyName={propertyName || "Midtown Hotel Samarinda"} />
-          )}
         </>
       )}
-
-      {/* CADANGAN & SINKRONISASI DATA AC PERLANTAI */}
-      <ACDataBackupSyncCard />
 
       {/* Versi & Perbarui Aplikasi Langsung */}
       <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-5 rounded-2xl border border-blue-200 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -1941,118 +1952,6 @@ export function Settings() {
             <span>English (US)</span>
             {lang === "en" && <CheckCircle2 className="w-4 h-4 text-blue-600" />}
           </button>
-        </div>
-      </div>
-
-      {/* Sinkronisasi & Cadangan Data Antar Perangkat (PC <-> HP) */}
-      <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
-          <div>
-            <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-              <Download className="w-4 h-4 text-blue-600" />
-              <span>Sinkronisasi & Pemindahan Data (PC &harr; HP)</span>
-            </h2>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Pindahkan seluruh unit kamar AC, riwayat perawatan, dan pengaturan dari PC ke HP atau sebaliknya dengan mudah.
-            </p>
-          </div>
-          <span className="text-[11px] font-semibold px-2.5 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full w-fit">
-            Bebas Kuota / 100% Offline
-          </span>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {/* Unduh JSON */}
-          <button
-            type="button"
-            onClick={() => {
-              try {
-                downloadFullSystemBackup();
-                setMsg({ text: "File data berhasil diunduh! Anda bisa memindahkannya ke HP.", kind: "ok" });
-              } catch {
-                setMsg({ text: "Gagal mengunduh file cadangan.", kind: "err" });
-              }
-            }}
-            className="flex items-center gap-3 p-3.5 bg-slate-50 hover:bg-blue-50/60 border border-slate-200 hover:border-blue-300 rounded-xl transition text-left group"
-          >
-            <div className="w-9 h-9 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center shrink-0 group-hover:scale-105 transition">
-              <Download className="w-4 h-4" />
-            </div>
-            <div>
-              <span className="text-xs font-bold text-slate-800 block">1. Unduh Data (.json)</span>
-              <span className="text-[11px] text-slate-500 block">Simpan semua kamar & log ke file</span>
-            </div>
-          </button>
-
-          {/* Salin Kode Teks */}
-          <button
-            type="button"
-            onClick={() => {
-              const ok = copySystemDataToClipboard();
-              if (ok) {
-                setCopiedSyncCode(true);
-                setMsg({ text: "Kode data sistem berhasil disalin! Anda bisa kirim lewat WA/Email ke HP.", kind: "ok" });
-                setTimeout(() => setCopiedSyncCode(false), 3000);
-              } else {
-                setMsg({ text: "Gagal menyalin kode data.", kind: "err" });
-              }
-            }}
-            className="flex items-center gap-3 p-3.5 bg-slate-50 hover:bg-emerald-50/60 border border-slate-200 hover:border-emerald-300 rounded-xl transition text-left group"
-          >
-            <div className="w-9 h-9 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 group-hover:scale-105 transition">
-              {copiedSyncCode ? <Check className="w-4 h-4 text-emerald-700" /> : <Copy className="w-4 h-4" />}
-            </div>
-            <div>
-              <span className="text-xs font-bold text-slate-800 block">
-                {copiedSyncCode ? "Kode Disalin!" : "2. Salin Kode Teks"}
-              </span>
-              <span className="text-[11px] text-slate-500 block">Kirim kode lewat WA/Email ke HP</span>
-            </div>
-          </button>
-
-          {/* Impor / Pulihkan */}
-          <div className="flex gap-2">
-            <input
-              type="file"
-              ref={fileInputRef}
-              accept=".json"
-              className="hidden"
-              onChange={async (e) => {
-                const file = e.target.files?.[0];
-                if (!file) return;
-                try {
-                  const text = await file.text();
-                  const res = await restoreSystemFromJSON(text);
-                  setMsg({ text: res.message, kind: "ok" });
-                  setTimeout(() => window.location.reload(), 1200);
-                } catch (err: any) {
-                  setMsg({ text: err.message || "Gagal memulihkan file data.", kind: "err" });
-                }
-              }}
-            />
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className="flex-1 flex items-center gap-3 p-3.5 bg-slate-50 hover:bg-amber-50/60 border border-slate-200 hover:border-amber-300 rounded-xl transition text-left group"
-            >
-              <div className="w-9 h-9 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center shrink-0 group-hover:scale-105 transition">
-                <Upload className="w-4 h-4" />
-              </div>
-              <div>
-                <span className="text-xs font-bold text-slate-800 block">3. Unggah File (.json)</span>
-                <span className="text-[11px] text-slate-500 block">Terapkan file data di HP</span>
-              </div>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setShowPasteModal(true)}
-              title="Tempel Kode Teks dari WA/Email"
-              className="px-3 py-3.5 bg-slate-50 hover:bg-purple-50 border border-slate-200 hover:border-purple-300 text-purple-700 rounded-xl transition flex items-center justify-center font-bold text-xs"
-            >
-              Tempel Kode
-            </button>
-          </div>
         </div>
       </div>
 

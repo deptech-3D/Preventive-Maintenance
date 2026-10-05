@@ -17,6 +17,15 @@
     <title>Preventive Maintenance</title>
     <meta name="description" content="Aplikasi Preventive Maintenance Perawatan AC Rutin Berjadwal dan Utilitas Hotel." />
     <script>
+      // Suppress benign Vite WebSocket connection errors in sandbox iframe environment
+      window.addEventListener('unhandledrejection', function(event) {
+        if (event && event.reason) {
+          var msg = String(event.reason.message || event.reason);
+          if (msg.includes('WebSocket') || msg.includes('websocket')) {
+            event.preventDefault();
+          }
+        }
+      });
       (function() {
         var CURRENT_VERSION = "2026-10-04-v6-controller-fix";
         var savedVersion = localStorage.getItem("pm_app_build_version");

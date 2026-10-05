@@ -1,5 +1,25 @@
 [
   {
+    "recorded_at": "2026-10-03T14:11:00.000Z",
+    "user_id": "usr_1790512626333_09nj",
+    "user_name": "Andi Pratama & Aliansyah",
+    "category": "Ruang Teknis & Utilitas",
+    "unit_id": "unit_l1_resto",
+    "unit_name": "Restoran / Coffee Shop",
+    "temp_before": 24.8,
+    "temp_after": 17.8,
+    "anemo_before": 1,
+    "anemo_after": 3,
+    "notes": "",
+    "photo_temp_before": "https://drive.google.com/file/d/13hSSLxgMF--yabePZ72GdMn-BiYHm55V/view",
+    "photo_temp_after": "https://drive.google.com/file/d/1anCw4dbWtmcHhv7aeXejLkKypTWRwgnN/view",
+    "photo_before": "https://drive.google.com/file/d/13hSSLxgMF--yabePZ72GdMn-BiYHm55V/view",
+    "photo_after": "https://drive.google.com/file/d/1anCw4dbWtmcHhv7aeXejLkKypTWRwgnN/view",
+    "log_id": "aclog_1791041427101_lhezv",
+    "created_at": "2026-10-03T15:30:27.101Z",
+    "updated_at": "2026-10-03T15:30:27.194Z"
+  },
+  {
     "recorded_at": "2026-10-02T03:50:00.000Z",
     "user_id": "usr_1790512626333_09nj",
     "user_name": "Andi Pratama & Divo Amrullah",

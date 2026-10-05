@@ -11,6 +11,17 @@ app.use(cors());
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
+// Prevent browser/PWA from caching index.html or service worker
+app.use((req: Request, res: Response, next) => {
+  const p = req.path;
+  if (p === "/" || p.endsWith(".html") || p.includes("sw.js") || p.includes("workbox") || p.includes("manifest")) {
+    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0");
+    res.setHeader("Pragma", "no-cache");
+    res.setHeader("Expires", "0");
+  }
+  next();
+});
+
 // File persistence setup with /tmp fallback for read-only containers
 const DATA_DIR = path.resolve(process.cwd(), "data");
 const DATA_FILE = path.join(DATA_DIR, "server_data.json");

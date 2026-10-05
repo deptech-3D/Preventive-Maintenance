@@ -281,32 +281,34 @@ export function ACScheduleNotificationPanel({
       {/* KPI Cards Header */}
       <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-xs space-y-4">
         <div
-          onClick={handleHeaderClick}
-          role="button"
-          tabIndex={0}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" || e.key === " ") {
-              e.preventDefault();
-              handleHeaderClick();
-            }
-          }}
-          className="flex items-center justify-between gap-3 border-b border-slate-100 pb-3.5 cursor-pointer group select-none"
+          className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3.5 select-none"
         >
-          <div className="flex items-center gap-3">
+          <div
+            onClick={handleHeaderClick}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                handleHeaderClick();
+              }
+            }}
+            className="flex items-center gap-3 cursor-pointer group flex-1"
+          >
             <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center font-bold shadow-md shadow-blue-500/20 shrink-0 group-hover:bg-blue-700 transition">
               <CalendarClock className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-slate-900 group-hover:text-blue-600 transition flex items-center gap-2">
+              <h2 className="text-sm sm:text-base font-bold text-slate-900 group-hover:text-blue-600 transition flex items-center gap-2">
                 <span>Daftar AC & VRV Mendekati Waktu Cleaning</span>
               </h2>
-              <p className="text-xs text-slate-500 mt-0.5">
+              <p className="text-[11px] sm:text-xs text-slate-500 mt-0.5">
                 Klik salah satu kolom di bawah untuk menampilkan daftar data unit yang terhitung
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 self-stretch sm:self-auto justify-end pt-1 sm:pt-0 border-t border-slate-100 sm:border-0">
             {/* Tombol Pintas Opsi A: Buka Modal Akses Daikin ITM Controller */}
             {controllerUrl && (
               <button
@@ -314,7 +316,7 @@ export function ACScheduleNotificationPanel({
                 onClick={(e) => {
                   e.stopPropagation();
                   setShowControllerModal(true);
-                  // Otomatis salin kredensial saat pop-up dibuka (karena user & sandi dibuat sama)
+                  // Otomatis salin kredensial saat pop-up dibuka jika tersedia
                   const credentialToCopy = controllerUser.trim();
                   if (credentialToCopy && typeof navigator !== "undefined" && navigator.clipboard) {
                     navigator.clipboard.writeText(credentialToCopy).then(() => {
@@ -323,22 +325,26 @@ export function ACScheduleNotificationPanel({
                     }).catch(() => {});
                   }
                 }}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200/90 transition shadow-2xs hover:shadow-xs shrink-0 cursor-pointer"
+                className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200/90 transition shadow-2xs hover:shadow-xs cursor-pointer min-h-[34px]"
                 title={`Buka ${controllerLabel} (${controllerUrl})`}
               >
-                <Server className="w-3.5 h-3.5 text-blue-600" />
-                <span>Buka {controllerLabel}</span>
+                <Server className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                <span className="truncate max-w-[170px] sm:max-w-none">Buka {controllerLabel}</span>
               </button>
             )}
 
-            <div className="hidden sm:flex items-center gap-1.5 text-[11px] font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-xl border border-slate-200/80 transition shrink-0">
-              <span>{selectedColumn ? "Tutup Daftar" : "Lihat Data"}</span>
+            <button
+              type="button"
+              onClick={handleHeaderClick}
+              className="inline-flex items-center justify-center gap-1.5 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-xl border border-slate-200/80 transition shrink-0 cursor-pointer min-h-[34px]"
+            >
+              <span className="hidden sm:inline">{selectedColumn ? "Tutup Daftar" : "Lihat Data"}</span>
               {selectedColumn ? (
                 <ChevronUp className="w-3.5 h-3.5" />
               ) : (
                 <ChevronDown className="w-3.5 h-3.5" />
               )}
-            </div>
+            </button>
           </div>
         </div>
 

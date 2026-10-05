@@ -18,6 +18,8 @@ import {
   Filter,
   CheckCheck,
   Zap,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import {
   AppSettings,
@@ -75,6 +77,7 @@ export function ACMaintenanceCycleSettings() {
   const [bulkOption, setBulkOption] = useState<string>("default");
   const [savingUnits, setSavingUnits] = useState<boolean>(false);
   const [unitMsg, setUnitMsg] = useState<{ text: string; kind: "ok" | "err" } | null>(null);
+  const [showCustomUnitsSection, setShowCustomUnitsSection] = useState<boolean>(false);
 
   // Quick area batch states
   const [quickBatchTarget, setQuickBatchTarget] = useState<string>("cat:Area Privat / Kamar Hotel");
@@ -544,7 +547,7 @@ export function ACMaintenanceCycleSettings() {
       </div>
 
       {/* 2. DEDICATED PER-UNIT / AREA CLEANING DURATION MANAGER */}
-      <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-5">
+      <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center shrink-0">
@@ -565,16 +568,53 @@ export function ACMaintenanceCycleSettings() {
             </div>
           </div>
 
-          <button
-            type="button"
-            onClick={handleSaveAllUnits}
-            disabled={savingUnits || loading}
-            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-sm flex items-center gap-1.5 transition shrink-0 self-start sm:self-auto disabled:opacity-50 cursor-pointer min-h-[38px]"
-          >
-            <Save className="w-4 h-4" />
-            <span>{savingUnits ? "Menyimpan..." : "Simpan Perubahan Unit"}</span>
-          </button>
+          <div className="flex items-center gap-2 self-start sm:self-auto shrink-0 flex-wrap">
+            <button
+              type="button"
+              onClick={() => setShowCustomUnitsSection(!showCustomUnitsSection)}
+              className="px-3.5 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer min-h-[38px]"
+            >
+              <span>{showCustomUnitsSection ? "Tutup Tabel Unit" : `Buka Tabel Unit (${units.length})`}</span>
+              {showCustomUnitsSection ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            </button>
+
+            {showCustomUnitsSection && (
+              <button
+                type="button"
+                onClick={handleSaveAllUnits}
+                disabled={savingUnits || loading}
+                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-sm flex items-center gap-1.5 transition disabled:opacity-50 cursor-pointer min-h-[38px]"
+              >
+                <Save className="w-4 h-4" />
+                <span>{savingUnits ? "Menyimpan..." : "Simpan Perubahan Unit"}</span>
+              </button>
+            )}
+          </div>
         </div>
+
+        {!showCustomUnitsSection ? (
+          <div
+            onClick={() => setShowCustomUnitsSection(true)}
+            className="p-4 bg-slate-50 hover:bg-indigo-50/50 border border-dashed border-slate-200 hover:border-indigo-300 rounded-xl transition cursor-pointer flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-left"
+          >
+            <div className="space-y-1">
+              <span className="text-xs font-bold text-slate-800 flex items-center gap-2">
+                <span>📋 Tabel Rincian Durasi Unit Disembunyikan</span>
+                <span className="text-[10px] bg-slate-200 text-slate-700 px-2 py-0.5 rounded-full font-semibold">
+                  Tampilan Rapi
+                </span>
+              </span>
+              <p className="text-[11px] text-slate-500">
+                Klik tombol ini untuk membuka tabel pengaturan cepat per kategori (Kamar Hotel, Komersial, Office, VRV) dan pengaturan manual per unit kamar.
+              </p>
+            </div>
+            <div className="flex items-center gap-1.5 text-xs font-bold text-indigo-600 shrink-0">
+              <span>Buka Tabel ({units.length} Unit)</span>
+              <ChevronDown className="w-4 h-4" />
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-5 animate-in fade-in duration-200">
 
         {unitMsg && (
           <div
@@ -1156,6 +1196,8 @@ export function ACMaintenanceCycleSettings() {
             <span>{savingUnits ? "Menyimpan..." : "Simpan Semua Perubahan Durasi Unit"}</span>
           </button>
         </div>
+        </div>
+        )}
       </div>
 
       {/* 3. ALGORITMA NOTIFIKASI */}

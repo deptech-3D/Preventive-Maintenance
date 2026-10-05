@@ -43,6 +43,9 @@ import {
   CalendarClock,
   HardDrive,
   Target,
+  ChevronDown,
+  ChevronUp,
+  Search,
 } from "lucide-react";
 import { ACMasterUnitsManager } from "./ACMasterUnitsManager";
 import { ACMaintenanceCycleSettings } from "./ACMaintenanceCycleSettings";
@@ -207,6 +210,29 @@ export function Settings() {
 
   // Admin AC Management Submenu State
   const [adminSubmenu, setAdminSubmenu] = useState<"master_ac" | "cycle_ac" | "gdrive_photo" | "reports" | "users" | "general">("gdrive_photo");
+  const [showUsersList, setShowUsersList] = useState(false);
+  const [userSearchTerm, setUserSearchTerm] = useState("");
+  const [showAdvancedPropertySettings, setShowAdvancedPropertySettings] = useState(false);
+
+  const handleSaveControllerAndBudget = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    setSaving(true);
+    try {
+      const updated = await updateAppSettings({
+        ac_room_daily_budget_multiplier: Math.max(1, parseInt(acDailyBudgetMultiplier, 10) || 2),
+        ac_controller_url: acControllerUrl.trim(),
+        ac_controller_label: acControllerLabel.trim() || "Daikin ITM Controller",
+        ac_controller_user: acControllerUser.trim(),
+        ac_controller_pass: acControllerPass.trim(),
+      });
+      setSettings(updated);
+      setMsg({ text: "Pengaturan Durasi, Budget & Controller Daikin ITM berhasil disimpan!", kind: "ok" });
+    } catch (err: any) {
+      setMsg({ text: err?.message || "Gagal menyimpan pengaturan", kind: "err" });
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const [updatingApp, setUpdatingApp] = useState(false);
 
@@ -285,13 +311,6 @@ export function Settings() {
       const s = (e as CustomEvent)?.detail;
       if (s && !saving && !uploadingBg) {
         setSettings(s);
-        if (s.dashboard_bg_url) setBgUrl(s.dashboard_bg_url);
-        if (s.property_name) setPropertyName(s.property_name);
-        if (s.ac_controller_url) setAcControllerUrl(s.ac_controller_url);
-        if (s.ac_controller_label) setAcControllerLabel(s.ac_controller_label);
-        if (s.ac_controller_user !== undefined) setAcControllerUser(s.ac_controller_user ?? "");
-        if (s.ac_controller_pass !== undefined) setAcControllerPass(s.ac_controller_pass ?? "");
-        if (s.ac_room_daily_budget_multiplier !== undefined) setAcDailyBudgetMultiplier(String(s.ac_room_daily_budget_multiplier));
       }
     };
 
@@ -651,7 +670,7 @@ export function Settings() {
             >
               <span className="flex items-center gap-2.5 min-w-0">
                 <HardDrive className="w-4 h-4 shrink-0" />
-                <span className="truncate whitespace-nowrap">C. Folder Foto Google Drive</span>
+                <span className="truncate whitespace-nowrap">C. Folder, Cadangan & Backup</span>
               </span>
               <span className="px-1.5 py-0.5 bg-emerald-500 text-white text-[9px] font-black rounded-full shrink-0 whitespace-nowrap">
                 Hemat DB
@@ -704,27 +723,315 @@ export function Settings() {
           {/* Submenu A: Master Lokasi/Unit */}
           {adminSubmenu === "master_ac" && <ACMasterUnitsManager />}
 
-          {/* Submenu B: Durasi Siklus Perawatan */}
-          {adminSubmenu === "cycle_ac" && <ACMaintenanceCycleSettings />}
+          {/* Submenu B: Durasi Siklus Perawatan, Target Budget & Kontroler AC */}
+          {adminSubmenu === "cycle_ac" && (
+            <div className="space-y-4">
+              {/* 1. Pengaturan Durasi Siklus Perawatan Master */}
+              <ACMaintenanceCycleSettings />
 
-          {/* Submenu C: Penyimpanan Foto Otomatis ke Google Drive */}
+              {/* 2. Target Budget Cleaning AC Kamar Bulanan */}
+              <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4" id="ac-room-budget-card">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                      <Target className="w-4 h-4 text-indigo-600" />
+                      <span>Target Budget Cleaning AC Kamar (Bulanan Otomatis)</span>
+                    </h3>
+                    <p className="text-[11px] text-slate-500 mt-0.5">
+                      Sistem otomatis menghitung budget bulanan: <strong>Jumlah hari dalam bulan berjalan &times; Target per hari</strong>.
+                      Contoh: Bulan Oktober (31 hari) &times; 2 = <strong>62 kamar</strong>.
+                    </p>
+                  </div>
+                  <span className="self-start sm:self-auto px-2.5 py-1 bg-indigo-50 border border-indigo-200 text-indigo-700 rounded-xl text-xs font-bold shrink-0">
+                    Otomatis Setiap Bulan
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                      Target Cuci Kamar per Hari (Kamar / Hari)
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        min="1"
+                        max="20"
+                        value={acDailyBudgetMultiplier}
+                        onChange={(e) => setAcDailyBudgetMultiplier(e.target.value)}
+                        placeholder="2"
+                        className="w-24 px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-900 focus:ring-2 focus:ring-indigo-600 focus:outline-none"
+                      />
+                      <span className="text-xs text-slate-600 font-medium">Kamar / Hari</span>
+                    </div>
+                    <p className="text-[10px] text-slate-400 mt-1">
+                      Standar tim engineering Midtown Hotel Samarinda: <strong>2 kamar / hari</strong>.
+                    </p>
+                  </div>
+
+                  <div className="bg-slate-50 p-3.5 rounded-xl border border-indigo-100 flex flex-col justify-center">
+                    <span className="text-[11px] font-semibold text-slate-600">Simulasi Target Bulan Ini:</span>
+                    <div className="mt-1 flex items-baseline gap-2">
+                      <span className="text-lg font-black text-indigo-900">
+                        {(new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate()) * (parseInt(acDailyBudgetMultiplier, 10) || 2)} Kamar
+                      </span>
+                      <span className="text-xs text-slate-500">
+                        ({new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate()} Hari &times; {parseInt(acDailyBudgetMultiplier, 10) || 2} kamar/hari)
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* 3. Integrasi Web Controller AC / Daikin ITM */}
+              <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4" id="ac-controller-integration-card">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                      <ExternalLink className="w-4 h-4 text-blue-600" />
+                      <span>Integrasi Web Controller AC / Daikin ITM</span>
+                    </h3>
+                    <p className="text-[11px] text-slate-500 mt-0.5">
+                      Tautan sistem kontroler AC terpusat (Daikin ITM / BMS Hotel). Dapat diganti sewaktu-waktu oleh Admin jika terdapat perubahan IP publik/port dari tim IT.
+                    </p>
+                  </div>
+                  {acControllerUrl && (
+                    <button
+                      type="button"
+                      onClick={() => window.open(acControllerUrl, "_blank", "noopener,noreferrer")}
+                      className="self-start sm:self-auto px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shrink-0 cursor-pointer shadow-2xs"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5" />
+                      <span>Uji Buka Tautan ↗</span>
+                    </button>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                      URL Web Controller (IP Publik / IP Lokal LAN)
+                    </label>
+                    <input
+                      type="text"
+                      value={acControllerUrl}
+                      onChange={(e) => setAcControllerUrl(e.target.value)}
+                      placeholder="http://36.91.27.90:57777/"
+                      className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 focus:ring-2 focus:ring-blue-600 focus:outline-none font-mono"
+                    />
+                    <div className="flex flex-wrap items-center gap-2 mt-1.5 text-[10px] text-slate-500">
+                      <span>Preset cepat:</span>
+                      <button
+                        type="button"
+                        onClick={() => setAcControllerUrl("http://36.91.27.90:57777/")}
+                        className="text-blue-600 hover:underline font-semibold cursor-pointer"
+                      >
+                        IP Publik (36.91.27.90:57777)
+                      </button>
+                      <span>&bull;</span>
+                      <button
+                        type="button"
+                        onClick={() => setAcControllerUrl("http://10.10.99.250/")}
+                        className="text-blue-600 hover:underline font-semibold cursor-pointer"
+                      >
+                        IP Lokal LAN (10.10.99.250)
+                      </button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                      Label Tombol di Dashboard
+                    </label>
+                    <input
+                      type="text"
+                      value={acControllerLabel}
+                      onChange={(e) => setAcControllerLabel(e.target.value)}
+                      placeholder="Daikin ITM Controller"
+                      className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 focus:ring-2 focus:ring-blue-600 focus:outline-none font-medium"
+                    />
+                    <p className="text-[10px] text-slate-400 mt-1.5">
+                      Nama tombol yang akan tampil di header kartu AC & VRV di Dashboard.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Username & Password Kredensial Controller */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2.5 border-t border-slate-200/70">
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                      Username Login Daikin ITM
+                    </label>
+                    <input
+                      type="text"
+                      value={acControllerUser}
+                      onChange={(e) => setAcControllerUser(e.target.value)}
+                      placeholder="Masukkan username manual..."
+                      className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 focus:ring-2 focus:ring-blue-600 focus:outline-none font-mono"
+                    />
+                    <p className="text-[10px] text-slate-400 mt-1">
+                      Username akun login pada web Daikin ITM (bebas diisi manual oleh Admin).
+                    </p>
+                  </div>
+
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-[11px] font-bold text-slate-700">
+                        Password Login Daikin ITM
+                      </label>
+                      {acControllerUser.trim() && acControllerUser.trim() !== acControllerPass && (
+                        <button
+                          type="button"
+                          onClick={() => setAcControllerPass(acControllerUser.trim())}
+                          className="text-[10px] text-blue-600 hover:text-blue-800 font-semibold cursor-pointer underline flex items-center gap-0.5"
+                          title="Isi password sama persis dengan username"
+                        >
+                          <span>⚡ Samakan dengan username</span>
+                        </button>
+                      )}
+                    </div>
+                    <div className="relative">
+                      <input
+                        type={showControllerPass ? "text" : "password"}
+                        value={acControllerPass}
+                        onChange={(e) => setAcControllerPass(e.target.value)}
+                        placeholder="Masukkan kata sandi manual..."
+                        className="w-full px-3 py-2 pr-9 bg-white border border-slate-200 rounded-xl text-xs text-slate-900 focus:ring-2 focus:ring-blue-600 focus:outline-none font-mono"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowControllerPass(!showControllerPass)}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                      >
+                        {showControllerPass ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                      </button>
+                    </div>
+                    <p className="text-[10px] text-slate-400 mt-1">
+                      Kata sandi untuk form login Daikin ITM (bebas diisi manual oleh Admin).
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex justify-end pt-3 border-t border-slate-100">
+                  <button
+                    type="button"
+                    disabled={saving}
+                    onClick={handleSaveControllerAndBudget}
+                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl transition shadow-sm flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
+                  >
+                    <Save className="w-3.5 h-3.5" />
+                    <span>{saving ? "Menyimpan..." : "Simpan Durasi, Budget & Controller"}</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Submenu C: Folder, Cadangan Data & Unduh File Excel */}
           {adminSubmenu === "gdrive_photo" && (
-            <GoogleDrivePhotoSettingsCard
-              onSaved={(updated) => {
-                setSettings(updated);
-              }}
-            />
+            <div className="space-y-4">
+              {/* 1. Folder Foto Google Drive */}
+              <GoogleDrivePhotoSettingsCard
+                onSaved={(updated) => {
+                  setSettings(updated);
+                }}
+              />
+
+              {/* 2. Cadangan & Sinkronisasi Data AC Perlantai (Unduh File Excel & JSON) */}
+              <ACDataBackupSyncCard />
+
+              {/* 3. Sinkronisasi & Pemindahan Data Antar Perangkat (PC <-> HP) */}
+              <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                      <Download className="w-4 h-4 text-blue-600" />
+                      <span>Sinkronisasi & Pemindahan Data Cadangan (PC &harr; HP)</span>
+                    </h3>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      Pindahkan seluruh unit kamar AC, riwayat perawatan, dan pengaturan dari PC ke HP atau sebaliknya dengan mudah.
+                    </p>
+                  </div>
+                  <span className="text-[11px] font-semibold px-2.5 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full w-fit">
+                    Bebas Kuota / 100% Offline
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {/* Unduh JSON */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      try {
+                        downloadFullSystemBackup();
+                        setMsg({ text: "File data berhasil diunduh! Anda bisa memindahkannya ke HP.", kind: "ok" });
+                      } catch {
+                        setMsg({ text: "Gagal mengunduh file cadangan.", kind: "err" });
+                      }
+                    }}
+                    className="p-3.5 bg-slate-50 hover:bg-blue-50 border border-slate-200 hover:border-blue-300 rounded-xl text-left transition space-y-1.5 cursor-pointer group"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-slate-800 group-hover:text-blue-700">1. Unduh File Cadangan (.json)</span>
+                      <Download className="w-4 h-4 text-slate-400 group-hover:text-blue-600" />
+                    </div>
+                    <p className="text-[11px] text-slate-500 leading-normal">
+                      Simpan data ke memori perangkat untuk dipindahkan lewat WhatsApp / USB.
+                    </p>
+                  </button>
+
+                  {/* Salin JSON */}
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      try {
+                        await copyFullSystemBackupToClipboard();
+                        setCopiedFullData(true);
+                        setMsg({ text: "Seluruh data sistem berhasil disalin ke Clipboard!", kind: "ok" });
+                        setTimeout(() => setCopiedFullData(false), 3000);
+                      } catch {
+                        setMsg({ text: "Gagal menyalin teks data.", kind: "err" });
+                      }
+                    }}
+                    className="p-3.5 bg-slate-50 hover:bg-emerald-50 border border-slate-200 hover:border-emerald-300 rounded-xl text-left transition space-y-1.5 cursor-pointer group"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-slate-800 group-hover:text-emerald-700">
+                        {copiedFullData ? "✓ Teks Berhasil Disalin!" : "2. Salin Seluruh Data"}
+                      </span>
+                      <Copy className={`w-4 h-4 ${copiedFullData ? "text-emerald-600" : "text-slate-400 group-hover:text-emerald-600"}`} />
+                    </div>
+                    <p className="text-[11px] text-slate-500 leading-normal">
+                      Salin seluruh kode data untuk langsung di-paste ke HP lewat chat/catatan.
+                    </p>
+                  </button>
+
+                  {/* Tempel Masuk JSON */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPasteFullDataText("");
+                      setShowPasteModal(true);
+                    }}
+                    className="p-3.5 bg-slate-50 hover:bg-purple-50 border border-slate-200 hover:border-purple-300 rounded-xl text-left transition space-y-1.5 cursor-pointer group sm:col-span-2 lg:col-span-1"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-slate-800 group-hover:text-purple-700">3. Tempel Data Masuk (Impor)</span>
+                      <Upload className="w-4 h-4 text-slate-400 group-hover:text-purple-600" />
+                    </div>
+                    <p className="text-[11px] text-slate-500 leading-normal">
+                      Buka kotak untuk menempel teks kode data cadangan dari perangkat lain.
+                    </p>
+                  </button>
+                </div>
+              </div>
+            </div>
           )}
 
           {/* Submenu D: Integrasi Google Sheets, Excel & Laporan Otomatis */}
           {adminSubmenu === "reports" && (
             <div className="space-y-4">
               <ACIntegrationReportPanel propertyName={propertyName || "Midtown Hotel Samarinda"} />
-              <GoogleDrivePhotoSettingsCard
-                onSaved={(updated) => {
-                  setSettings(updated);
-                }}
-              />
             </div>
           )}
 

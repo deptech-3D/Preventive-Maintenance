@@ -11,8 +11,30 @@
     <link rel="manifest" href="/manifest.json?v=3" />
     <meta name="theme-color" content="#043580" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
     <title>Preventive Maintenance</title>
     <meta name="description" content="Aplikasi Preventive Maintenance Perawatan AC Rutin Berjadwal dan Utilitas Hotel." />
+    <script>
+      (function() {
+        var CURRENT_VERSION = "2026-10-04-v6-controller-fix";
+        var savedVersion = localStorage.getItem("pm_app_build_version");
+        if (savedVersion !== CURRENT_VERSION) {
+          localStorage.setItem("pm_app_build_version", CURRENT_VERSION);
+          if ('caches' in window) {
+            caches.keys().then(function(names) {
+              names.forEach(function(name) { caches.delete(name); });
+            });
+          }
+          if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then(function(regs) {
+              regs.forEach(function(reg) { reg.unregister(); });
+            });
+          }
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

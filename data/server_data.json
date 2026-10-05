@@ -149,7 +149,8 @@
     "aclog_1790560059254_4f32b",
     "aclog_1790559903421_6us8s",
     "aclog_1790664816465_6gs4g",
-    "aclog_1790667710402_detno"
+    "aclog_1790667710402_detno",
+    "aclog_1791004600175_9xa9a"
   ],
   "settings": {
     "settings_id": "global",
@@ -178,7 +179,7 @@
     "genset_min_battery_volt": 24,
     "hydrant_min_battery_volt": 24,
     "lvmdp_max_room_temp": 32,
-    "updated_at": "2026-10-03T04:17:06.675Z",
+    "updated_at": "2026-10-04T16:16:28.493Z",
     "gdrive_folder_id": "1Pi0LhIZmUjOu0r40ikjcRJ-7h8UKrxCp",
     "gdrive_script_url": "https://script.google.com/macros/s/AKfycbwZgzXowXdSOuVjeYUcIsGAUjV-U8xqJVOKADq0m0UN1ft0fR-oRTNvzCwY1zzckbX5/exec",
     "gdrive_enabled": true,
@@ -3337,6 +3338,26 @@
   ],
   "ac_logs": [
     {
+      "recorded_at": "2026-10-03T14:11:00.000Z",
+      "user_id": "usr_1790512626333_09nj",
+      "user_name": "Andi Pratama & Aliansyah",
+      "category": "Ruang Teknis & Utilitas",
+      "unit_id": "unit_l1_resto",
+      "unit_name": "Restoran / Coffee Shop",
+      "temp_before": 24.8,
+      "temp_after": 17.8,
+      "anemo_before": 1,
+      "anemo_after": 3,
+      "notes": "",
+      "photo_temp_before": "https://drive.google.com/file/d/13hSSLxgMF--yabePZ72GdMn-BiYHm55V/view",
+      "photo_temp_after": "https://drive.google.com/file/d/1anCw4dbWtmcHhv7aeXejLkKypTWRwgnN/view",
+      "photo_before": "https://drive.google.com/file/d/13hSSLxgMF--yabePZ72GdMn-BiYHm55V/view",
+      "photo_after": "https://drive.google.com/file/d/1anCw4dbWtmcHhv7aeXejLkKypTWRwgnN/view",
+      "log_id": "aclog_1791041427101_lhezv",
+      "created_at": "2026-10-03T15:30:27.101Z",
+      "updated_at": "2026-10-03T15:30:27.194Z"
+    },
+    {
       "recorded_at": "2026-10-02T03:50:00.000Z",
       "user_id": "usr_1790512626333_09nj",
       "user_name": "Andi Pratama & Divo Amrullah",
@@ -4225,6 +4246,6 @@
       "updated_at": "2026-09-28T06:10:44.742Z"
     }
   ],
-  "last_updated": "2026-10-03T04:17:06.675Z",
+  "last_updated": "2026-10-04T16:16:38.336Z",
   "deleted_ac_logs_trash": []
 }

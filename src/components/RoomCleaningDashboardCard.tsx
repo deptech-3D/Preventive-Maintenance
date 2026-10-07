@@ -600,32 +600,6 @@ export function RoomCleaningDashboardCard({ onOpenACLog }: RoomCleaningDashboard
         </div>
       </div>
 
-      {/* Progress Bar Visual */}
-      <div className="mt-4 bg-slate-50 p-3 rounded-xl border border-slate-100">
-        <div className="flex items-center justify-between text-xs font-semibold mb-1.5">
-          <span className="text-slate-700 flex items-center gap-1.5">
-            <Sparkles className="w-3.5 h-3.5 text-blue-600" />
-            <span>Progress Cuci Kamar Hotel:</span>
-            <strong className="text-slate-900">
-              {cleanCount} dari {totalRooms} Kamar ({percentClean}%)
-            </strong>
-          </span>
-          <span className="text-slate-500 text-[11px]">
-            Sisa <strong>{uncleanCount} Kamar</strong> belum dicuci
-          </span>
-        </div>
-        <div className="w-full h-2.5 bg-slate-200 rounded-full overflow-hidden flex">
-          <div
-            className="bg-emerald-500 h-full transition-all duration-700 ease-out"
-            style={{ width: `${percentClean}%` }}
-          />
-          <div
-            className="bg-amber-400 h-full transition-all duration-700 ease-out"
-            style={{ width: `${100 - percentClean}%` }}
-          />
-        </div>
-      </div>
-
       {/* Target Budget Cleaning AC Kamar (Bulanan Otomatis) */}
       <div className="mt-4 p-4 rounded-2xl bg-gradient-to-br from-indigo-50/70 via-blue-50/40 to-slate-50 border border-indigo-100/90 shadow-2xs">
         {/* Top Header of Budget Card */}
@@ -899,6 +873,32 @@ export function RoomCleaningDashboardCard({ onOpenACLog }: RoomCleaningDashboard
             </span>
           </div>
         </button>
+      </div>
+
+      {/* Progress Bar Visual (Di bawah 3 Kartu Ringkasan) */}
+      <div className="mt-3.5 bg-slate-50 p-3 rounded-xl border border-slate-100 shadow-2xs">
+        <div className="flex items-center justify-between text-xs font-semibold mb-1.5">
+          <span className="text-slate-700 flex items-center gap-1.5">
+            <Sparkles className="w-3.5 h-3.5 text-blue-600" />
+            <span>Progress Cuci Kamar Hotel:</span>
+            <strong className="text-slate-900">
+              {cleanCount} dari {totalRooms} Kamar ({percentClean}%)
+            </strong>
+          </span>
+          <span className="text-slate-500 text-[11px]">
+            Sisa <strong>{uncleanCount} Kamar</strong> belum dicuci
+          </span>
+        </div>
+        <div className="w-full h-2.5 bg-slate-200 rounded-full overflow-hidden flex">
+          <div
+            className="bg-emerald-500 h-full transition-all duration-700 ease-out"
+            style={{ width: `${percentClean}%` }}
+          />
+          <div
+            className="bg-amber-400 h-full transition-all duration-700 ease-out"
+            style={{ width: `${100 - percentClean}%` }}
+          />
+        </div>
       </div>
 
       {/* Expanded Detail Section by Floor */}

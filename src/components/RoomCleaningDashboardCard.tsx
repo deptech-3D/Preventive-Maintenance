@@ -19,6 +19,8 @@ import {
   Calendar,
   ChevronLeft,
   ChevronRight,
+  Table,
+  Check,
 } from "lucide-react";
 import {
   ACUnitScheduleStatus,
@@ -68,6 +70,7 @@ export function RoomCleaningDashboardCard({ onOpenACLog }: RoomCleaningDashboard
   const [statusFilter, setStatusFilter] = useState<"all" | "clean" | "unclean">("all");
   const [selectedFloor, setSelectedFloor] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState<string>("");
+  const [dualACModalRoom, setDualACModalRoom] = useState<RoomCleaningItem | null>(null);
 
   // Monthly Budget Target States
   const [acLogs, setAcLogs] = useState<ACMaintenanceLog[]>(() => getLocalACLogs());
@@ -442,6 +445,65 @@ export function RoomCleaningDashboardCard({ onOpenACLog }: RoomCleaningDashboard
       return true;
     });
   }, [roomItems, statusFilter, selectedFloor, searchQuery]);
+
+  // Format date helper: "04 Okt"
+  const formatShortDate = (isoString?: string | null) => {
+    if (!isoString) return "";
+    const d = new Date(isoString);
+    if (isNaN(d.getTime())) return "";
+    return d.toLocaleDateString("id-ID", { day: "numeric", month: "short" });
+  };
+
+  // Rooms organized by floor column (Pilihan A: Format Matriks Excel Foto 2)
+  const roomsByFloor = useMemo(() => {
+    const floorOrder = [
+      "Lantai 3",
+      "Lantai 5",
+      "Lantai 6",
+      "Lantai 7",
+      "Lantai 8",
+      "Lantai 9",
+      "Lantai 10",
+      "Lantai 11",
+      "Lantai 12",
+    ];
+    const grouped = new Map<string, RoomCleaningItem[]>();
+    for (const f of floorOrder) {
+      grouped.set(f, []);
+    }
+
+    for (const r of filteredRooms) {
+      if (!grouped.has(r.floor)) {
+        grouped.set(r.floor, []);
+      }
+      grouped.get(r.floor)!.push(r);
+    }
+
+    const result: { floor: string; rooms: RoomCleaningItem[]; cleanCount: number; totalCount: number }[] = [];
+    for (const [floor, rooms] of grouped.entries()) {
+      if (selectedFloor !== "all" && floor !== selectedFloor) continue;
+      if (rooms.length > 0 || (selectedFloor === floor && filteredRooms.length === 0)) {
+        const clean = rooms.filter((rm) => rm.isClean).length;
+        result.push({
+          floor,
+          rooms,
+          cleanCount: clean,
+          totalCount: rooms.length,
+        });
+      }
+    }
+    return result;
+  }, [filteredRooms, selectedFloor]);
+
+  // Handle clicking a room to quickly log AC cleaning
+  const handleRoomClick = (room: RoomCleaningItem) => {
+    if (!onOpenACLog) return;
+    if (room.units.length === 1) {
+      onOpenACLog(room.units[0].unit.id);
+    } else if (room.units.length > 1) {
+      setDualACModalRoom(room);
+    }
+  };
 
   // Handle clicking column cards
   const handleCardClick = (targetStatus: "all" | "clean" | "unclean") => {
@@ -932,7 +994,7 @@ export function RoomCleaningDashboardCard({ onOpenACLog }: RoomCleaningDashboard
               <button
                 type="button"
                 onClick={() => setStatusFilter("all")}
-                className={`px-2.5 py-1 rounded-lg transition ${
+                className={`px-2.5 py-1 rounded-lg transition cursor-pointer ${
                   statusFilter === "all"
                     ? "bg-white text-slate-900 shadow-xs"
                     : "text-slate-600 hover:text-slate-900"
@@ -943,7 +1005,7 @@ export function RoomCleaningDashboardCard({ onOpenACLog }: RoomCleaningDashboard
               <button
                 type="button"
                 onClick={() => setStatusFilter("clean")}
-                className={`px-2.5 py-1 rounded-lg transition flex items-center gap-1 ${
+                className={`px-2.5 py-1 rounded-lg transition flex items-center gap-1 cursor-pointer ${
                   statusFilter === "clean"
                     ? "bg-emerald-600 text-white shadow-xs"
                     : "text-emerald-700 hover:text-emerald-900"
@@ -955,7 +1017,7 @@ export function RoomCleaningDashboardCard({ onOpenACLog }: RoomCleaningDashboard
               <button
                 type="button"
                 onClick={() => setStatusFilter("unclean")}
-                className={`px-2.5 py-1 rounded-lg transition flex items-center gap-1 ${
+                className={`px-2.5 py-1 rounded-lg transition flex items-center gap-1 cursor-pointer ${
                   statusFilter === "unclean"
                     ? "bg-amber-600 text-white shadow-xs"
                     : "text-amber-700 hover:text-amber-900"
@@ -1007,159 +1069,179 @@ export function RoomCleaningDashboardCard({ onOpenACLog }: RoomCleaningDashboard
             ))}
           </div>
 
-          {/* Rooms Grid */}
-          {filteredRooms.length === 0 ? (
+          {/* MATRIKS KOLOM EXCEL (FORMAT SEPERTI FOTO 2) */}
+          {roomsByFloor.length === 0 ? (
             <div className="p-8 text-center bg-slate-50 rounded-xl border border-slate-200 text-slate-500 text-xs">
               <Layers className="w-8 h-8 text-slate-300 mx-auto mb-2" />
               <p className="font-semibold text-slate-700">Tidak ada kamar yang cocok dengan filter</p>
               <p className="text-slate-400 mt-0.5">
-                Coba ubah kata kunci pencarian atau ganti pilihan filter lantai / status.
+                Coba ubah kata kunci pencarian atau reset filter.
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 max-h-[520px] overflow-y-auto pr-1">
-              {filteredRooms.map((room) => {
-                const dateFormatted = room.lastCleanedDate
-                  ? new Date(room.lastCleanedDate).toLocaleDateString("id-ID", {
-                      day: "numeric",
-                      month: "short",
-                      year: "numeric",
-                    })
-                  : null;
+            <div className="overflow-x-auto pb-3 pt-1 -mx-1 px-1">
+              <div className="flex gap-2.5 min-w-max items-start">
+                {roomsByFloor.map((f) => (
+                  <div
+                    key={f.floor}
+                    className="w-[140px] sm:w-[150px] bg-white border border-slate-200 rounded-xl overflow-hidden shadow-2xs shrink-0 flex flex-col"
+                  >
+                    {/* Floor Header */}
+                    <div className="bg-slate-900 text-white px-2.5 py-2 flex items-center justify-between text-xs font-bold select-none">
+                      <span className="truncate">{f.floor}</span>
+                      <span
+                        className={`text-[10px] px-1.5 py-0.2 rounded font-semibold ${
+                          f.cleanCount === f.totalCount && f.totalCount > 0
+                            ? "bg-emerald-500 text-white"
+                            : "bg-slate-800 text-slate-300"
+                        }`}
+                      >
+                        {f.cleanCount}/{f.totalCount}
+                      </span>
+                    </div>
 
+                    {/* Subheader: KMR | Tanggal */}
+                    <div className="bg-slate-100 border-b border-slate-200 grid grid-cols-2 text-[10px] font-bold text-slate-600 text-center py-1.5 uppercase tracking-wider select-none">
+                      <div className="border-r border-slate-200">KMR</div>
+                      <div>Tanggal</div>
+                    </div>
+
+                    {/* Room Rows List */}
+                    <div className="divide-y divide-slate-100 max-h-[500px] overflow-y-auto">
+                      {f.rooms.map((room) => {
+                        const shortDate = formatShortDate(room.lastCleanedDate);
+                        return (
+                          <div
+                            key={room.id}
+                            onClick={() => handleRoomClick(room)}
+                            className="grid grid-cols-2 items-center py-1.5 px-1 hover:bg-blue-50/80 transition cursor-pointer group text-xs select-none"
+                            title={`Klik untuk catat cuci Kamar ${room.roomName}${
+                              room.lastCleanedDate
+                                ? ` (Terakhir dicuci: ${new Date(room.lastCleanedDate).toLocaleDateString(
+                                    "id-ID"
+                                  )}${room.lastCleanedTech ? ` oleh ${room.lastCleanedTech}` : ""})`
+                                : " (Belum pernah dicuci)"
+                            }`}
+                          >
+                            {/* KMR Column */}
+                            <div className="flex items-center justify-center gap-1 font-bold text-slate-900 group-hover:text-blue-700 border-r border-slate-100">
+                              <span>{room.cleanRoomNumber}</span>
+                              {room.hasMultipleAC && (
+                                <span
+                                  className="text-[8px] px-1 py-0.2 rounded font-bold bg-purple-100 text-purple-700"
+                                  title="Kamar Suite 2 AC"
+                                >
+                                  2AC
+                                </span>
+                              )}
+                              {isAdmin && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setRoomToDelete(room);
+                                  }}
+                                  className="opacity-0 group-hover:opacity-100 p-0.5 text-slate-400 hover:text-red-600 transition shrink-0 ml-0.5 cursor-pointer"
+                                  title={`Hapus ${room.roomName} dari Master`}
+                                >
+                                  <Trash2 className="w-2.5 h-2.5" />
+                                </button>
+                              )}
+                            </div>
+
+                            {/* Tanggal / Status Column */}
+                            <div className="text-center px-1">
+                              {room.isClean ? (
+                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 shadow-2xs">
+                                  <Check className="w-3 h-3 text-emerald-600 stroke-[3]" />
+                                  <span>{shortDate}</span>
+                                </span>
+                              ) : room.isPartiallyClean ? (
+                                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-bold text-amber-700 bg-amber-50 border border-amber-200 shadow-2xs">
+                                  <span>✓½</span>
+                                  <span>{shortDate}</span>
+                                </span>
+                              ) : (
+                                <span className="inline-block text-[10px] font-semibold text-amber-600 px-1.5 py-0.5 rounded bg-amber-50/70">
+                                  Belum
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* MODAL: PILIH AC UNTUK KAMAR SUITE (DUAL AC) */}
+      {dualACModalRoom && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 animate-in fade-in duration-150">
+          <div className="bg-white w-full max-w-sm rounded-2xl shadow-xl border border-slate-200 overflow-hidden">
+            <div className="flex items-center justify-between px-4 py-3.5 border-b border-slate-100 bg-slate-50">
+              <div className="flex items-center gap-2">
+                <BedDouble className="w-4 h-4 text-blue-600" />
+                <div>
+                  <h3 className="font-bold text-slate-900 text-sm">
+                    {dualACModalRoom.roomName}
+                  </h3>
+                  <p className="text-[10px] text-slate-500">
+                    {dualACModalRoom.floor} &bull; Memiliki 2 Unit AC
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setDualACModalRoom(null)}
+                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="p-4 space-y-2.5">
+              <p className="text-xs text-slate-600 mb-1 font-medium">
+                Pilih unit AC yang ingin dicatat pencuciannya:
+              </p>
+              {dualACModalRoom.units.map((u) => {
+                const isSafe = u.status === "safe" || u.status === "approaching";
                 return (
                   <div
-                    key={room.id}
-                    className={`p-3.5 rounded-xl border transition-all flex flex-col justify-between relative group ${
-                      room.isClean
-                        ? "bg-white border-emerald-200 hover:border-emerald-300 hover:shadow-xs"
-                        : room.isPartiallyClean
-                        ? "bg-amber-50/40 border-amber-200 hover:border-amber-300 hover:shadow-xs"
-                        : "bg-white border-slate-200 hover:border-slate-300 hover:shadow-xs"
-                    }`}
+                    key={u.unit.id}
+                    className="p-3 rounded-xl border border-slate-200 flex items-center justify-between bg-slate-50 hover:bg-blue-50/60 transition"
                   >
                     <div>
-                      {/* Top Row: Room Name & Badges */}
-                      <div className="flex items-start justify-between gap-1.5">
-                        <div>
-                          <div className="flex items-center gap-1.5">
-                            <span className="font-bold text-sm text-slate-900 tracking-tight">
-                              {room.roomName}
-                            </span>
-                            {room.hasMultipleAC && (
-                              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-purple-50 text-purple-700 border border-purple-200">
-                                2 AC
-                              </span>
-                            )}
-                          </div>
-                          <span className="text-[11px] text-slate-500 font-medium block">
-                            {room.floor}
-                          </span>
-                        </div>
-
-                        {/* Status Pill */}
-                        <div>
-                          {room.isClean ? (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                              <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                              <span>Sudah Cuci</span>
-                            </span>
-                          ) : room.isPartiallyClean ? (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
-                              <AlertCircle className="w-3 h-3 text-amber-600" />
-                              <span>1/2 AC Cuci</span>
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600 border border-slate-200">
-                              <Clock className="w-3 h-3 text-slate-400" />
-                              <span>Belum Cuci</span>
-                            </span>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Detail Unit AC Status */}
-                      <div className="mt-2.5 space-y-1 bg-slate-50/80 p-2 rounded-lg border border-slate-100 text-[11px]">
-                        {room.units.map((u) => {
-                          const isUnitSafe = u.status === "safe" || u.status === "approaching";
-                          return (
-                            <div key={u.unit.id} className="flex items-center justify-between">
-                              <span className="font-medium text-slate-700 truncate max-w-[140px]">
-                                {room.hasMultipleAC ? u.unit.name.replace(room.roomName, "").trim() || u.unit.name : "AC Indoor"}
-                              </span>
-                              <span
-                                className={`text-[10px] font-semibold ${
-                                  isUnitSafe ? "text-emerald-600" : "text-amber-600"
-                                }`}
-                              >
-                                {isUnitSafe ? "Bersih" : u.status === "never" ? "Belum" : "Jatuh Tempo"}
-                              </span>
-                            </div>
-                          );
-                        })}
-
-                        {/* Last Cleaned Info */}
-                        <div className="pt-1 mt-1 border-t border-slate-200/60 text-[10px] text-slate-500">
-                          {dateFormatted ? (
-                            <span>
-                              Terakhir: <strong>{dateFormatted}</strong>
-                              {room.lastCleanedTech && ` (${room.lastCleanedTech})`}
-                            </span>
-                          ) : (
-                            <span className="text-slate-400 italic">Belum ada riwayat cuci</span>
-                          )}
-                        </div>
-                      </div>
+                      <span className="font-bold text-xs text-slate-900 block">
+                        {u.unit.name}
+                      </span>
+                      <span
+                        className={`text-[10px] font-semibold ${
+                          isSafe ? "text-emerald-600" : "text-amber-600"
+                        }`}
+                      >
+                        {isSafe ? "✓ Sudah Cuci" : "Belum Cuci"}
+                      </span>
                     </div>
-
-                    {/* Bottom Actions */}
-                    <div className="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between gap-1.5">
-                      {/* Log Action Button */}
-                      {onOpenACLog && (
-                        <div className="flex-1 flex gap-1">
-                          {room.units.length === 1 ? (
-                            <button
-                              type="button"
-                              onClick={() => onOpenACLog(room.units[0].unit.id)}
-                              className="w-full text-center px-2 py-1 text-[11px] font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg transition flex items-center justify-center gap-1 cursor-pointer"
-                            >
-                              <Wrench className="w-3 h-3" />
-                              <span>Catat Cuci</span>
-                            </button>
-                          ) : (
-                            // Dual AC Room: Provide quick buttons for each unit
-                            room.units.map((u) => (
-                              <button
-                                key={u.unit.id}
-                                type="button"
-                                onClick={() => onOpenACLog(u.unit.id)}
-                                className="flex-1 text-center px-1.5 py-1 text-[10px] font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg transition truncate cursor-pointer"
-                                title={`Catat Cuci ${u.unit.name}`}
-                              >
-                                {u.unit.name.includes("A") ? "Cuci AC A" : u.unit.name.includes("B") ? "Cuci AC B" : "Cuci AC"}
-                              </button>
-                            ))
-                          )}
-                        </div>
-                      )}
-
-                      {/* Admin Delete Room Button */}
-                      {isAdmin && (
-                        <button
-                          type="button"
-                          onClick={() => setRoomToDelete(room)}
-                          className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition shrink-0 cursor-pointer"
-                          title={`Hapus ${room.roomName} dari Master`}
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      )}
-                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const unitId = u.unit.id;
+                        setDualACModalRoom(null);
+                        if (onOpenACLog) onOpenACLog(unitId);
+                      }}
+                      className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-xs transition cursor-pointer"
+                    >
+                      Catat Cuci
+                    </button>
                   </div>
                 );
               })}
             </div>
-          )}
+          </div>
         </div>
       )}
 

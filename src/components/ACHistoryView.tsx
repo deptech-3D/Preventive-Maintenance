@@ -1178,9 +1178,9 @@ export function ACHistoryView() {
 
       {/* DETAIL MODAL */}
       {selectedLog && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs">
-          <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl border border-slate-200 overflow-hidden animate-in fade-in zoom-in-95">
-            <div className="bg-blue-600 text-white px-5 py-4 flex items-center justify-between">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/60 backdrop-blur-xs overflow-y-auto">
+          <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl border border-slate-200 overflow-hidden animate-in fade-in zoom-in-95 max-h-[92vh] flex flex-col my-auto">
+            <div className="bg-blue-600 text-white px-5 py-4 flex items-center justify-between shrink-0">
               <div>
                 <h3 className="text-sm font-bold flex items-center gap-2">
                   <Thermometer className="w-4 h-4" />
@@ -1196,7 +1196,7 @@ export function ACHistoryView() {
               </button>
             </div>
 
-            <div className="p-5 space-y-4 text-xs text-slate-700">
+            <div className="p-4 sm:p-5 space-y-4 text-xs text-slate-700 overflow-y-auto flex-1 overscroll-contain">
               {/* Meta Grid */}
               <div className="grid grid-cols-2 gap-3 bg-slate-50 p-3 rounded-xl border border-slate-200">
                 <div>
@@ -1559,9 +1559,9 @@ export function ACHistoryView() {
 
       {/* MODAL EDIT TANGGAL & KAMAR / RUANGAN UNIT (KHUSUS ADMIN) */}
       {editingDateUnitLog && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/65 backdrop-blur-xs">
-          <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-slate-200 overflow-hidden animate-in fade-in zoom-in-95">
-            <div className="bg-gradient-to-r from-amber-600 via-orange-600 to-blue-700 text-white px-5 py-4 flex items-center justify-between">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/65 backdrop-blur-xs overflow-y-auto">
+          <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-slate-200 overflow-hidden animate-in fade-in zoom-in-95 max-h-[92vh] flex flex-col my-auto">
+            <div className="bg-gradient-to-r from-amber-600 via-orange-600 to-blue-700 text-white px-5 py-4 flex items-center justify-between shrink-0">
               <div className="flex items-center gap-2.5">
                 <div className="w-9 h-9 rounded-xl bg-white/15 border border-white/25 flex items-center justify-center">
                   <Pencil className="w-4 h-4 text-white" />
@@ -1584,7 +1584,7 @@ export function ACHistoryView() {
               </button>
             </div>
 
-            <form onSubmit={handleSaveDateAndUnit} className="p-5 space-y-4 text-xs text-slate-700">
+            <form onSubmit={handleSaveDateAndUnit} className="p-4 sm:p-5 space-y-4 text-xs text-slate-700 overflow-y-auto flex-1 overscroll-contain">
               {/* 1. Edit Tanggal & Jam */}
               <div className="p-3.5 bg-blue-50/60 border border-blue-200 rounded-xl space-y-2.5">
                 <div className="flex items-center justify-between flex-wrap gap-1.5">
@@ -1880,7 +1880,7 @@ export function ACHistoryView() {
                 </div>
               </div>
 
-              <div className="pt-2 flex items-center justify-end gap-2 border-t border-slate-100">
+              <div className="pt-3 pb-1 flex items-center justify-end gap-2 border-t border-slate-200 shrink-0 sticky bottom-0 bg-white/95 backdrop-blur-xs -mx-4 px-4 sm:-mx-5 sm:px-5 shadow-2xs">
                 <button
                   type="button"
                   onClick={() => setEditingDateUnitLog(null)}
@@ -1905,9 +1905,9 @@ export function ACHistoryView() {
 
       {/* MODAL PILIH / UBAH NAMA USER / TEKNISI (BISA 1 ATAU 2 NAMA TERDAFTAR) */}
       {editingTechLog && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/65 backdrop-blur-xs">
-          <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-slate-200 overflow-hidden animate-in fade-in zoom-in-95">
-            <div className="bg-gradient-to-r from-blue-600 to-indigo-700 text-white px-5 py-4 flex items-center justify-between">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/65 backdrop-blur-xs overflow-y-auto">
+          <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-slate-200 overflow-hidden animate-in fade-in zoom-in-95 max-h-[92vh] flex flex-col my-auto">
+            <div className="bg-gradient-to-r from-blue-600 to-indigo-700 text-white px-5 py-4 flex items-center justify-between shrink-0">
               <div className="flex items-center gap-2.5">
                 <div className="w-9 h-9 rounded-xl bg-white/15 border border-white/25 flex items-center justify-center">
                   <Users className="w-4 h-4 text-white" />
@@ -1930,7 +1930,7 @@ export function ACHistoryView() {
               </button>
             </div>
 
-            <div className="p-5 space-y-4 text-xs text-slate-700">
+            <div className="p-4 sm:p-5 space-y-4 text-xs text-slate-700 overflow-y-auto flex-1 overscroll-contain">
               {/* Preview Hasil Gabungan Nama */}
               <div className="p-3 bg-blue-50/80 border border-blue-200 rounded-xl flex items-center justify-between gap-2">
                 <div className="min-w-0">
